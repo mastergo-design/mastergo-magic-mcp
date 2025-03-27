@@ -8,6 +8,10 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 - Runs directly with npx
 - No external dependencies required, only Node.js environment needed
 
+## Tutorial
+
+- https://mastergo.com/file/155675508499265?page_id=158:0002
+
 ## Usage
 
 ### Obtaining MG_MCP_TOKEN
