@@ -67,7 +67,13 @@ export class HttpUtil {
       const params: any = { fileId, layerId };
 
       const response = await this.httpClient.get("/mcp/dsl", { params });
-      return response.data;
+      const result = {
+        dsl: response.data,
+        rules: [
+          "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+        ],
+      };
+      return result;
     } catch (error) {
       throw error;
     }
