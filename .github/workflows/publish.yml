@@ -27,6 +27,10 @@ on:
           - "4"
           - "5"
 
+# 添加权限配置
+permissions:
+  contents: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
