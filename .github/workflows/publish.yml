@@ -1,0 +1,79 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: "Release type"
+        required: true
+        default: "patch"
+        type: "choice"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
+          - "beta"
+          - "alpha"
+      version-increment:
+        description: "Version increment (beta and alpha)"
+        required: false
+        default: "0"
+        type: "choice"
+        options:
+          - "0"
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Version update (official version)
+        if: ${{ github.event.inputs.release-type == 'patch' || github.event.inputs.release-type == 'minor' || github.event.inputs.release-type == 'major' }}
+        run: npm version ${{ github.event.inputs.release-type }} --no-git-tag-version
+
+      - name: Version update (Beta version)
+        if: ${{ github.event.inputs.release-type == 'beta' }}
+        run: npm version prepatch --preid=beta --no-git-tag-version && npm version prerelease --preid=beta --no-git-tag-version --increment=${{ github.event.inputs.version-increment }}
+
+      - name: Version update (Alpha version)
+        if: ${{ github.event.inputs.release-type == 'alpha' }}
+        run: npm version prepatch --preid=alpha --no-git-tag-version && npm version prerelease --preid=alpha --no-git-tag-version --increment=${{ github.event.inputs.version-increment }}
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Get new version number
+        id: get-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Commit version changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "chore: Release v${{ steps.get-version.outputs.version }}"
+          git tag v${{ steps.get-version.outputs.version }}
+          git push
+          git push --tags
