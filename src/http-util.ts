@@ -59,6 +59,28 @@ export class HttpUtil {
     );
   }
 
+  private handleDslComponentDocumentLinks(dsl: DslResponse) {
+    const documentLinks = new Set<string>();
+
+    const getChildrenDocumentLinks = (node: any) => {
+      if (node?.componentInfo?.componentSetDocumentLink?.[0]) {
+        documentLinks.add(node.componentInfo.componentSetDocumentLink[0]);
+      }
+
+      if (node.children && Array.isArray(node.children)) {
+        for (const child of node.children) {
+          getChildrenDocumentLinks(child);
+        }
+      }
+    };
+
+    for (const node of dsl.nodes ?? []) {
+      getChildrenDocumentLinks(node);
+    }
+
+    return Array.from(documentLinks);
+  }
+
   /**
    * Get DSL data
    */
@@ -69,8 +91,26 @@ export class HttpUtil {
       const response = await this.httpClient.get("/mcp/dsl", { params });
       const result = {
         dsl: response.data,
+        componentDocumentLinks: this.handleDslComponentDocumentLinks(
+          response.data
+        ),
         rules: [
           "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+          `
+            componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
+            When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
+            For example: 
+              \`\`\`js  
+                const componentDocumentLinks = [
+                  'https://example.com/ant/button.mdx',
+                  'https://example.com/ant/button.mdx'
+                ]
+                for (const url of componentDocumentLinks) {
+                  const componentLink = await mcp__getComponentLink(url);
+                  console.log(componentLink);
+                }
+              \`\`\`
+          `,
         ],
       };
       return result;
