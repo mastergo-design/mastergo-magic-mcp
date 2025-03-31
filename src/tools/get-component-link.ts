@@ -25,7 +25,6 @@ export class GetComponentLinkTool extends BaseTool {
 
   async execute({ url }: z.infer<typeof this.schema>) {
     try {
-      // 发起HTTP请求获取组件文档数据
       const data = await this.httpUtil.request({
         method: "GET",
         url,
