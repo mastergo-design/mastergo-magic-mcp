@@ -27,7 +27,7 @@ on:
           - "4"
           - "5"
 
-# 添加权限配置
+# Add permission configuration
 permissions:
   contents: write
 
@@ -51,17 +51,51 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Get current version
+        id: get-current-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
       - name: Version update (official version)
         if: ${{ github.event.inputs.release-type == 'patch' || github.event.inputs.release-type == 'minor' || github.event.inputs.release-type == 'major' }}
         run: npm version ${{ github.event.inputs.release-type }} --no-git-tag-version
 
-      - name: Version update (Beta version)
-        if: ${{ github.event.inputs.release-type == 'beta' }}
-        run: npm version prepatch --preid=beta --no-git-tag-version && npm version prerelease --preid=beta --no-git-tag-version --increment=${{ github.event.inputs.version-increment }}
+      - name: Version update (Beta version - first time)
+        if: ${{ github.event.inputs.release-type == 'beta' && !contains(steps.get-current-version.outputs.version, 'beta') }}
+        run: |
+          npm --no-git-tag-version version prerelease --preid=beta
+          # If a specific increment number is needed, execute additional increments
+          if [ "${{ github.event.inputs.version-increment }}" != "0" ]; then
+            for i in $(seq 1 ${{ github.event.inputs.version-increment }}); do
+              npm --no-git-tag-version version prerelease --preid=beta
+            done
+          fi
 
-      - name: Version update (Alpha version)
-        if: ${{ github.event.inputs.release-type == 'alpha' }}
-        run: npm version prepatch --preid=alpha --no-git-tag-version && npm version prerelease --preid=alpha --no-git-tag-version --increment=${{ github.event.inputs.version-increment }}
+      - name: Version update (Beta version - increment)
+        if: ${{ github.event.inputs.release-type == 'beta' && contains(steps.get-current-version.outputs.version, 'beta') }}
+        run: |
+          # For versions with existing beta tags, directly increment the pre-release version number
+          for i in $(seq 1 $((${{ github.event.inputs.version-increment }} + 1))); do
+            npm --no-git-tag-version version prerelease --preid=beta
+          done
+
+      - name: Version update (Alpha version - first time)
+        if: ${{ github.event.inputs.release-type == 'alpha' && !contains(steps.get-current-version.outputs.version, 'alpha') }}
+        run: |
+          npm --no-git-tag-version version prerelease --preid=alpha
+          # If a specific increment number is needed, execute additional increments
+          if [ "${{ github.event.inputs.version-increment }}" != "0" ]; then
+            for i in $(seq 1 ${{ github.event.inputs.version-increment }}); do
+              npm --no-git-tag-version version prerelease --preid=alpha
+            done
+          fi
+
+      - name: Version update (Alpha version - increment)
+        if: ${{ github.event.inputs.release-type == 'alpha' && contains(steps.get-current-version.outputs.version, 'alpha') }}
+        run: |
+          # For versions with existing alpha tags, directly increment the pre-release version number
+          for i in $(seq 1 $((${{ github.event.inputs.version-increment }} + 1))); do
+            npm --no-git-tag-version version prerelease --preid=alpha
+          done
 
       - name: Publish to NPM
         run: npm publish
@@ -72,12 +106,12 @@ jobs:
         id: get-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Commit version changes
+      - name: Commit version change
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add package.json
-          git commit -m "chore: Release v${{ steps.get-version.outputs.version }}"
+          git commit -m "chore: publish v${{ steps.get-version.outputs.version }}"
           git tag v${{ steps.get-version.outputs.version }}
           git push
           git push --tags
