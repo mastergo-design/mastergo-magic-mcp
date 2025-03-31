@@ -4,10 +4,11 @@ import { HttpUtil } from "../http-util";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
-"Use this tool to retrieve the DSL (Domain Specific Language) data from MasterGo design files.
+"Use this tool to retrieve the DSL (Domain Specific Language) data from MasterGo design files and the rules you must follow when generating code.
 This tool is useful when you need to analyze the structure of a design, understand component hierarchy, or extract design properties.
 You must provide a fileId and layerId to identify the specific design element.
 This tool returns the raw DSL data in JSON format that you can then parse and analyze.
+This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks."
 `;
 
