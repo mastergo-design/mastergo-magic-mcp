@@ -111,6 +111,7 @@ export class HttpUtil {
                 }
               \`\`\`
           `,
+          ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
         ],
       };
       return result;
