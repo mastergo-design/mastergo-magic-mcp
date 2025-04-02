@@ -22,6 +22,25 @@ MasterGo Magic MCP 是一个独立的 MCP（Model Context Protocol）服务，�
 4. 找到个人访问令牌
 5. 点击生成令牌
 
+### 命令行选项
+
+```
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug]
+```
+
+#### 参数:
+
+- `--token=YOUR_TOKEN` (必需): MasterGo API 认证令牌
+- `--url=API_URL` (可选): API 基础 URL，默认为 http://localhost:3000
+- `--rule=RULE_NAME` (可选): 添加要应用的设计规则，可多次使用
+- `--debug` (可选): 启用调试模式，提供详细错误信息
+
+你也可以使用空格分隔的参数格式:
+
+```
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
+```
+
 ### Cursor 使用方法
 
 Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
@@ -64,4 +83,4 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 
 ## 许可证
 
-ISC 
+ISC
