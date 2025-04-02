@@ -22,6 +22,25 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 4. Find the personal access token
 5. Click to generate the token
 
+### Command Line Options
+
+```
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug]
+```
+
+#### Parameters:
+
+- `--token=YOUR_TOKEN` (required): MasterGo API token for authentication
+- `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
+- `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
+- `--debug` (optional): Enable debug mode for detailed error information
+
+You can also use space-separated format for parameters:
+
+```
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
+```
+
 ### cursor Usage
 
 Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
