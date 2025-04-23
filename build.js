@@ -86,6 +86,7 @@ async function build() {
         ".js": "js",
         ".json": "json",
         ".node": "file",
+        ".md": "text",
       },
       // Define environment variables
       define: {

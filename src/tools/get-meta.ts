@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { HttpUtil } from "../http-util";
+import rules from "../markdown/meta.md";
 
 const META_TOOL_NAME = "mcp__getMeta";
 const META_TOOL_DESCRIPTION = `
@@ -42,6 +43,7 @@ export class GetMetaTool extends BaseTool {
             type: "text" as const,
             text: JSON.stringify({
                 result,
+                rules,
             }),
           },
         ],
