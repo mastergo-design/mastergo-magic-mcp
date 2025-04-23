@@ -46,12 +46,14 @@ export class GetDslTool extends BaseTool {
           },
         ],
       };
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error.response?.data ?? error?.message;
       return {
+        isError: true,
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({ error: "Failed to get DSL" }),
+            text: JSON.stringify(errorMessage),
           },
         ],
       };
