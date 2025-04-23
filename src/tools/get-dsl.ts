@@ -47,7 +47,7 @@ export class GetDslTool extends BaseTool {
         ],
       };
     } catch (error: any) {
-      const errorMessage = error.response.data ?? error.message;
+      const errorMessage = error.response?.data ?? error?.message;
       return {
         isError: true,
         content: [
