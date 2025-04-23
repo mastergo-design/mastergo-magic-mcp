@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { HttpUtil } from "./http-util";
 import { GetDslTool } from "./tools/get-dsl";
 import { GetComponentLinkTool } from "./tools/get-component-link";
+import { GetMetaTool } from "./tools/get-meta";
 
 // Logging function, only outputs when the DEBUG environment variable is true
 const log = (message: string) => {
@@ -40,6 +41,7 @@ function main() {
   // Register tools
   new GetDslTool(httpUtil).register(server);
   new GetComponentLinkTool(httpUtil).register(server);
+  new GetMetaTool(httpUtil).register(server);
   // Connect to standard input/output
   server.connect(new StdioServerTransport());
 
