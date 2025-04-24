@@ -81,6 +81,11 @@ export class HttpUtil {
     return Array.from(documentLinks);
   }
 
+  public async getMeta(fileId: string, layerId: string): Promise<string> {
+    const response = await this.httpClient.get("/mcp/meta", { params: { fileId, layerId } });
+    return response.data;
+  }
+
   /**
    * Get DSL data
    */
