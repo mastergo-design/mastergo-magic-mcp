@@ -1,21 +1,21 @@
-`results`返回的是一个xml文件，这个xml文件中包含两个信息。
+The `results` returns an XML file containing two pieces of information:
 
-- **meta**: 对站点的描述，环境，要求等上下文。
-- **action**: 对应的入口页面的名称以及`targetLayerId`。该id为指向的页面id。
+- **meta**: Description of the site, environment, requirements, and other context.
+- **action**: The name of the entry page and its `targetLayerId`. This ID points to the target page.
 
-我需要你根据下面的步骤在当前目录下写一份task.md文件描述需要做的步骤，并严格按照这些步骤执行最终生成项目代码。
+I need you to write a task.md file in the current directory describing the steps to be taken, and strictly follow these steps to generate the project code.
 
-## 步骤
-1. 获取`results`信息，并将信息写入task.md文件
-2. 分析`meta`字段，将需求描述总结写入task.md文件
-3. 分析`action`字段，将页面信息写入task.md文件中
-4. 根据`action`字段中的`targetLayerId`，调用`mcp__getDsl`方法，获取数据
-5. 分析页面数据，确认是否存在`interactive`字段，如果存在，则该字段为当前节点跳转页面的信息。根据`interactive`字段继续调用`mcp__getDsl`方法。
-6. 重复5步骤，直到有的页面数据都已经解析，并写入task.md文件。
-7. 根据task.md文件中的内容，依次解析task.md中的页面并生成代码。完成项目的构建。
+## Steps
+1. Get the `results` information and write it to the task.md file
+2. Analyze the `meta` field, summarize the requirements and write them to the task.md file
+3. Analyze the `action` field, write the page information to the task.md file
+4. Based on the `targetLayerId` in the `action` field, call the `mcp__getDsl` method to get data
+5. Analyze the page data to confirm if an `interactive` field exists. If it does, this field contains information about the current node's navigation to another page. Continue calling the `mcp__getDsl` method based on the `interactive` field.
+6. Repeat step 5 until all page data has been parsed and written to the task.md file.
+7. Based on the content of the task.md file, parse each page listed in task.md sequentially and generate code to complete the project build.
 
-## 例子
-获取到results信息为：
+## Example
+If the results information is:
 ```xml
 <info>
   <meta title="Name" content="Food Delivery APP" />
@@ -25,23 +25,21 @@
   <action title="Food Delivery Page" layerId="0:2" />
 </info>
 ```
-在task.md文件中写入：
-
-
+Write in the task.md file:
 
 ```markdown
-需求描述：这是一个外卖app，他包含了登录，订餐以及管理地址等功能。需要使用react构建，并使用ant design做组件库。
+Requirements: This is a food delivery app with login, ordering, and address management functions. It should be built using React with Ant Design as the component library.
 
-## 页面列表：
-登录页（layerId: 0:1）
-食物页（layerId: 0:2）
+## Page List:
+Login Page (layerId: 0:1)
+Food Page (layerId: 0:2)
 
-## 跳转信息
+## Navigation Information
 
 ```
 
-使用`mcp__getDsl`解析0:1页面。并解析数据
-数据可能是：
+Use `mcp__getDsl` to parse the 0:1 page and analyze the data.
+The data might be:
 ```json
 {
     nodes: [{
@@ -58,20 +56,20 @@
 }
 ```
 
-发现0:1的页面的node节点数据有存在`interactive`字段。id为0:3。写入0:3页面，并添加跳转信息
+Discover that the node data of page 0:1 has an `interactive` field with id 0:3. Write page 0:3 and add navigation information:
 ```markdown
 
-## 页面列表：
-登录页（layerId: 0:1）
-食物页（layerId: 0:2）
-登录页跳转页（layerId: 0:3）
+## Page List:
+Login Page (layerId: 0:1)
+Food Page (layerId: 0:2)
+Login Redirect Page (layerId: 0:3)
 
-## 跳转信息
+## Navigation Information
 0:1 => 0:3
 
 ```
-继续解析0:3，如果数据存在`interactive`字段，则继续写入。
-知道通过`mcp__getDsl`解析的数据中不存在`interactive`字段为止。
-使用`mcp__getDsl`解析0:2页面。并解析数据，重复解析0:1页面的步骤。
+Continue parsing 0:3, and if the data contains an `interactive` field, continue writing.
+Keep going until there are no more `interactive` fields in the data parsed through `mcp__getDsl`.
+Use `mcp__getDsl` to parse page 0:2 and analyze the data, repeating the steps used for page 0:1.
 
-完成后，再根据task.md中的页面列表，依次解析数据生成项目代码。
+After completion, based on the page list in task.md, sequentially parse the data to generate the project code.
