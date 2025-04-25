@@ -81,6 +81,54 @@ Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-
 }
 ```
 
+## Project Structure
+
+### src Directory
+
+The `src` directory contains the core implementation of the MasterGo Magic MCP service:
+
+- `index.ts`: Entry point of the application that initializes the MCP server and registers all tools
+- `http-util.ts`: Utility for handling HTTP requests to the MasterGo API
+- `types.d.ts`: TypeScript type definitions for the project
+
+#### src/tools
+
+Contains implementations of MCP tools:
+
+- `base-tool.ts`: Base class for all MCP tools
+- `get-dsl.ts`: Tool for retrieving DSL (Domain Specific Language) data from MasterGo design files
+- `get-component-link.ts`: Tool for retrieving component documentation from links
+- `get-meta.ts`: Tool for retrieving metadata information
+
+#### src/markdown
+
+Contains markdown files with additional documentation:
+
+- `meta.md`: Documentation about metadata structure and usage
+
+## Local Development
+
+1. Run `yarn` and `yarn build` to install dependencies and build the code
+2. Find the absolute path of `bin/cli.js`
+3. Add local MCP configuration with your token
+```json
+"mastergo-mcp-local": {
+  "command": "node",
+  "args": [
+    "absolute/path/to/bin/cli.js",
+    "--token=mg_xxxxxx",
+    "--url=https://mastergo.com",
+    "--debug"
+  ],
+  "env": {}
+},
+```
+4. Restart your editor to ensure the local MCP is enabled
+
+After successful execution, you can debug based on the local running results. You can build your own MCP service based on your modifications.
+
+We welcome your code contributions and look forward to building MasterGo's MCP service together.
+
 ## License
 
 ISC
