@@ -6,6 +6,7 @@ import { HttpUtil } from "./http-util";
 import { GetDslTool } from "./tools/get-dsl";
 import { GetComponentLinkTool } from "./tools/get-component-link";
 import { GetMetaTool } from "./tools/get-meta";
+import { GetVersionTool } from "./tools/get-version";
 
 // Logging function, only outputs when the DEBUG environment variable is true
 const log = (message: string) => {
@@ -39,6 +40,7 @@ function main() {
   const httpUtil = new HttpUtil(baseUrl, token);
 
   // Register tools
+  new GetVersionTool().register(server);
   new GetDslTool(httpUtil).register(server);
   new GetComponentLinkTool(httpUtil).register(server);
   new GetMetaTool(httpUtil).register(server);

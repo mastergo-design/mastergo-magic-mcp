@@ -64,7 +64,7 @@ The data might be:
 }
 ```
 
-f you find that the node data of page 0:1 contains the `interactive` field with id 0:3, write the 0:3 page and add the navigation information:
+if you find that the node data of page 0:1 contains the `interactive` field with id 0:3, write the 0:3 page and add the navigation information:
 ```markdown
 
 ## Page List:
