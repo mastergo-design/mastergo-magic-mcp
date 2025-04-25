@@ -6,10 +6,19 @@ import componentWorkflow from "../markdown/component-workflow.md";
 import componentUiDesign from "../markdown/component-ui-design.md";
 import componentJson from "../json/button.json";
 
-const META_TOOL_NAME = "mcp__getComponentGenerator";
-const META_TOOL_DESCRIPTION = `
+const COMPONENT_GENERATOR_TOOL_NAME = "mcp__getComponentGenerator";
+const COMPONENT_GENERATOR_TOOL_DESCRIPTION = `
 Use this tool when the user wants to build a Vue component or React component.
-You must provide a absolute rootPath of workspace to save workflow files.
+This tool provides a structured workflow for component development following best practices.
+You must provide an absolute rootPath of workspace to save workflow files.
+
+The component development workflow follows these stages:
+1. Component Analysis - Understand requirements and specifications
+2. Architecture Design - Plan the component structure
+3. Component Development - Implement the component with proper state management
+4. Testing and Validation - Ensure component quality
+5. Documentation and Showcase - Create usage examples
+
 \`\`\`mermaid
 graph TD
     A[Start] --> B[Component Analysis]
@@ -32,8 +41,8 @@ graph TD
 `;
 
 export class GetComponentWorkflowTool extends BaseTool {
-  name = META_TOOL_NAME;
-  description = META_TOOL_DESCRIPTION;
+  name = COMPONENT_GENERATOR_TOOL_NAME;
+  description = COMPONENT_GENERATOR_TOOL_DESCRIPTION;
   private httpUtil: HttpUtil;
 
   constructor(httpUtil: HttpUtil) {
@@ -79,13 +88,18 @@ export class GetComponentWorkflowTool extends BaseTool {
           {
             type: "text" as const,
             text: JSON.stringify({
-              "component-workflow": `Workflow file saved at path: ${architectureDir}`,
-              "component-ui-design": `UI design file saved at path: ${designPrincipleDir}`,
-              "component-json": `Component JSON file saved at path: ${componentJsonDir}`,
+              files: {
+                workflow: architectureDir,
+                uiDesign: designPrincipleDir,
+                componentSpec: componentJsonDir,
+              },
+              message: "Component development files successfully created",
               rules: [
-                `You must follow the ${architectureDir} to build the component.`,
-                `You must follow the ${designPrincipleDir} to build the component.`,
-                `You must follow the ${componentJsonDir} to build the component.`,
+                `Follow the component workflow process defined in ${architectureDir} for structured development.`,
+                `Adhere to UI design principles and patterns specified in ${designPrincipleDir}, especially for state management and component reuse.`,
+                `Implement the component according to the specifications in ${componentJsonDir}, ensuring all properties and states are properly handled.`,
+                `Maintain consistency with existing components and follow the CSS-first approach for state management where appropriate.`,
+                `Ensure proper testing coverage for all component functionality and edge cases.`,
               ],
             }),
           },
