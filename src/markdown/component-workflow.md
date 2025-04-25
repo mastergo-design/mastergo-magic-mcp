@@ -1,232 +1,232 @@
-# 组件开发工作流程
+# Component Development Workflow
 
-## 组件驱动的开发周期
-
-```mermaid
-graph TD
-    A[开始] --> B[组件分析]
-    B --> C[架构设计]
-
-    C --> D{架构已批准?}
-    D -->|是| E[组件开发阶段]
-    D -->|否| C
-
-    E --> F[基础实现]
-    F --> G[单元测试]
-    G --> H{测试通过?}
-    H -->|否| F
-    H -->|是| I[文档和预览]
-
-    I --> J{最终审核}
-    J -->|批准| K[组件完成]
-    J -->|需改进| E
-```
-
-## 1. 组件分析与架构
-
-**输入**: 组件 JSON 规格  
-**输出**: 架构文档 (`architecture/${componentName}-arch.md`)
+## Component-Driven Development Cycle
 
 ```mermaid
 graph TD
-    A1[解析 JSON 数据] --> A2[识别属性和状态]
-    A2 --> A3[提取公共样式和令牌]
-    A3 --> A4[定义组件接口]
-    A4 --> A5[创建架构文档]
-    A5 --> A6[用户审核]
+    A[Start] --> B[Component Analysis]
+    B --> C[Architecture Design]
+
+    C --> D{Architecture Approved?}
+    D -->|Yes| E[Component Development Phase]
+    D -->|No| C
+
+    E --> F[Basic Implementation]
+    F --> G[Unit Testing]
+    G --> H{Tests Passed?}
+    H -->|No| F
+    H -->|Yes| I[Documentation and Preview]
+
+    I --> J{Final Review}
+    J -->|Approved| K[Component Completed]
+    J -->|Needs Improvement| E
 ```
 
-**检查清单**:
+## 1. Component Analysis and Architecture
 
-- [ ] 属性分析完成
-- [ ] 状态和变体已识别
-- [ ] 公共样式已提取
-- [ ] 组件接口已定义
-- [ ] 架构文档已批准
-
-## 2. 组件开发
-
-**输入**: 已批准的架构文档  
-**输出**: 功能性组件 (`src/components/${componentName}/`)
+**Input**: Component JSON Specification  
+**Output**: Architecture Document (`architecture/${componentName}-arch.md`)
 
 ```mermaid
 graph TD
-    B1[创建组件结构] --> B2[实现基础组件]
-    B2 --> B3[实现变体和属性]
-    B3 --> B4[添加状态管理]
-    B4 --> B5[实现样式和令牌]
-    B5 --> B6[添加 TypeScript 接口]
-    B6 --> B7[组件准备测试]
+    A1[Parse JSON Data] --> A2[Identify Properties and States]
+    A2 --> A3[Extract Common Styles and Tokens]
+    A3 --> A4[Define Component Interface]
+    A4 --> A5[Create Architecture Document]
+    A5 --> A6[User Review]
 ```
 
-**需要创建的文件**:
+**Checklist**:
 
-- `src/components/${componentName}/index.ts` (导出)
-- `src/components/${componentName}/types.ts` (接口和类型)
-- `src/components/${componentName}/${componentName}.vue` (组件)
+- [ ] Property analysis completed
+- [ ] States and variants identified
+- [ ] Common styles extracted
+- [ ] Component interface defined
+- [ ] Architecture document approved
 
-## 2.1 UI 交互设计准则
+## 2. Component Development
 
-在组件的开发过程中，必须严格遵循 `architecture/ui-interaction-design.md` 中定义的设计原则。特别是以下几点：
-
-### 状态管理策略
-
-采用 **混合策略—优先 CSS 伪类，JavaScript 辅助** 的方法实现组件状态管理：
-
-1. **CSS 优先原则**：对于 hover、focus 等基本状态，优先使用 CSS 伪类实现
-2. **状态扩展原则**：允许通过 props 覆盖或扩展默认状态行为
-3. **一致性原则**：在整个组件库中保持一致的状态管理模式
-4. **性能优先原则**：尽可能减少不必要的 JavaScript 状态管理
-
-### 组件复用原则
-
-1. **组件复用优先**：如果新功能可以通过复用或组合现有组件实现，应优先采用复用
-2. **一致性保障**：通过组件复用确保设计和交互体验的一致性
-3. **维护效率**：减少重复代码，提高维护效率和可扩展性
-4. **性能考量**：确保复用不会引入不必要的性能开销
-
-**状态管理验证清单**:
-
-- [ ] 所有常见状态（hover, focus, active）都优先使用 CSS 伪类实现
-- [ ] 组件支持通过 props 覆盖默认状态
-- [ ] 所有必要的鼠标与键盘交互都有适当的状态反馈
-- [ ] 禁用状态下正确阻止状态变化
-- [ ] 组件状态在各种条件下一致表现
-
-## 3. 测试和验证
-
-**输入**: 组件实现  
-**输出**: 经过验证的组件及测试
+**Input**: Approved Architecture Document  
+**Output**: Functional Component (`src/components/${componentName}/`)
 
 ```mermaid
 graph TD
-    C1[创建测试文件结构] --> C2[测试默认渲染]
-    C2 --> C3[测试属性和变体]
-    C3 --> C4[测试事件和交互]
-    C4 --> C5[测试边缘情况]
-    C5 --> C6[验证覆盖率]
-    C6 --> C7[测试通过]
+    B1[Create Component Structure] --> B2[Implement Base Component]
+    B2 --> B3[Implement Variants and Properties]
+    B3 --> B4[Add State Management]
+    B4 --> B5[Implement Styles and Tokens]
+    B5 --> B6[Add TypeScript Interface]
+    B6 --> B7[Component Ready for Testing]
 ```
 
-**需要创建的文件**:
+**Files to Create**:
+
+- `src/components/${componentName}/index.ts` (exports)
+- `src/components/${componentName}/types.ts` (interfaces and types)
+- `src/components/${componentName}/${componentName}.vue` (component)
+
+## 2.1 UI Interaction Design Guidelines
+
+During component development, the design principles defined in `architecture/ui-interaction-design.md` must be strictly followed. Particularly the following points:
+
+### State Management Strategy
+
+Use the **Hybrid Strategy—CSS Pseudo-classes First, JavaScript as Supplement** approach for component state management:
+
+1. **CSS First Principle**: For basic states like hover and focus, prioritize CSS pseudo-classes
+2. **State Extension Principle**: Allow overriding or extending default state behavior through props
+3. **Consistency Principle**: Maintain consistent state management patterns across the component library
+4. **Performance First Principle**: Minimize unnecessary JavaScript state management
+
+### Component Reuse Principles
+
+1. **Component Reuse Priority**: If new functionality can be implemented through reusing or combining existing components, prioritize reuse
+2. **Consistency Assurance**: Ensure design and interaction experience consistency through component reuse
+3. **Maintenance Efficiency**: Reduce duplicate code, improve maintenance efficiency and scalability
+4. **Performance Considerations**: Ensure reuse doesn't introduce unnecessary performance overhead
+
+**State Management Validation Checklist**:
+
+- [ ] All common states (hover, focus, active) primarily implemented using CSS pseudo-classes
+- [ ] Component supports overriding default states via props
+- [ ] All necessary mouse and keyboard interactions have appropriate state feedback
+- [ ] State changes properly prevented in disabled state
+- [ ] Component states behave consistently under various conditions
+
+## 3. Testing and Validation
+
+**Input**: Component Implementation  
+**Output**: Validated Component and Tests
+
+```mermaid
+graph TD
+    C1[Create Test File Structure] --> C2[Test Default Rendering]
+    C2 --> C3[Test Properties and Variants]
+    C3 --> C4[Test Events and Interactions]
+    C4 --> C5[Test Edge Cases]
+    C5 --> C6[Verify Coverage]
+    C6 --> C7[Tests Passed]
+```
+
+**Files to Create**:
 
 - `__tests__/components/${componentName}/${componentName}.test.ts`
 
-## 4. 文档和展示
+## 4. Documentation and Showcase
 
-**输入**: 经过验证的组件  
-**输出**: 文档和实时示例
+**Input**: Validated Component  
+**Output**: Documentation and Live Examples
 
 ```mermaid
 graph TD
-    D1[创建文档结构] --> D2[添加基本用法示例]
-    D2 --> D3[记录属性和事件]
-    D3 --> D4[添加变体示例]
-    D4 --> D5[创建交互式演示]
-    D5 --> D6[添加 API 参考]
-    D6 --> D7[文档完成]
+    D1[Create Documentation Structure] --> D2[Add Basic Usage Examples]
+    D2 --> D3[Document Properties and Events]
+    D3 --> D4[Add Variant Examples]
+    D4 --> D5[Create Interactive Demos]
+    D5 --> D6[Add API Reference]
+    D6 --> D7[Documentation Complete]
 ```
 
-**需要创建的文件**:
+**Files to Create**:
 
 - `docs/components/${componentName.toLowerCase()}.md`
 
-## 实施指南
+## Implementation Guide
 
-### 步骤 1: 创建任务文档（自动化）
+### Step 1: Create Task Document (Automated)
 
-根据架构文档，生成具有特定子任务的清晰任务列表：
+Based on the architecture document, generate a clear task list with specific subtasks:
 
 ```markdown
-# ${ComponentName} 组件任务
+# ${ComponentName} Component Tasks
 
-## 1. 组件结构
+## 1. Component Structure
 
-- [ ] 创建组件目录
-- [ ] 创建 index.ts 导出文件
-- [ ] 创建 types.ts 用于 TypeScript 接口
-- [ ] 创建基础组件文件
+- [ ] Create component directory
+- [ ] Create index.ts export file
+- [ ] Create types.ts for TypeScript interfaces
+- [ ] Create base component file
 
-## 2. 组件实现
+## 2. Component Implementation
 
-- [ ] 实现基础组件结构
-- [ ] 添加属性和默认值
-- [ ] 实现状态管理（遵循 UI 交互设计准则）
-- [ ] 添加变体样式
+- [ ] Implement base component structure
+- [ ] Add properties and default values
+- [ ] Implement state management (following UI interaction design guidelines)
+- [ ] Add variant styles
 
-## 3. 测试
+## 3. Testing
 
-- [ ] 创建测试文件结构
-- [ ] 测试默认渲染
-- [ ] 测试属性和变体
-- [ ] 测试事件和交互
+- [ ] Create test file structure
+- [ ] Test default rendering
+- [ ] Test properties and variants
+- [ ] Test events and interactions
 
-## 4. 文档
+## 4. Documentation
 
-- [ ] 创建文档文件
-- [ ] 添加用法示例
-- [ ] 记录属性和事件
-- [ ] 添加交互式演示
+- [ ] Create documentation file
+- [ ] Add usage examples
+- [ ] Document properties and events
+- [ ] Add interactive demos
 ```
 
-### 步骤 2: 开发检查点
+### Step 2: Development Checkpoints
 
-为每个主要部分实施明确的检查点：
+Implement clear checkpoints for each major section:
 
-1. **组件结构检查点**
+1. **Component Structure Checkpoint**
 
-   - 所有需要的文件都已创建
-   - 基本导出正常工作
-   - 已定义 TypeScript 接口
+   - All required files created
+   - Basic exports working
+   - TypeScript interfaces defined
 
-2. **实现检查点**
+2. **Implementation Checkpoint**
 
-   - 组件正确渲染
-   - 所有属性按预期工作
-   - 状态管理功能符合 UI 交互设计准则
-   - 样式正确应用
+   - Component renders correctly
+   - All properties work as expected
+   - State management functions according to UI interaction design guidelines
+   - Styles applied correctly
 
-3. **测试检查点**
+3. **Testing Checkpoint**
 
-   - 所有测试通过
-   - 覆盖边缘情况
-   - 无回归
+   - All tests pass
+   - Edge cases covered
+   - No regressions
 
-4. **文档检查点**
-   - 所有功能都已记录
-   - 示例可用
-   - API 参考完整
+4. **Documentation Checkpoint**
+   - All functionality documented
+   - Examples available
+   - API reference complete
 
-### 步骤 3: 简化验证
+### Step 3: Simplified Validation
 
-在每个主要检查点之后，运行简单的验证步骤：
+Run simple validation steps after each major checkpoint:
 
 ```bash
-# 组件结构后
+# After component structure
 pnpm run typecheck
 
-# 实现后
+# After implementation
 pnpm run build
 
-# 测试后
+# After testing
 pnpm run test
 
-# 文档后
+# After documentation
 pnpm run docs:dev
 ```
 
-## 简化工作流程可视化
+## Simplified Workflow Visualization
 
 ```
-┌─── 分析 ────────┐  ┌─── 开发 ────────┐  ┌─── 验证 ────────┐  ┌─── 文档 ────────┐
+┌─── Analysis ────┐  ┌─── Development ─┐  ┌─── Validation ──┐  ┌─── Docs ────────┐
 │                 │  │                 │  │                 │  │                 │
-│  解析 JSON      │  │  创建文件       │  │  编写测试       │  │  使用指南       │
-│  提取样式       │  │  添加属性       │  │  测试属性       │  │  API 参考       │
-│  定义属性       │  │  实现           │  │  测试事件       │  │  示例           │
-│  架构设计       │──►  添加状态       │──►  验证样式       │──►  交互式演示     │
-│                 │  │  样式           │  │                 │  │                 │
+│  Parse JSON     │  │  Create Files   │  │  Write Tests    │  │  Usage Guide    │
+│  Extract Styles │  │  Add Props      │  │  Test Props     │  │  API Reference  │
+│  Define Props   │  │  Implement      │  │  Test Events    │  │  Examples       │
+│  Arch Design    │──►  Add States     │──►  Validate Styles│──►  Interactive    │
+│                 │  │  Styling        │  │                 │  │  Demos          │
 └─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
         ▲                                          │                    │
         └──────────────────────────────────────────┴────────────────────┘
-                              反馈循环
+                              Feedback Loop
 ```

@@ -2,138 +2,138 @@
 
 ## PROBLEM STATEMENT
 
-组件库中的状态（如 hover、focus、active 等）管理有两种主要实现方式：通过 CSS 伪类或通过 JavaScript 事件监听。我们需要确定在组件设计中何时应该优先使用哪种方式，以及具体实现的最佳策略。
+State management in component libraries (such as hover, focus, active, etc.) can be implemented in two main ways: through CSS pseudo-classes or through JavaScript event listeners. We need to determine when to prioritize which method in component design, and the best strategy for implementation.
 
 ## REQUIREMENTS ANALYSIS
 
-- 组件状态必须直观且符合用户预期
-- 状态变化必须流畅自然，无明显延迟
-- 组件必须同时支持通过 props 控制状态（用于特定场景）
-- 组件库必须保持一致的状态管理模式
-- 组件必须在不同浏览器中保持一致的行为
-- 组件互动体验必须符合现代 Web 应用的标准
+- Component states must be intuitive and meet user expectations
+- State transitions must be smooth and natural, without noticeable delay
+- Components must also support controlling states via props (for specific scenarios)
+- The component library must maintain consistent state management patterns
+- Components must behave consistently across different browsers
+- Component interaction experience must meet modern web application standards
 
 ## OPTIONS ANALYSIS
 
-### Option 1: 纯 CSS 伪类实现状态管理
+### Option 1: Pure CSS Pseudo-class State Management
 
-**Description**: 完全依赖 CSS 伪类（如:hover, :focus, :active 等）来管理组件的视觉状态。
-
-**Pros**:
-
-- 浏览器原生实现，性能最优
-- 无需 JavaScript 事件处理，减少代码复杂度
-- 状态变化自动处理，无需手动控制
-- 适用于大多数简单的交互场景
-
-**Cons**:
-
-- 无法处理复杂的状态逻辑（如条件状态转换）
-- 难以通过 props 直接控制状态
-- 无法捕获状态变化事件做额外处理
-- 难以进行单元测试
-
-**Complexity**: 低
-**Implementation Time**: 短
-
-### Option 2: 纯 JavaScript 事件管理状态
-
-**Description**: 完全通过 JavaScript 事件（如 mouseenter, mouseleave 等）监听并设置状态值，通过绑定的状态值控制组件样式。
+**Description**: Completely rely on CSS pseudo-classes (like :hover, :focus, :active, etc.) to manage component visual states.
 
 **Pros**:
 
-- 完全可控的状态管理
-- 可以实现复杂的条件状态逻辑
-- 易于通过 props 覆盖状态
-- 可以在状态变化时触发额外操作
-- 便于单元测试状态变化
+- Browser native implementation, optimal performance
+- No JavaScript event handling required, reducing code complexity
+- State changes handled automatically, no manual control needed
+- Suitable for most simple interaction scenarios
 
 **Cons**:
 
-- 性能开销较大，特别是在组件频繁渲染时
-- 增加代码复杂度
-- 可能存在延迟，导致视觉上的不连贯
-- 需要手动维护所有状态转换逻辑
+- Cannot handle complex state logic (such as conditional state transitions)
+- Difficult to directly control states via props
+- Cannot capture state change events for additional processing
+- Difficult to unit test
 
-**Complexity**: 高
-**Implementation Time**: 长
+**Complexity**: Low
+**Implementation Time**: Short
 
-### Option 3: 混合策略—优先 CSS 伪类，JavaScript 辅助
+### Option 2: Pure JavaScript Event State Management
 
-**Description**: 优先使用 CSS 伪类管理常见状态，同时提供 JavaScript 事件监听作为补充，并支持通过 props 直接控制状态。
+**Description**: Completely manage states through JavaScript events (such as mouseenter, mouseleave, etc.) by listening and setting state values, then controlling component styles through bound state values.
 
 **Pros**:
 
-- 结合了两种方法的优点
-- 简单状态使用 CSS 伪类以获得最佳性能
-- 复杂状态或需要额外控制时使用 JavaScript
-- 支持通过 props 覆盖默认状态行为
-- 可进行单元测试
+- Fully controllable state management
+- Can implement complex conditional state logic
+- Easy to override states via props
+- Can trigger additional actions on state changes
+- Easy to unit test state changes
 
 **Cons**:
 
-- 实现稍复杂，需要协调 CSS 和 JS 之间的状态一致性
-- 需要额外的设计考虑来决定哪些状态使用 CSS，哪些使用 JS
-- 可能在某些边缘情况下出现状态冲突
+- Higher performance overhead, especially when components render frequently
+- Increases code complexity
+- May have delays, leading to visual inconsistency
+- Requires manual maintenance of all state transition logic
 
-**Complexity**: 中
-**Implementation Time**: 中
+**Complexity**: High
+**Implementation Time**: Long
+
+### Option 3: Hybrid Strategy—CSS Pseudo-classes First, JavaScript as Supplement
+
+**Description**: Prioritize CSS pseudo-classes for common states, while providing JavaScript event listeners as supplements, and supporting direct state control via props.
+
+**Pros**:
+
+- Combines the advantages of both approaches
+- Uses CSS pseudo-classes for simple states to achieve optimal performance
+- Uses JavaScript for complex states or when additional control is needed
+- Supports overriding default state behavior via props
+- Can be unit tested
+
+**Cons**:
+
+- Implementation is slightly more complex, requiring coordination of state consistency between CSS and JS
+- Requires additional design considerations to decide which states use CSS and which use JS
+- May have state conflicts in some edge cases
+
+**Complexity**: Medium
+**Implementation Time**: Medium
 
 ## DECISION
 
-**Chosen Option**: Option 3: 混合策略—优先 CSS 伪类，JavaScript 辅助
+**Chosen Option**: Option 3: Hybrid Strategy—CSS Pseudo-classes First, JavaScript as Supplement
 
 **Rationale**:
-混合策略在性能和灵活性之间达到了最佳平衡。通过优先使用 CSS 伪类来处理常见的状态变化（如 hover、focus 等），我们可以获得最佳的性能和自然的用户体验。同时，通过添加 JavaScript 事件处理，我们可以支持更复杂的状态逻辑、条件状态转换以及通过 props 控制状态，满足各种使用场景的需求。
+The hybrid strategy achieves the best balance between performance and flexibility. By prioritizing CSS pseudo-classes for common state changes (such as hover, focus, etc.), we can achieve optimal performance and natural user experience. At the same time, by adding JavaScript event handling, we can support more complex state logic, conditional state transitions, and control states via props, meeting the needs of various usage scenarios.
 
 ## IMPLEMENTATION GUIDELINES
 
-### 基本原则
+### Basic Principles
 
-1. **CSS 优先原则**：对于 hover、focus 等基本状态，优先使用 CSS 伪类实现
-2. **状态扩展原则**：允许通过 props 覆盖或扩展默认状态行为
-3. **一致性原则**：在整个组件库中保持一致的状态管理模式
-4. **性能优先原则**：尽可能减少不必要的 JavaScript 状态管理
+1. **CSS First Principle**: For basic states like hover and focus, prioritize CSS pseudo-classes
+2. **State Extension Principle**: Allow overriding or extending default state behavior through props
+3. **Consistency Principle**: Maintain consistent state management patterns across the component library
+4. **Performance First Principle**: Minimize unnecessary JavaScript state management
 
-### 实现步骤
+### Implementation Steps
 
-1. **基础 CSS 状态定义**:
+1. **Basic CSS State Definition**:
 
 ```scss
 .component {
-  // 默认样式
+  // Default styles
 
   &:hover {
-    // hover状态样式
+    // Hover state styles
   }
 
   &:focus {
-    // focus状态样式
+    // Focus state styles
   }
 
   &:active {
-    // active状态样式
+    // Active state styles
   }
 
   &--disabled {
-    // 禁用状态样式
+    // Disabled state styles
 
     &:hover,
     &:focus,
     &:active {
-      // 禁用状态下覆盖其他伪类
+      // Override other pseudo-classes in disabled state
     }
   }
 }
 ```
 
-2. **JavaScript 状态管理补充**:
+2. **JavaScript State Management Supplement**:
 
 ```typescript
-// 内部状态管理
+// Internal state management
 const internalState = ref(props.state);
 
-// 当props中的state改变时，更新内部状态
+// Update internal state when props.state changes
 watch(
   () => props.state,
   (newState) => {
@@ -141,25 +141,25 @@ watch(
   }
 );
 
-// 计算当前状态（内部状态优先）
+// Compute current state (internal state takes priority)
 const currentState = computed(() => {
   return internalState.value;
 });
 
-// 鼠标交互处理（仅在需要额外控制时添加）
+// Mouse interaction handling (only add when additional control is needed)
 const handleMouseEnter = () => {
-  // 仅在特定条件下需要JavaScript控制时实现
+  // Only implement when JavaScript control is needed in specific conditions
   if (props.state !== "disabled" && props.controlled) {
     internalState.value = "hover";
   }
 };
 ```
 
-3. **状态控制优先级**:
+3. **State Control Priority**:
 
-   - CSS 伪类 > Props 指定状态 > JavaScript 状态管理
+   - CSS Pseudo-classes > Props-specified State > JavaScript State Management
 
-4. **组件模板结构**:
+4. **Component Template Structure**:
 
 ```vue
 <template>
@@ -172,24 +172,24 @@ const handleMouseEnter = () => {
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
-    <!-- 组件内容 -->
+    <!-- Component content -->
   </div>
 </template>
 ```
 
 ## VALIDATION
 
-**状态管理验证清单**:
+**State Management Validation Checklist**:
 
-- [✓] 所有常见状态（hover, focus, active）都优先使用 CSS 伪类实现
-- [✓] 组件支持通过 props 覆盖默认状态
-- [✓] 所有必要的鼠标与键盘交互都有适当的状态反馈
-- [✓] 禁用状态下正确阻止状态变化
-- [✓] 组件状态在各种条件下一致表现
+- [✓] All common states (hover, focus, active) primarily implemented using CSS pseudo-classes
+- [✓] Component supports overriding default states via props
+- [✓] All necessary mouse and keyboard interactions have appropriate state feedback
+- [✓] State changes properly prevented in disabled state
+- [✓] Component states behave consistently under various conditions
 
 ## EXAMPLES
 
-### 按钮组件状态管理
+### Button Component State Management
 
 ```vue
 <template>
@@ -209,18 +209,18 @@ const handleMouseEnter = () => {
 
 ```scss
 .mg-button {
-  // 基础样式
+  // Base styles
 
   &:hover {
-    // hover样式
+    // Hover styles
   }
 
   &:focus {
-    // focus样式
+    // Focus styles
   }
 
   &:active {
-    // active样式
+    // Active styles
   }
 
   &--disabled {
@@ -230,13 +230,13 @@ const handleMouseEnter = () => {
     &:hover,
     &:focus,
     &:active {
-      // 禁用态下覆盖所有伪类样式
+      // Override all pseudo-class styles in disabled state
     }
   }
 }
 ```
 
-### 菜单项组件状态管理（需要更多 JavaScript 控制）
+### Menu Item Component State Management (Requiring More JavaScript Control)
 
 ```vue
 <template>
@@ -249,16 +249,16 @@ const handleMouseEnter = () => {
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
-    <!-- 组件内容 -->
+    <!-- Component content -->
   </div>
 </template>
 ```
 
 ```typescript
-// 状态管理
+// State management
 const internalState = ref(props.state || "default");
 
-// 仅当需要特殊控制时监听事件
+// Only listen to events when special control is needed
 const handleMouseEnter = () => {
   if (!props.disabled && props.controlledHover) {
     internalState.value = "hover";
@@ -274,55 +274,55 @@ const handleMouseLeave = () => {
 
 ## CONCLUSION
 
-通过采用"优先 CSS 伪类，JavaScript 辅助"的混合策略，我们可以在组件库中实现最优的状态管理方案。这种方法充分利用了浏览器原生的 CSS 伪类性能优势，同时保留了通过 JavaScript 进行复杂状态管理的灵活性。
+By adopting the "CSS Pseudo-classes First, JavaScript as Supplement" hybrid strategy, we can implement optimal state management in our component library. This approach fully leverages the performance advantages of browser-native CSS pseudo-classes while retaining the flexibility of complex state management through JavaScript.
 
-对于大多数简单组件，仅使用 CSS 伪类即可满足需求；对于需要复杂状态逻辑或特殊控制的组件，可添加 JavaScript 状态管理作为补充。这种方法保证了组件库的性能、灵活性和一致性。
+For most simple components, using only CSS pseudo-classes can meet the requirements; for components requiring complex state logic or special control, JavaScript state management can be added as a supplement. This approach ensures the performance, flexibility, and consistency of the component library.
 
 ## COMPONENT REUSE PRINCIPLES
 
-### 基本原则
+### Basic Principles
 
-1. **组件复用优先**：如果新功能可以通过复用或组合现有组件实现，应优先采用复用而非重新开发
-2. **一致性保障**：通过组件复用确保设计和交互体验的一致性
-3. **维护效率**：减少重复代码，提高维护效率和可扩展性
-4. **性能考量**：合理评估组件复用对性能的影响，确保复用不会引入不必要的性能开销
+1. **Component Reuse Priority**: If new functionality can be implemented through reusing or combining existing components, prioritize reuse over redevelopment
+2. **Consistency Assurance**: Ensure design and interaction experience consistency through component reuse
+3. **Maintenance Efficiency**: Reduce duplicate code, improve maintenance efficiency and scalability
+4. **Performance Considerations**: Properly evaluate the performance impact of component reuse, ensuring reuse doesn't introduce unnecessary performance overhead
 
-### 复用决策流程
+### Reuse Decision Process
 
-1. **需求分析**：明确新功能的具体需求
-2. **组件评估**：评估现有组件库中是否有可复用的组件
-3. **复用方式决策**：
-   - **直接使用**：功能完全匹配时直接使用现有组件
-   - **组件组合**：通过组合多个现有组件实现新功能
-   - **组件扩展**：在现有组件基础上添加新功能
-   - **重新开发**：仅在无法通过以上方式实现时考虑新开发
+1. **Requirements Analysis**: Clearly define the specific requirements for new functionality
+2. **Component Evaluation**: Evaluate whether there are reusable components in the existing component library
+3. **Reuse Method Decision**:
+   - **Direct Use**: Directly use existing components when functionality matches completely
+   - **Component Composition**: Implement new functionality by combining multiple existing components
+   - **Component Extension**: Add new functionality based on existing components
+   - **Redevelopment**: Only consider new development when the above methods cannot be implemented
 
-### 实施指南
+### Implementation Guide
 
-1. **文档完善**：确保所有组件有完善的文档，便于评估复用可能性
-2. **组件解耦**：设计组件时注重低耦合、高内聚，增加复用可能性
-3. **API 一致性**：保持相似功能组件的 API 设计一致，降低复用学习成本
-4. **测试覆盖**：确保复用组件有完善的测试，验证在新场景下的可靠性
+1. **Complete Documentation**: Ensure all components have complete documentation to facilitate reuse evaluation
+2. **Component Decoupling**: Focus on low coupling and high cohesion when designing components to increase reuse possibilities
+3. **API Consistency**: Maintain consistent API design for components with similar functionality to reduce reuse learning costs
+4. **Test Coverage**: Ensure reused components have complete tests to verify reliability in new scenarios
 
-### 案例：Selector 组件复用 MenuList
+### Case Study: Selector Component Reusing MenuList
 
-**背景**：Selector 组件需要下拉菜单功能，而系统中已有 MenuList 组件提供类似功能。
+**Background**: The Selector component needs dropdown menu functionality, and the system already has a MenuList component that provides similar functionality.
 
-**实现方式**：
+**Implementation Approach**:
 
-1. 将 Selector 的下拉部分替换为 MenuList 组件
-2. 适配 Selector 的数据结构为 MenuList 所需格式
-3. 实现 Selector 特有的交互（如选中项高亮）
+1. Replace the dropdown part of the Selector with the MenuList component
+2. Adapt the Selector's data structure to the format required by MenuList
+3. Implement Selector-specific interactions (such as highlighting selected items)
 
-**代码示例**：
+**Code Example**:
 
 ```vue
 <template>
   <div class="mg-selector">
-    <!-- Selector 触发区域 -->
+    <!-- Selector trigger area -->
     <div class="mg-selector__main">...</div>
 
-    <!-- 使用 MenuList 作为下拉菜单 -->
+    <!-- Use MenuList as dropdown menu -->
     <MenuList
       v-if="isOpen"
       :items="transformedItems"
@@ -332,7 +332,7 @@ const handleMouseLeave = () => {
 </template>
 
 <script setup>
-// 转换数据结构以适配 MenuList
+// Transform data structure to adapt to MenuList
 const transformedItems = computed(() => {
   return options.value.map((option) => ({
     id: option.id,
@@ -344,11 +344,9 @@ const transformedItems = computed(() => {
 </script>
 ```
 
-**收益**：
+**Benefits**:
 
-- 减少了约 100 行重复代码
-- 确保了下拉菜单交互的一致性
-- 当 MenuList 组件升级时，Selector 自动获益
-- 降低了维护成本和测试工作量
-
-🎨🎨🎨 EXITING CREATIVE PHASE - DECISION MADE
+- Reduced approximately 100 lines of duplicate code
+- Ensured consistency of dropdown menu interactions
+- Selector automatically benefits when the MenuList component is upgraded
+- Reduced maintenance costs and testing workload
