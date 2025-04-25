@@ -9,7 +9,27 @@ import componentJson from "../json/button.json";
 const META_TOOL_NAME = "mcp__getComponentGenerator";
 const META_TOOL_DESCRIPTION = `
 Use this tool when the user wants to build a Vue component or React component.
-You must provide a rootPath of workspace to save workflow files.
+You must provide a absolute rootPath of workspace to save workflow files.
+You must follow the rules returned to generate the component workflow as follows
+\`\`\`mermaid
+graph TD
+    A[Start] --> B[Component Analysis]
+    B --> C[Architecture Design]
+
+    C --> D{Architecture Approved?}
+    D -->|Yes| E[Component Development Phase]
+    D -->|No| C
+
+    E --> F[Basic Implementation]
+    F --> G[Unit Testing]
+    G --> H{Tests Passed?}
+    H -->|No| F
+    H -->|Yes| I[Documentation and Preview]
+
+    I --> J{Final Review}
+    J -->|Approved| K[Component Completed]
+    J -->|Needs Improvement| E
+\`\`\`
 `;
 
 export class GetComponentWorkflowTool extends BaseTool {
@@ -31,10 +51,17 @@ export class GetComponentWorkflowTool extends BaseTool {
   });
 
   async execute({ rootPath }: z.infer<typeof this.schema>) {
-    const architectureDir = `${rootPath}/architecture/component-workflow.md`;
-    const designPrincipleDir = `${rootPath}/architecture/component-ui-design.md`;
-    const componentJsonDir = `${rootPath}/button.json`;
+    // 如果文件夹不存在则创建
+    const dir = `${rootPath}/architecture`;
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
+    const architectureDir = `${dir}/component-workflow.md`;
+    const designPrincipleDir = `${dir}/component-ui-design.md`;
+    const componentJsonDir = `${dir}/button.json`;
+
+    //文件夹可能也不存在递归创建
     if (!fs.existsSync(architectureDir)) {
       fs.writeFileSync(architectureDir, componentWorkflow);
     }
