@@ -95,9 +95,9 @@ export class GetComponentWorkflowTool extends BaseTool {
               },
               message: "Component development files successfully created",
               rules: [
-                `Follow the component workflow process defined in ${architectureDir} for structured development.`,
-                `Adhere to UI design principles and patterns specified in ${designPrincipleDir}, especially for state management and component reuse.`,
-                `Implement the component according to the specifications in ${componentJsonDir}, ensuring all properties and states are properly handled.`,
+                `Follow the component workflow process defined in file://${architectureDir} for structured development.`,
+                `Adhere to UI design principles and patterns specified in file://${designPrincipleDir}, especially for state management and component reuse.`,
+                `Implement the component according to the specifications in file://${componentJsonDir}, ensuring all properties and states are properly handled.`,
                 `Maintain consistency with existing components and follow the CSS-first approach for state management where appropriate.`,
                 `Ensure proper testing coverage for all component functionality and edge cases.`,
               ],
