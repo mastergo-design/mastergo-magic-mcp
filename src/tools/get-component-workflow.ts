@@ -10,7 +10,6 @@ const META_TOOL_NAME = "mcp__getComponentGenerator";
 const META_TOOL_DESCRIPTION = `
 Use this tool when the user wants to build a Vue component or React component.
 You must provide a absolute rootPath of workspace to save workflow files.
-You must follow the rules returned to generate the component workflow as follows
 \`\`\`mermaid
 graph TD
     A[Start] --> B[Component Analysis]
