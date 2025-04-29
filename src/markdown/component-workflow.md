@@ -1,232 +1,192 @@
-# Component Development Workflow
+---
+description:
+globs:
+alwaysApply: true
+---
 
-## Component-Driven Development Cycle
+# MasterGo Component System Specification v1.0
 
-```mermaid
-graph TD
-    A[Start] --> B[Component Analysis]
-    B --> C[Architecture Design]
+## System Identifier: SYS-COMP-001
 
-    C --> D{Architecture Approved?}
-    D -->|Yes| E[Component Development Phase]
-    D -->|No| C
+## Document Contents
 
-    E --> F[Basic Implementation]
-    F --> G[Unit Testing]
-    G --> H{Tests Passed?}
-    H -->|No| F
-    H -->|Yes| I[Documentation and Preview]
+- [SYS-UI-DESIGN-001] Component UI Interaction Design Specification
+- [SYS-WORKFLOW-001] Component Development Workflow Specification
 
-    I --> J{Final Review}
-    J -->|Approved| K[Component Completed]
-    J -->|Needs Improvement| E
+---
+
+## [SYS-UI-DESIGN-001] Component UI Interaction Design Specification
+
+### 1. Specification Purpose
+
+Define standard implementation methods for state management in component libraries to ensure consistency and high performance in interaction experiences.
+
+### 2. Core Decisions
+
+**State Management Strategy: Hybrid Strategy—CSS Pseudo-classes First, JavaScript as Supplement**
+
+### 3. Mandatory Execution Principles
+
+3.1 **CSS Priority Principle**: For basic states such as `hover`, `focus`, etc., you **must** prioritize implementation using CSS pseudo-classes.  
+3.2 **State Extension Principle**: You **must** allow overriding or extending default state behavior through props.  
+3.3 **Consistency Principle**: You **must** maintain consistent state management patterns throughout the component library.  
+3.4 **Performance Priority Principle**: You **must** minimize unnecessary JavaScript state management.
+
+### 4. Implementation Specifications
+
+#### 4.1 CSS State Definition (Must Reference)
+
+```scss
+.component {
+  // Default styles
+
+  &:hover {
+    /* Hover state styles */
+  }
+  &:focus {
+    /* Focus state styles */
+  }
+  &:active {
+    /* Active state styles */
+  }
+
+  &--disabled {
+    // Disabled state styles
+    &:hover,
+    &:focus,
+    &:active {
+      // Override other pseudo-classes in disabled state
+    }
+  }
+}
 ```
 
-## 1. Component Analysis and Architecture
+#### 4.3 State Control Priority (Must Follow)
 
-**Input**: Component JSON Specification  
-**Output**: Architecture Document (`architecture/${componentName}-arch.md`)
+CSS Pseudo-classes > Props-specified States > JavaScript State Management
 
-```mermaid
-graph TD
-    A1[Parse JSON Data] --> A2[Identify Properties and States]
-    A2 --> A3[Extract Common Styles and Tokens]
-    A3 --> A4[Define Component Interface]
-    A4 --> A5[Create Architecture Document]
-    A5 --> A6[User Review]
+### 5. Component Reuse Principles (Must Adhere)
+
+5.1 **Reuse Priority Principle**: If new functionality can be implemented through reuse or combination of existing components, you **must** prioritize reuse.  
+5.2 **Consistency Guarantee**: Through component reuse, you **must** ensure consistency in design and interaction experience.  
+5.3 **Maintenance Efficiency**: By reducing redundant code through reuse, you **must** consider maintenance efficiency and scalability.  
+5.4 **Performance Considerations**: You **must** properly evaluate the performance impact of component reuse.
+
+### 6. Reuse Decision Process (AI Must Follow)
+
+6.1 **Requirements Analysis**: You **must** clearly define the specific requirements of the new functionality.  
+6.2 **Component Evaluation**: You **must** evaluate whether there are reusable components in the existing component library.  
+6.3 **Reuse Method Decision**: You **must** decide on the reuse method according to the following priorities:
+
+- **Direct Use**: When functionality completely matches
+- **Component Composition**: Implementation through combining multiple existing components
+- **Component Extension**: Adding new functionality based on existing components
+- **Redevelopment**: Consider only when the above methods are not feasible
+
+---
+
+## [SYS-WORKFLOW-001] Component Development Workflow Specification
+
+### 1. Workflow Overview
+
+```
+[Analysis] → [Development] → [Validation] → [Documentation] → [Feedback Loop]
 ```
 
-**Checklist**:
+### 2. Phase One: Component Analysis and Architecture (Must Execute)
+
+**Input**: Component JSON specification  
+**Output**: Architecture document (`architecture/${componentName}-arch.md`)
+
+#### 2.1 Checklist (AI Must Ensure All Are Completed)
 
 - [ ] Property analysis completed
 - [ ] States and variants identified
 - [ ] Common styles extracted
-- [ ] Component interface defined
-- [ ] Architecture document approved
+- [ ] Component interfaces defined
+- [ ] Architecture document approved (Must Execute: Wait for user confirmation to proceed to the next step, continue task after confirmation)
 
-## 2. Component Development
+### 3. Phase Two: Component Development (Must Execute)
 
-**Input**: Approved Architecture Document  
-**Output**: Functional Component (`src/components/${componentName}/`)
+**Input**: Approved architecture document  
+**Output**: Functional component (`src/components/${componentName}/`)
 
-```mermaid
-graph TD
-    B1[Create Component Structure] --> B2[Implement Base Component]
-    B2 --> B3[Implement Variants and Properties]
-    B3 --> B4[Add State Management]
-    B4 --> B5[Implement Styles and Tokens]
-    B5 --> B6[Add TypeScript Interface]
-    B6 --> B7[Component Ready for Testing]
-```
+#### 3.1 Required Files (Path and Naming Conventions Must Be Followed)
 
-**Files to Create**:
+- `src/components/${componentName}/index.ts` (Export)
+- `src/components/${componentName}/types.ts` (Interfaces and types)
+- `src/components/${componentName}/${componentName}.vue` (Component)
 
-- `src/components/${componentName}/index.ts` (exports)
-- `src/components/${componentName}/types.ts` (interfaces and types)
-- `src/components/${componentName}/${componentName}.vue` (component)
+#### 3.2 UI Interaction Design Guidelines (Must Strictly Follow)
 
-## 2.1 UI Interaction Design Guidelines
+**Key Rule**: During component development, you **must** strictly follow the UI interaction design guidelines defined in `[SYS-UI-DESIGN-001]`.
 
-During component development, the design principles defined in `architecture/ui-interaction-design.md` must be strictly followed. Particularly the following points:
+#### 3.3 State Management Validation Checklist (AI Must Ensure All Pass)
 
-### State Management Strategy
-
-Use the **Hybrid Strategy—CSS Pseudo-classes First, JavaScript as Supplement** approach for component state management:
-
-1. **CSS First Principle**: For basic states like hover and focus, prioritize CSS pseudo-classes
-2. **State Extension Principle**: Allow overriding or extending default state behavior through props
-3. **Consistency Principle**: Maintain consistent state management patterns across the component library
-4. **Performance First Principle**: Minimize unnecessary JavaScript state management
-
-### Component Reuse Principles
-
-1. **Component Reuse Priority**: If new functionality can be implemented through reusing or combining existing components, prioritize reuse
-2. **Consistency Assurance**: Ensure design and interaction experience consistency through component reuse
-3. **Maintenance Efficiency**: Reduce duplicate code, improve maintenance efficiency and scalability
-4. **Performance Considerations**: Ensure reuse doesn't introduce unnecessary performance overhead
-
-**State Management Validation Checklist**:
-
-- [ ] All common states (hover, focus, active) primarily implemented using CSS pseudo-classes
-- [ ] Component supports overriding default states via props
+- [ ] All common states primarily implemented using CSS pseudo-classes
+- [ ] Component supports overriding default states through props
 - [ ] All necessary mouse and keyboard interactions have appropriate state feedback
-- [ ] State changes properly prevented in disabled state
+- [ ] State changes correctly blocked in disabled state
 - [ ] Component states behave consistently under various conditions
 
-## 3. Testing and Validation
+### 4. Phase Three: Testing and Validation (Must Execute)
 
-**Input**: Component Implementation  
-**Output**: Validated Component and Tests
+**Input**: Component implementation  
+**Output**: Validated component and tests
 
-```mermaid
-graph TD
-    C1[Create Test File Structure] --> C2[Test Default Rendering]
-    C2 --> C3[Test Properties and Variants]
-    C3 --> C4[Test Events and Interactions]
-    C4 --> C5[Test Edge Cases]
-    C5 --> C6[Verify Coverage]
-    C6 --> C7[Tests Passed]
-```
+#### 4.1 Test Framework Selection (Must Execute in Order)
 
-**Files to Create**:
+1. **Check Project Test Framework**: You **must** first check if a test framework already exists in the current project
 
-- `__tests__/components/${componentName}/${componentName}.test.ts`
+   - Check dependencies in `package.json`
+   - Look for test configuration files in the project (such as `jest.config.js`, `vitest.config.js`, etc.)
+   - Check the existing test file structure in the project
 
-## 4. Documentation and Showcase
+2. **Test Framework Decision**:
+   - If the project already has a test framework, you **must** use the existing framework
+   - If the project has no test framework, you **must** default to using vitest and add necessary configurations
 
-**Input**: Validated Component  
-**Output**: Documentation and Live Examples
+#### 4.2 Required Files
 
-```mermaid
-graph TD
-    D1[Create Documentation Structure] --> D2[Add Basic Usage Examples]
-    D2 --> D3[Document Properties and Events]
-    D3 --> D4[Add Variant Examples]
-    D4 --> D5[Create Interactive Demos]
-    D5 --> D6[Add API Reference]
-    D6 --> D7[Documentation Complete]
-```
+- `__tests__/components/${componentName}/${componentName}.test.ts` (If using an existing framework, follow its naming conventions)
 
-**Files to Create**:
+#### 4.3 Run Tests (Must Execute)
+
+- If using an existing framework, you **must** use the project's existing test commands
+- If using vitest, you **must** configure and run: `vitest run` or `vitest --ui`
+
+### 5. Phase Four: Documentation and Showcase (Must Execute)
+
+**Input**: Validated component  
+**Output**: Documentation and live examples
+
+#### 5.1 Required Files
 
 - `docs/components/${componentName.toLowerCase()}.md`
 
-## Implementation Guide
+### 6. Development Checkpoints (AI Must Check at Each Phase)
 
-### Step 1: Create Task Document (Automated)
+6.1 **Component Structure Checkpoint**
 
-Based on the architecture document, generate a clear task list with specific subtasks:
+- All required files have been created
+- Basic exports work normally
+- TypeScript interfaces are defined
 
-```markdown
-# ${ComponentName} Component Tasks
+  6.2 **Implementation Checkpoint**
 
-## 1. Component Structure
+- Component renders correctly
+- All properties work as expected
+- State management complies with UI interaction design guidelines
+- Styles are applied correctly
 
-- [ ] Create component directory
-- [ ] Create index.ts export file
-- [ ] Create types.ts for TypeScript interfaces
-- [ ] Create base component file
+  6.3 **Testing Checkpoint**
 
-## 2. Component Implementation
+- All tests pass
+- Edge cases are covered
+- No regression issues
 
-- [ ] Implement base component structure
-- [ ] Add properties and default values
-- [ ] Implement state management (following UI interaction design guidelines)
-- [ ] Add variant styles
+  6.4 **Documentation Checkpoint**
 
-## 3. Testing
-
-- [ ] Create test file structure
-- [ ] Test default rendering
-- [ ] Test properties and variants
-- [ ] Test events and interactions
-
-## 4. Documentation
-
-- [ ] Create documentation file
-- [ ] Add usage examples
-- [ ] Document properties and events
-- [ ] Add interactive demos
-```
-
-### Step 2: Development Checkpoints
-
-Implement clear checkpoints for each major section:
-
-1. **Component Structure Checkpoint**
-
-   - All required files created
-   - Basic exports working
-   - TypeScript interfaces defined
-
-2. **Implementation Checkpoint**
-
-   - Component renders correctly
-   - All properties work as expected
-   - State management functions according to UI interaction design guidelines
-   - Styles applied correctly
-
-3. **Testing Checkpoint**
-
-   - All tests pass
-   - Edge cases covered
-   - No regressions
-
-4. **Documentation Checkpoint**
-   - All functionality documented
-   - Examples available
-   - API reference complete
-
-### Step 3: Simplified Validation
-
-Run simple validation steps after each major checkpoint:
-
-```bash
-# After component structure
-pnpm run typecheck
-
-# After implementation
-pnpm run build
-
-# After testing
-pnpm run test
-
-# After documentation
-pnpm run docs:dev
-```
-
-## Simplified Workflow Visualization
-
-```
-┌─── Analysis ────┐  ┌─── Development ─┐  ┌─── Validation ──┐  ┌─── Docs ────────┐
-│                 │  │                 │  │                 │  │                 │
-│  Parse JSON     │  │  Create Files   │  │  Write Tests    │  │  Usage Guide    │
-│  Extract Styles │  │  Add Props      │  │  Test Props     │  │  API Reference  │
-│  Define Props   │  │  Implement      │  │  Test Events    │  │  Examples       │
-│  Arch Design    │──►  Add States     │──►  Validate Styles│──►  Interactive    │
-│                 │  │  Styling        │  │                 │  │  Demos          │
-└─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
-        ▲                                          │                    │
-        └──────────────────────────────────────────┴────────────────────┘
-                              Feedback Loop
-```
+- All functionality is documented
+- Examples are available
+- API reference is complete

@@ -1,4 +1,5 @@
 node_modules/
+test-mcp/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
