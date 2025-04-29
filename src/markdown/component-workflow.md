@@ -96,7 +96,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 ### 2. Phase One: Component Analysis and Architecture (Must Execute)
 
 **Input**: Component JSON specification  
-**Output**: Architecture document (`architecture/${componentName}-arch.md`)
+**Output**: Architecture document (`.mastergo/${componentName}-arch.md`)
 
 #### 2.1 Checklist (AI Must Ensure All Are Completed)
 

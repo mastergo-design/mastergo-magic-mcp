@@ -40,7 +40,7 @@ export class GetComponentWorkflowTool extends BaseTool {
   });
 
   async execute({ rootPath, fileId, layerId }: z.infer<typeof this.schema>) {
-    const baseDir = `${rootPath}/.cursor/rule/mastergo`;
+    const baseDir = `${rootPath}/.mastergo/`;
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
