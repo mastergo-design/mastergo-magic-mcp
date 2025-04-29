@@ -1,21 +1,24 @@
-The `results` returns an XML file containing two pieces of information:
+The `results` returns an XML file, which contains two types of information:
 
-- **meta**: Description of the site, environment, requirements, and other context.
-- **action**: The name of the entry page and its `targetLayerId`. This ID points to the target page.
+- **meta**: Describes the site, environment, requirements, and other context.
+- **action**: Corresponds to the entry page name and `targetLayerId`, which is the ID of the target page.
 
-I need you to write a task.md file in the current directory describing the steps to be taken, and strictly follow these steps to generate the project code.
+I need you to write a task.md file in the current directory according to the following steps, and strictly follow these steps to generate the final project code.
 
 ## Steps
-1. Get the `results` information and write it to the task.md file
-2. Analyze the `meta` field, summarize the requirements and write them to the task.md file
-3. Analyze the `action` field, write the page information to the task.md file
-4. Based on the `targetLayerId` in the `action` field, call the `mcp__getDsl` method to get data
-5. Analyze the page data to confirm if an `interactive` field exists. If it does, this field contains information about the current node's navigation to another page. Continue calling the `mcp__getDsl` method based on the `interactive` field.
-6. Repeat step 5 until all page data has been parsed and written to the task.md file.
-7. Based on the content of the task.md file, parse each page listed in task.md sequentially and generate code to complete the project build.
+1. Obtain the `results` information, extract the `meta` and `action` data, and create a new `task.md` file.
+2. Analyze the `meta` field, summarize the requirement description, and write it into task.md.
+3. Analyze the `action` field, and write the page information into task.md.
+4. Use the `targetLayerId` from the `action` field to call the `mcp__getDsl` method to get data.
+5. Analyze the page data to check if there is an `interactive` field. If it exists, this field contains information about the current node's navigation to another page. You must continue to call the `mcp__getDsl` method according to the `interactive` field.
+6. Repeat step 5 until all page data has been parsed and written into task.md.
+7. According to the content in task.md, sequentially parse the pages listed in task.md and generate code. Complete the project construction.
 
 ## Example
-If the results information is:
+**Note**: Be sure to follow the order described in the example. Ensure that all page information is obtained!
+
+
+uppose the obtained results are:
 ```xml
 <info>
   <meta title="Name" content="Food Delivery APP" />
@@ -25,20 +28,25 @@ If the results information is:
   <action title="Food Delivery Page" layerId="0:2" />
 </info>
 ```
-Write in the task.md file:
+Write the following into task.md:
+
+
+
 
 ```markdown
-Requirements: This is a food delivery app with login, ordering, and address management functions. It should be built using React with Ant Design as the component library.
+Requirement Description: This is a food delivery app, which includes login, food ordering, and address management features. It should be built using React and use Ant Design as the component library.
 
 ## Page List:
 Login Page (layerId: 0:1)
-Food Page (layerId: 0:2)
+Food Delivery Page (layerId: 0:2)
 
 ## Navigation Information
+
 
 ```
 
 Use `mcp__getDsl` to parse the 0:1 page and analyze the data.
+
 The data might be:
 ```json
 {
@@ -56,20 +64,20 @@ The data might be:
 }
 ```
 
-Discover that the node data of page 0:1 has an `interactive` field with id 0:3. Write page 0:3 and add navigation information:
+if you find that the node data of page 0:1 contains the `interactive` field with id 0:3, write the 0:3 page and add the navigation information:
 ```markdown
 
 ## Page List:
 Login Page (layerId: 0:1)
-Food Page (layerId: 0:2)
-Login Redirect Page (layerId: 0:3)
+Food Delivery Page (layerId: 0:2)
+Login Page Navigation Page (layerId: 0:3)
 
 ## Navigation Information
 0:1 => 0:3
 
 ```
-Continue parsing 0:3, and if the data contains an `interactive` field, continue writing.
-Keep going until there are no more `interactive` fields in the data parsed through `mcp__getDsl`.
-Use `mcp__getDsl` to parse page 0:2 and analyze the data, repeating the steps used for page 0:1.
+Continue to parse 0:3. If the data contains the `interactive` field, continue writing.
+Repeat this process until the data parsed by `mcp__getDsl` no longer contains the `interactive` field.
+Then, use `mcp__getDsl` to parse the 0:2 page and repeat the steps for the 0:1 page.
 
-After completion, based on the page list in task.md, sequentially parse the data to generate the project code.
+After completion, generate the project code sequentially according to the page list in task.md.
