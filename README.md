@@ -99,18 +99,21 @@ Contains implementations of MCP tools:
 - `get-dsl.ts`: Tool for retrieving DSL (Domain Specific Language) data from MasterGo design files
 - `get-component-link.ts`: Tool for retrieving component documentation from links
 - `get-meta.ts`: Tool for retrieving metadata information
+- `get-component-workflow.ts`: Tool providing structured component development workflow for Vue and React components, generating workflow files and component specifications
 
 #### src/markdown
 
 Contains markdown files with additional documentation:
 
 - `meta.md`: Documentation about metadata structure and usage
+- `component-workflow.md`: Component development workflow documentation guiding structured component development process
 
 ## Local Development
 
 1. Run `yarn` and `yarn build` to install dependencies and build the code
 2. Find the absolute path of `bin/cli.js`
 3. Add local MCP configuration with your token
+
 ```json
 "mastergo-mcp-local": {
   "command": "node",
@@ -123,6 +126,7 @@ Contains markdown files with additional documentation:
   "env": {}
 },
 ```
+
 4. Restart your editor to ensure the local MCP is enabled
 
 After successful execution, you can debug based on the local running results. You can build your own MCP service based on your modifications.
