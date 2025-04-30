@@ -47,15 +47,37 @@ export class GetComponentWorkflowTool extends BaseTool {
     const workflowFilePath = `${baseDir}/component-workflow.md`;
     const jsonData = await this.httpUtil.getComponentStyleJson(fileId, layerId);
     const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
+    const walkLayer = (layer: any) => {
+      if (layer.path && layer.path.length > 0) {
+        layer.imageUrls = [];
+        const id = layer.id.replaceAll("/", "&");
+        const imageDir = `${baseDir}/images`;
+        if (!fs.existsSync(imageDir)) {
+          fs.mkdirSync(imageDir, { recursive: true });
+        }
+        (layer.path ?? []).forEach((svgPath: string, index: number) => {
+          const filePath = `${imageDir}/${id}-${index}.svg`;
+          if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, svgPath);
+          }
+          layer.imageUrls.push(filePath);
+        });
+        delete layer.path;
+      }
+      if (layer.children) {
+        layer.children.forEach((child: any) => {
+          walkLayer(child);
+        });
+      }
+    };
+    walkLayer(jsonData[0]);
 
     //文件夹可能也不存在递归创建
     if (!fs.existsSync(workflowFilePath)) {
       fs.writeFileSync(workflowFilePath, componentWorkflow);
     }
 
-    if (!fs.existsSync(componentJsonDir)) {
-      fs.writeFileSync(componentJsonDir, JSON.stringify(jsonData[0]));
-    }
+    fs.writeFileSync(componentJsonDir, JSON.stringify(jsonData[0]));
 
     try {
       return {
