@@ -10,8 +10,102 @@ alwaysApply: true
 
 ## Document Contents
 
+- [SYS-ENV-001] Project Environment Setup Specification
 - [SYS-UI-DESIGN-001] Component UI Interaction Design Specification
 - [SYS-WORKFLOW-001] Component Development Workflow Specification
+
+---
+
+## [SYS-ENV-001] Project Environment Setup Specification
+
+### 1. Project Initialization (Must Check and Execute If Needed)
+
+**Goal**: Ensure the project has all necessary tools and configurations for component development
+
+#### 1.1 Environment Check Process (AI Must Execute)
+
+- Check if the project has already been initialized by looking for:
+  - `package.json` file
+  - TypeScript configuration (`tsconfig.json`)
+  - Vite configuration (`vite.config.ts`)
+  - VitePress configuration (`docs/.vitepress/` directory)
+  - Vue and testing dependencies
+
+#### 1.2 Project Initialization Process (Execute Only If Not Already Initialized)
+
+**Manual Setup Steps**:
+
+1. Initialize package.json:
+
+   ```bash
+   npm init -y
+   ```
+
+2. Install core dependencies:
+
+   ```bash
+   npm install vue@latest typescript vite@latest vitepress@latest vitest@latest @vitejs/plugin-vue@latest
+   ```
+
+3. Install development dependencies:
+
+   ```bash
+   npm install -D @vue/test-utils jsdom @types/node
+   ```
+
+4. Create configuration files:
+   - `tsconfig.json` for TypeScript configuration
+   - `vite.config.ts` for Vite configuration
+   - `docs/.vitepress/config.ts` for VitePress configuration
+   - `vitest.config.ts` for testing configuration
+
+#### 1.3 Project Structure Setup
+
+```
+project-root/
+├── docs/
+│   ├── .vitepress/
+│   │   ├── config.ts
+│   │   ├── theme/
+│   │   │   └── index.ts
+│   ├── index.md
+│   ├── components/
+│   │   └── index.md
+├── src/
+│   ├── components/
+│   ├── styles/
+│   └── index.ts
+├── __tests__/
+│   └── components/
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── vitest.config.ts
+```
+
+#### 1.4 Required Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "preview": "vitepress preview docs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "build:lib": "vite build"
+  }
+}
+```
+
+#### 1.5 VitePress Component Demo Setup
+
+Setup must include:
+
+- Component demo container
+- Code highlighting
+- Interactive examples
 
 ---
 
@@ -90,15 +184,23 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 ### 1. Workflow Overview
 
 ```
-[Analysis] → [Test Generation] → [Development] → [Validation] → [Documentation] → [Feedback Loop]
+[Environment Check] → [Analysis] → [Test Generation] → [Development] → [Validation] → [Documentation & Preview] → [Feedback Loop]
 ```
 
-### 2. Phase One: Component Analysis and Architecture (Must Execute)
+### 2. Phase Zero: Environment Check (Must Execute)
+
+**Input**: Project repository  
+**Output**: Fully configured development environment
+
+- AI must check if the project environment meets the requirements defined in `[SYS-ENV-001]`
+- If the environment is not properly set up, AI must execute the setup process before proceeding
+
+### 3. Phase One: Component Analysis and Architecture (Must Execute)
 
 **Input**: Component JSON specification  
 **Output**: Architecture document (`.mastergo/${componentName}-arch.md`)
 
-#### 2.1 Slot Analysis and Inference (AI Must Execute)
+#### 3.1 Slot Analysis and Inference (AI Must Execute)
 
 - AI must analyze the component design and automatically infer the slots that the component may need
 - Infer appropriate slots based on the component's functionality, structure, and purpose
@@ -112,7 +214,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
   - Default content suggestions for each slot
   - Optional/required status of each slot
 
-#### 2.2 Checklist (AI Must Ensure All Are Completed)
+#### 3.2 Checklist (AI Must Ensure All Are Completed)
 
 - [ ] Property analysis completed
 - [ ] States and variants identified
@@ -121,12 +223,12 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 - [ ] Slot inference and definition completed
 - [ ] Architecture document approved (Must Execute: Wait for user confirmation to proceed to the next step, continue task after confirmation)
 
-### 3. Phase Two: Test Generation (Must Execute)
+### 4. Phase Two: Test Generation (Must Execute)
 
 **Input**: Approved architecture document  
 **Output**: Component unit tests (`__tests__/components/${componentName}/`)
 
-#### 3.1 Test Framework Selection (Must Execute in Order)
+#### 4.1 Test Framework Selection (Must Execute in Order)
 
 1. **Check Project Test Framework**: You **must** first check if a test framework already exists in the current project
 
@@ -138,18 +240,18 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
    - If the project already has a test framework, you **must** use the existing framework
    - If the project has no test framework, you **must** default to using vitest and add necessary configurations
 
-#### 3.2 Required Test Files
+#### 4.2 Required Test Files
 
 - `__tests__/components/${componentName}/${componentName}.test.ts` (If using an existing framework, follow its naming conventions)
 
-#### 3.3 Test Case Development (Must Follow TDD Principles)
+#### 4.3 Test Case Development (Must Follow TDD Principles)
 
 - Tests must be based on the architecture document, not the implementation
 - Test cases must validate all component properties, states, and behaviors
 - Edge cases and error conditions must be included
 - The tests should serve as a specification for the implementation
 
-#### 3.4 Slot Testing (Must Execute)
+#### 4.4 Slot Testing (Must Execute)
 
 - Test cases must be written for all inferred and implemented slots
 - Tests must include the following scenarios:
@@ -158,7 +260,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
   - Correct handling of nested slots
   - Normal rendering of slot content in different states
 
-#### 3.5 State Management Testing (Must Execute)
+#### 4.5 State Management Testing (Must Execute)
 
 - State tests must verify:
   - All common states (hover, focus, active, disabled) work correctly
@@ -166,7 +268,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
   - States can be overridden through props
   - States behave consistently across various scenarios
 
-#### 3.6 Checkpoint (AI Must Ensure All Are Completed)
+#### 4.6 Checkpoint (AI Must Ensure All Are Completed)
 
 - [ ] Test framework is properly configured
 - [ ] All component properties have test coverage
@@ -174,22 +276,22 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 - [ ] All component slots have test coverage
 - [ ] Tests are well-structured and follow project conventions
 
-### 4. Phase Three: Component Development (Must Execute)
+### 5. Phase Three: Component Development (Must Execute)
 
 **Input**: Architecture document and test cases
 **Output**: Functional component (`src/components/${componentName}/`)
 
-#### 4.1 Required Files (Path and Naming Conventions Must Be Followed)
+#### 5.1 Required Files (Path and Naming Conventions Must Be Followed)
 
 - `src/components/${componentName}/index.ts` (Export)
 - `src/components/${componentName}/types.ts` (Interfaces and types)
 - `src/components/${componentName}/${componentName}.vue` (Component)
 
-#### 4.2 UI Interaction Design Guidelines (Must Strictly Follow)
+#### 5.2 UI Interaction Design Guidelines (Must Strictly Follow)
 
 **Key Rule**: During component development, you **must** strictly follow the UI interaction design guidelines defined in `[SYS-UI-DESIGN-001]`.
 
-#### 4.3 Slot Implementation (Must Execute)
+#### 5.3 Slot Implementation (Must Execute)
 
 - Implement all necessary slots based on the slots inferred in the analysis phase
 - Slot implementation must follow these principles:
@@ -197,7 +299,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
   - Add necessary class names for style customization
   - Provide appropriate fallback handling
 
-#### 4.4 Development Against Tests (Must Execute)
+#### 5.4 Development Against Tests (Must Execute)
 
 - Implementation must pass all tests defined in Phase Two
 - Development should be iterative:
@@ -206,7 +308,7 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
   3. Refactor as needed while maintaining passing tests
   4. Move to the next test
 
-#### 4.5 Implementation Checklist (AI Must Ensure All Pass)
+#### 5.5 Implementation Checklist (AI Must Ensure All Pass)
 
 - [ ] All common states primarily implemented using CSS pseudo-classes
 - [ ] Component supports overriding default states through props
@@ -216,17 +318,17 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 - [ ] All slots render correctly in different states
 - [ ] Component passes all unit tests
 
-### 5. Phase Four: Validation (Must Execute)
+### 6. Phase Four: Validation (Must Execute)
 
 **Input**: Implemented component  
 **Output**: Validated component
 
-#### 5.1 Run Tests (Must Execute)
+#### 6.1 Run Tests (Must Execute)
 
 - If using an existing framework, you **must** use the project's existing test commands
 - If using vitest, you **must** configure and run: `vitest run` or `vitest --ui`
 
-#### 5.2 Verification Checklist (AI Must Complete)
+#### 6.2 Verification Checklist (AI Must Complete)
 
 - [ ] All tests pass
 - [ ] Component visually matches the design
@@ -234,16 +336,55 @@ CSS Pseudo-classes > Props-specified States > JavaScript State Management
 - [ ] Component works across required browsers/devices
 - [ ] Responsive behavior works as expected
 
-### 6. Phase Five: Documentation and Showcase (Must Execute)
+### 7. Phase Five: Documentation and Preview (Must Execute)
 
 **Input**: Validated component  
-**Output**: Documentation and live examples
+**Output**: VitePress documentation and interactive preview
 
-#### 6.1 Required Files
+#### 7.1 Required Files
 
 - `docs/components/${componentName.toLowerCase()}.md`
+- `docs/components/demos/${componentName.toLowerCase()}/`
 
-#### 6.2 Slot Documentation (Must Include)
+#### 7.2 VitePress Component Documentation (Must Include)
+
+- Documentation must be implemented as a VitePress page
+- Must follow the structure and styling of existing documentation (if any)
+- Must use frontmatter for proper indexing and metadata
+
+```md
+---
+title: ComponentName
+description: Brief description of the component
+---
+
+# ComponentName
+
+[Component description and overview]
+```
+
+#### 7.3 Component Interactive Preview (Must Implement)
+
+- Each component must have interactive previews
+- Previews must be implemented using VitePress's component demo capabilities
+- Code examples must be displayed alongside the rendered component
+- Multiple examples should demonstrate different states, variants, and use cases
+
+````md
+## Basic Usage
+
+:::demo
+
+```vue
+<template>
+  <ComponentName prop="value" />
+</template>
+```
+
+:::
+````
+
+#### 7.4 Slot Documentation (Must Include)
 
 The documentation must include the following:
 
@@ -251,24 +392,36 @@ The documentation must include the following:
 - Purpose and examples for each slot
 - Description of slot default content
 - Best practices for combining slots
-- At least one example code demonstrating the usage of each slot
+- At least one interactive example demonstrating the usage of each slot
 
-### 7. Development Checkpoints (AI Must Check at Each Phase)
+#### 7.5 Component Preview Testing
 
-7.1 **Component Structure Checkpoint**
+- All examples must be verified to work correctly
+- Examples must accurately demonstrate the component's capabilities
+- Ensure code snippets match the actual implementation
+
+### 8. Development Checkpoints (AI Must Check at Each Phase)
+
+8.1 **Environment Checkpoint**
+
+- Development environment is properly configured
+- All required tools and dependencies are installed
+- Documentation preview system is working
+
+  8.2 **Component Structure Checkpoint**
 
 - All required files have been created
 - Basic exports work normally
 - TypeScript interfaces are defined
 - Slot definitions are complete and reasonable
 
-  7.2 **Test Coverage Checkpoint**
+  8.3 **Test Coverage Checkpoint**
 
 - Tests exist for all component features
 - Edge cases are covered
 - Tests are comprehensive for all slots and states
 
-  7.3 **Implementation Checkpoint**
+  8.4 **Implementation Checkpoint**
 
 - Component renders correctly
 - All properties work as expected
@@ -277,9 +430,11 @@ The documentation must include the following:
 - All slot functionality works normally and has reasonable default content
 - Component passes all unit tests
 
-  7.4 **Documentation Checkpoint**
+  8.5 **Documentation Checkpoint**
 
 - All functionality is documented
-- Examples are available
+- Interactive examples are available
 - API reference is complete
 - Slot usage documentation is complete with examples
+- Documentation renders correctly in VitePress
+- Component previews work properly
