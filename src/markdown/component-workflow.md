@@ -43,6 +43,31 @@ Required configuration files:
 - `docs/.vitepress/config.ts`
 - `vitest.config.ts`
 
+#### Module System
+
+- Project uses ES Modules (ESM) format
+- Package.json should include `"type": "module"`
+- All imports/exports should use ESM syntax
+- Use the `.js` extension in import statements (even for TypeScript files)
+
+##### TSConfig for ESM
+
+Example `tsconfig.json` configuration for ESM:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true
+    // Other options...
+  }
+}
+```
+
 ### Project Structure
 
 ```
@@ -52,8 +77,15 @@ project-root/
 │   ├── components/      # Component docs and demos
 ├── src/
 │   ├── components/      # Component source code
+│   │   └── ${componentName}/  # Each component has its own directory
+│   │       ├── images/  # Component-specific images
+│   │       ├── index.ts
+│   │       ├── types.ts
+│   │       └── ${componentName}.vue
 │   ├── styles/          # Style files
 ├── __tests__/           # Component tests
+├── .mastergo/           # MasterGo configuration and resources
+│   ├── images/          # Component images and icons
 ```
 
 ### Required Scripts
@@ -128,6 +160,14 @@ Reuse decision priority:
 **Input**: Component JSON specification  
 **Output**: Architecture document (`.mastergo/${componentName}-arch.md`)
 
+#### Resource Path Management
+
+- All component icons and image resources must be stored in the `.mastergo/images` directory
+- The architecture document must specify the exact path for each icon and image using the workspace root path: `${rootPath}/.mastergo/images/<filename>`
+- Ensure filenames are unique to avoid conflicts
+- Supported image formats: PNG, JPG, SVG
+- SVG icons should be preferred to ensure clarity and scalability
+
 #### Slot Analysis
 
 AI must analyze component design and infer:
@@ -144,6 +184,7 @@ AI must analyze component design and infer:
 - [ ] Common styles extraction
 - [ ] Interface definition
 - [ ] Slot definition
+- [ ] Resource path verification for icons and images
 
 #### Architecture Document Verification
 
@@ -155,6 +196,7 @@ AI must analyze component design and infer:
    - State definitions
    - Slot specifications
    - Component structure
+   - Resource paths for icons and images
 3. If user identifies issues:
    - Collect all feedback
    - Make required modifications to the architecture document
@@ -185,6 +227,29 @@ AI must analyze component design and infer:
 - `src/components/${componentName}/index.ts`
 - `src/components/${componentName}/types.ts`
 - `src/components/${componentName}/${componentName}.vue`
+- `src/components/${componentName}/images/` - Directory for component-specific images
+
+#### Resource Management
+
+- All images and icons from `.mastergo/images/` must be copied to the component's `images/` directory during development
+- Images must be imported using ESM import syntax:
+  ```typescript
+  import iconName from "./images/icon-name.svg";
+  import imageName from "./images/image-name.png";
+  ```
+- For TypeScript type safety, use image imports with type declarations:
+  ```typescript
+  // Add to a types.d.ts file in your project
+  declare module "*.svg" {
+    const content: string;
+    export default content;
+  }
+  declare module "*.png" {
+    const content: string;
+    export default content;
+  }
+  ```
+- This ensures component portability, improves loading performance, and enables build-time optimizations
 
 #### Development Method
 
@@ -198,6 +263,8 @@ AI must analyze component design and infer:
 - Component visually matches design
 - Component is accessible
 - Responsive behavior is correct
+- Image and icon imports use correct ESM syntax
+- Resources are properly bundled during build process
 
 ### 5. Documentation & Preview
 
