@@ -99,18 +99,21 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 - `get-dsl.ts`：从 MasterGo 设计文件中获取 DSL（领域特定语言）数据的工具
 - `get-component-link.ts`：从链接中获取组件文档的工具
 - `get-meta.ts`：获取元数据信息的工具
+- `get-component-workflow.ts`：提供结构化的组件开发工作流工具，支持 Vue 和 React 组件开发，生成所需的工作流文件和组件规范
 
 #### src/markdown
 
 包含附加文档的 markdown 文件：
 
 - `meta.md`：关于元数据结构和用法的文档
+- `component-workflow.md`：组件开发工作流程文档，指导结构化组件开发过程
 
 ## 本地运行
 
 1. 运行`yarn`，`yarn build`。安装依赖并构建代码
 2. 查看`bin/cli.js`的绝对路径
 3. 在MCP配置中添加本地MCP配置，其中token为您换区的token
+
 ```json
 "mastergo-mcp-local": {
   "command": "node",
@@ -123,6 +126,7 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
   "env": {}
 },
 ```
+
 4. 重启编辑器，确认本地mcp已开启
 
 运行成功后，就可以基于本地运行的结果进行调试。您可以基于自己的修改构建自己的MCP服务。

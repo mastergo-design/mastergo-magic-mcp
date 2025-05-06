@@ -82,7 +82,9 @@ export class HttpUtil {
   }
 
   public async getMeta(fileId: string, layerId: string): Promise<string> {
-    const response = await this.httpClient.get("/mcp/meta", { params: { fileId, layerId } });
+    const response = await this.httpClient.get("/mcp/meta", {
+      params: { fileId, layerId },
+    });
     return response.data;
   }
 
@@ -123,6 +125,13 @@ export class HttpUtil {
     } catch (error) {
       throw error;
     }
+  }
+
+  public async getComponentStyleJson(fileId: string, layerId: string) {
+    const response = await this.httpClient.get(`/mcp/style`, {
+      params: { fileId, layerId },
+    });
+    return response.data;
   }
 
   /**
