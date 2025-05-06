@@ -58,7 +58,13 @@ export class GetComponentWorkflowTool extends BaseTool {
         (layer.path ?? []).forEach((svgPath: string, index: number) => {
           const filePath = `${imageDir}/${id}-${index}.svg`;
           if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, svgPath);
+            fs.writeFileSync(
+              filePath,
+              `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+  <path d="${svgPath}" fill="currentColor"/>
+</svg>`
+            );
           }
           layer.imageUrls.push(filePath);
         });
