@@ -93,8 +93,6 @@ export class GetComponentWorkflowTool extends BaseTool {
               rules: [
                 `Follow the component workflow process defined in file://${workflowFilePath} for structured development.`,
                 `Implement the component according to the specifications in file://${componentJsonDir}, ensuring all properties and states are properly handled.`,
-                `Maintain consistency with existing components and follow the CSS-first approach for state management where appropriate.`,
-                `Ensure proper testing coverage for all component functionality and edge cases.`,
               ],
             }),
           },
