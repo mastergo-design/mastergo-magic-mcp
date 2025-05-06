@@ -48,7 +48,6 @@ Required configuration files:
 - Project uses ES Modules (ESM) format
 - Package.json should include `"type": "module"`
 - All imports/exports should use ESM syntax
-- Use the `.js` extension in import statements (even for TypeScript files)
 
 ##### TSConfig for ESM
 
@@ -164,9 +163,24 @@ Reuse decision priority:
 
 - All component icons and image resources must be stored in the `.mastergo/images` directory
 - The architecture document must specify the exact path for each icon and image using the workspace root path: `${rootPath}/.mastergo/images/<filename>`
+- The architecture document must include a complete list of all required image resources with descriptions of how each is used
 - Ensure filenames are unique to avoid conflicts
 - Supported image formats: PNG, JPG, SVG
 - SVG icons should be preferred to ensure clarity and scalability
+
+##### Image Resource Documentation Template
+
+The architecture document should include an image resource section following this format:
+
+```markdown
+## Required Image Resources
+
+| Filename        | Path                                         | Description       | Usage                        |
+| --------------- | -------------------------------------------- | ----------------- | ---------------------------- |
+| logo.svg        | ${rootPath}/.mastergo/images/logo.svg        | Company logo      | Used in header component     |
+| arrow-right.svg | ${rootPath}/.mastergo/images/arrow-right.svg | Right arrow icon  | Used in navigation buttons   |
+| placeholder.png | ${rootPath}/.mastergo/images/placeholder.png | Placeholder image | Used when content is loading |
+```
 
 #### Slot Analysis
 
@@ -185,6 +199,7 @@ AI must analyze component design and infer:
 - [ ] Interface definition
 - [ ] Slot definition
 - [ ] Resource path verification for icons and images
+- [ ] Complete list of required image resources with usage descriptions
 
 #### Architecture Document Verification
 
@@ -231,7 +246,9 @@ AI must analyze component design and infer:
 
 #### Resource Management
 
-- All images and icons from `.mastergo/images/` must be copied to the component's `images/` directory during development
+- Only images and icons specifically mentioned in the component architecture document should be copied from `.mastergo/images/` to the component's `images/` directory
+- Do not copy all resources, only those required by the specific component
+- The architecture document must explicitly list all required image resources
 - Images must be imported using ESM import syntax:
   ```typescript
   import iconName from "./images/icon-name.svg";
@@ -250,6 +267,62 @@ AI must analyze component design and infer:
   }
   ```
 - This ensures component portability, improves loading performance, and enables build-time optimizations
+
+##### SVG Processing with vite-plugin-svgr
+
+For SVG processing, prioritize using `vite-plugin-svgr` to handle SVG files as React components:
+
+1. **Installation**:
+
+   ```bash
+   npm install vite-plugin-svgr --save-dev
+   ```
+
+2. **Vite Configuration**:
+
+   ```typescript
+   // vite.config.ts
+   import svgr from "vite-plugin-svgr";
+
+   export default defineConfig({
+     plugins: [
+       vue(),
+       svgr({
+         svgrOptions: {
+           // SVGR options here
+           icon: true,
+           // Set dimensions, center content
+           svgo: true,
+         },
+       }),
+     ],
+   });
+   ```
+
+3. **Importing SVGs as Components**:
+
+   ```typescript
+   // Import SVG as a component
+   import { ReactComponent as Logo } from './images/logo.svg';
+
+   // Use in template
+   <template>
+     <Logo class="logo" />
+   </template>
+   ```
+
+4. **Type Declarations for TypeScript**:
+   ```typescript
+   // Add to vite-env.d.ts or similar
+   declare module "*.svg" {
+     import { DefineComponent } from "vue";
+     const component: DefineComponent;
+     export const ReactComponent: DefineComponent;
+     export default component;
+   }
+   ```
+
+This approach offers better integration with the component system, enabling SVGs to be used as first-class components with props and events.
 
 #### Development Method
 
