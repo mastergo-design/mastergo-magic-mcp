@@ -8,7 +8,7 @@ MasterGo Magic MCP 是一个独立的 MCP（Model Context Protocol）服务，�
 - 可直接通过 npx 运行
 - 仅需 Node.js 环境，无需其他外部依赖
 
-### 教程
+## 教程
 
 - https://mastergo.com/file/155675508499265?page_id=158:0002
 
@@ -40,6 +40,28 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 ```
 npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
 ```
+
+### LINGMA 使用方法
+
+在 vscode 拓展市场中搜索 LINGMA -> 然后安装该拓展
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
+
+登录后 -> 在聊天框中点击 [MCP tools]
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174511910.png" alt="image-20250507174511910" style="zoom:25%;" />
+
+点击顶部 [MCP Sqaure] 进入mcp市场，在市场中找到 Mastergo设计协作工具并安装
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174840456.png" alt="image-20250507174840456" style="zoom:25%;" />
+
+安装完成后，需要回到 [MCP Servers], 并编辑我们的mcp服务，将自己的mastergo token 替换上去
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175005364.png" alt="image-20250507175005364" style="zoom:25%;" />
+
+最后在聊天界面中将聊天模式切换为agent模式。
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
 
 ### Cursor 使用方法
 
@@ -108,11 +130,11 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 - `meta.md`：关于元数据结构和用法的文档
 - `component-workflow.md`：组件开发工作流程文档，指导结构化组件开发过程
 
-## 本地运行
+## 本地开发
 
-1. 运行`yarn`，`yarn build`。安装依赖并构建代码
-2. 查看`bin/cli.js`的绝对路径
-3. 在MCP配置中添加本地MCP配置，其中token为您换区的token
+1. 运行 `yarn` 和 `yarn build`，安装依赖并构建代码
+2. 查看 `bin/cli.js` 的绝对路径
+3. 在 MCP 配置中添加本地 MCP 配置，其中 token 为您获取的 token
 
 ```json
 "mastergo-mcp-local": {
@@ -127,11 +149,11 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 },
 ```
 
-4. 重启编辑器，确认本地mcp已开启
+4. 重启编辑器，确认本地 MCP 已开启
 
-运行成功后，就可以基于本地运行的结果进行调试。您可以基于自己的修改构建自己的MCP服务。
+运行成功后，就可以基于本地运行的结果进行调试。您可以基于自己的修改构建自己的 MCP 服务。
 
-欢迎您为我们提供代码贡献，并期待大家一起共建MasterGo的MCP服务。
+欢迎您为我们提供代码贡献，并期待大家一起共建 MasterGo 的 MCP 服务。
 
 ## 许可证
 

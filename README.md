@@ -41,6 +41,28 @@ You can also use space-separated format for parameters:
 npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
 ```
 
+### LINGMA Usage
+
+Search for LINGMA in the VSCode extension marketplace and install it.
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
+
+After logging in, click on [MCP tools] in the chat box.
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174511910.png" alt="image-20250507174511910" style="zoom:25%;" />
+
+Click on [MCP Square] at the top to enter the MCP marketplace, find the MasterGo design collaboration tool and install it.
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174840456.png" alt="image-20250507174840456" style="zoom:25%;" />
+
+After installation, go back to [MCP Servers], and edit our MCP service to replace it with your own MasterGo token.
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175005364.png" alt="image-20250507175005364" style="zoom:25%;" />
+
+Finally, switch the chat mode to agent mode in the chat interface.
+
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
+
 ### cursor Usage
 
 Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
