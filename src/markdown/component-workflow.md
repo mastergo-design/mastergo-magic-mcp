@@ -313,89 +313,16 @@ AI must analyze component design and infer:
 
 ### 5. Documentation & Preview
 
-**Output**: VitePress documentation and interactive previews
-
-#### Component Preview Implementation
-
-Component previews should be implemented through the VitePress theme:
-
-- Register components for preview in `docs/.vitepress/theme/index.ts`
-- Ensure all components are correctly imported and registered in the theme
-- Use the `enhanceApp` function to globally register components to the Vue application
-
-Implementation example:
-
-```typescript
-// docs/.vitepress/theme/index.ts
-import DefaultTheme from "vitepress/theme";
-import Button from "../../../src/components/Button/Button.vue";
-import Input from "../../../src/components/Input/Input.vue";
-// 导入其他组件...
-
-export default {
-  ...DefaultTheme,
-  enhanceApp({ app }) {
-    // 注册组件以便在Markdown中使用
-    app.component("Button", Button);
-    app.component("Input", Input);
-    // 注册其他组件...
-  },
-};
-```
-
-#### Component Preview Requirements
-
-Each component documentation page in VitePress MUST include a preview demo at the top of the page:
-
-- Place the demo immediately after the title and before any other content
-- Demo should showcase the component in its default state
-- Include minimal code to demonstrate basic usage
-- Ensure the demo is functional and interactive when applicable
-
-Example component documentation structure:
-
-```markdown
-# Button Component
-
-::: preview
-<template>
-
-  <div class="preview-container">
-    <Button>Default Button</Button>
-    <Button type="primary">Primary Button</Button>
-    <Button type="text">Text Button</Button>
-  </div>
-</template>
-:::
-
-## Introduction
-
-The Button component is used for...
-```
+**Output**: VitePress documentation
 
 #### Documentation Content
 
+- Interactive component previews with fully functional HTML elements
 - Component overview
 - API reference
 - Interactive examples
 - Complete slot documentation
 - Various states and use cases demonstrations
-
-#### Interactive Preview
-
-````md
-## Basic Usage
-
-:::demo
-
-```vue
-<template>
-  <ComponentName prop="value" />
-</template>
-```
-
-:::
-````
 
 ### Checkpoints
 
