@@ -43,27 +43,25 @@ npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debu
 
 ### LINGMA Usage
 
-vscode 拓展市场中搜索 LINGMA -> 然后安装该拓 
+Search for LINGMA in the VSCode extension marketplace and install it.
 
-<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
 
+After logging in, click on [MCP tools] in the chat box.
 
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174511910.png" alt="image-20250507174511910" style="zoom:25%;" />
 
-登录后 -> 在聊天框中点击 [MCP tools] 
+Click on [MCP Square] at the top to enter the MCP marketplace, find the MasterGo design collaboration tool and install it.
 
-<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174511910.png" alt="image-20250507174511910" style="zoom:25%;" />
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507174840456.png" alt="image-20250507174840456" style="zoom:25%;" />
 
- 点击顶部 [MCP Sqaure] 进入mcp市场，在市场中找到 Mastergo设计协作工具并安装
+After installation, go back to [MCP Servers], and edit our MCP service to replace it with your own MasterGo token.
 
-<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174840456.png" alt="image-20250507174840456" style="zoom:25%;" />
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175005364.png" alt="image-20250507175005364" style="zoom:25%;" />
 
-安装完成后，需要回到 [MCP Servers], 并编辑我们的mcp服务，将自己的mastergo token 替换上去
+Finally, switch the chat mode to agent mode in the chat interface.
 
-<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507175005364.png" alt="image-20250507175005364" style="zoom:25%;" />
-
-最后在聊天界面中将聊天模式切换为agent模式。
-
-<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
+<img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/feat_lingma/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
 
 ### cursor Usage
 
