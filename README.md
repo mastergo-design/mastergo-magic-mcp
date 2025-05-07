@@ -41,6 +41,30 @@ You can also use space-separated format for parameters:
 npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
 ```
 
+### LINGMA Usage
+
+vscode 拓展市场中搜索 LINGMA -> 然后安装该拓 
+
+<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
+
+
+
+登录后 -> 在聊天框中点击 [MCP tools] 
+
+<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174511910.png" alt="image-20250507174511910" style="zoom:25%;" />
+
+ 点击顶部 [MCP Sqaure] 进入mcp市场，在市场中找到 Mastergo设计协作工具并安装
+
+<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507174840456.png" alt="image-20250507174840456" style="zoom:25%;" />
+
+安装完成后，需要回到 [MCP Servers], 并编辑我们的mcp服务，将自己的mastergo token 替换上去
+
+<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507175005364.png" alt="image-20250507175005364" style="zoom:25%;" />
+
+最后在聊天界面中将聊天模式切换为agent模式。
+
+<img src="/Users/acwink/Desktop/my-project/github_mastergo_magic_mcp/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
+
 ### cursor Usage
 
 Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
