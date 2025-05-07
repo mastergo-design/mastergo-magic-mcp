@@ -60,7 +60,7 @@ export class GetComponentWorkflowTool extends BaseTool {
           if (!fs.existsSync(filePath)) {
             fs.writeFileSync(
               filePath,
-              `<svg width="100%" height="100%" viewBox="0 0 100 100"xmlns="http://www.w3.org/2000/svg">
+              `<svg width="100%" height="100%" viewBox="0 0 16 16"xmlns="http://www.w3.org/2000/svg">
   <path d="${svgPath}" fill="currentColor"/>
 </svg>`
             );
@@ -96,7 +96,7 @@ export class GetComponentWorkflowTool extends BaseTool {
               },
               message: "Component development files successfully created",
               rules: [
-                `Follow the component workflow process defined in file://${workflowFilePath} for structured development.`,
+                `Follow the component workflow process defined in file://${workflowFilePath} for structured development. This workflow contains a lot of content, you'll need to read it in multiple sessions.`,
                 `Implement the component according to the specifications in file://${componentJsonDir}, ensuring all properties and states are properly handled.`,
               ],
             }),

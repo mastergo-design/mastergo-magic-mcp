@@ -175,12 +175,17 @@ The architecture document should include an image resource section following thi
 ```markdown
 ## Required Image Resources
 
-| Filename        | Path                                         | Description       | Usage                        |
-| --------------- | -------------------------------------------- | ----------------- | ---------------------------- |
-| logo.svg        | ${rootPath}/.mastergo/images/logo.svg        | Company logo      | Used in header component     |
-| arrow-right.svg | ${rootPath}/.mastergo/images/arrow-right.svg | Right arrow icon  | Used in navigation buttons   |
-| placeholder.png | ${rootPath}/.mastergo/images/placeholder.png | Placeholder image | Used when content is loading |
+| Filename        | Path                                         | Description       | Usage                        | Color (for SVGs)       |
+| --------------- | -------------------------------------------- | ----------------- | ---------------------------- | ---------------------- |
+| logo.svg        | ${rootPath}/.mastergo/images/logo.svg        | Company logo      | Used in header component     | #1a2b3c                |
+| arrow-right.svg | ${rootPath}/.mastergo/images/arrow-right.svg | Right arrow icon  | Used in navigation buttons   | currentColor (primary) |
+| placeholder.png | ${rootPath}/.mastergo/images/placeholder.png | Placeholder image | Used when content is loading | N/A                    |
 ```
+
+For SVG resources, the color column must specify either:
+
+- A specific hex/rgb color value if the SVG should always use that color
+- "currentColor" with an indication of which theme color it should inherit (e.g., primary, secondary)
 
 #### Slot Analysis
 
@@ -249,80 +254,47 @@ AI must analyze component design and infer:
 - Only images and icons specifically mentioned in the component architecture document should be copied from `.mastergo/images/` to the component's `images/` directory
 - Do not copy all resources, only those required by the specific component
 - The architecture document must explicitly list all required image resources
-- Images must be imported using ESM import syntax:
-  ```typescript
-  import iconName from "./images/icon-name.svg";
-  import imageName from "./images/image-name.png";
-  ```
-- For TypeScript type safety, use image imports with type declarations:
-  ```typescript
-  // Add to a types.d.ts file in your project
-  declare module "*.svg" {
-    const content: string;
-    export default content;
-  }
-  declare module "*.png" {
-    const content: string;
-    export default content;
-  }
-  ```
+- Images must be imported using ESM import syntax
+- For TypeScript type safety, use image imports with type declarations
 - This ensures component portability, improves loading performance, and enables build-time optimizations
 
-##### SVG Processing with vite-plugin-svgr
+##### SVG Color and Import Requirements
 
-For SVG processing, prioritize using `vite-plugin-svgr` to handle SVG files as React components:
+- **Color Standards**:
 
-1. **Installation**:
+  - All SVGs must use `currentColor` for fill and stroke attributes
+  - The architecture document MUST specify the intended color for each SVG
+  - Color should be applied via CSS or component props, not hardcoded in SVG
 
-   ```bash
-   npm install vite-plugin-svgr --save-dev
-   ```
+- **Icon Alignment**:
 
-2. **Vite Configuration**:
+  - Icons must be centered within their container elements
+  - Use CSS flexbox or grid for consistent centering across components
+  - For button or interactive elements with icons, maintain proper alignment with text
+  - Ensure icons maintain proper proportions and alignment in all responsive states
 
-   ```typescript
-   // vite.config.ts
-   import svgr from "vite-plugin-svgr";
+- **Import Method**:
 
-   export default defineConfig({
-     plugins: [
-       vue(),
-       svgr({
-         svgrOptions: {
-           // SVGR options here
-           icon: true,
-           // Set dimensions, center content
-           svgo: true,
-         },
-       }),
-     ],
-   });
-   ```
+  - SVGs must be imported as raw strings using the `?raw` query parameter:
+    ```typescript
+    import iconSvg from "./images/icon.svg?raw";
+    ```
+  - This enables direct insertion of SVG markup and dynamic property modification
+  - Raw strings should be sanitized before insertion to prevent XSS vulnerabilities
 
-3. **Importing SVGs as Components**:
+- **Usage Example**:
 
-   ```typescript
-   // Import SVG as a component
-   import { ReactComponent as Logo } from './images/logo.svg';
+  ```typescript
+  // Importing SVG as raw string
+  import closeSvg from './images/close.svg?raw';
 
-   // Use in template
-   <template>
-     <Logo class="logo" />
-   </template>
-   ```
+  // In component
+  const iconColor = 'var(--color-primary)';
+  const sanitizedSvg = sanitizeSvg(closeSvg); // Implement sanitization
 
-4. **Type Declarations for TypeScript**:
-   ```typescript
-   // Add to vite-env.d.ts or similar
-   declare module "*.svg" {
-     import { DefineComponent } from "vue";
-     const component: DefineComponent;
-     export const ReactComponent: DefineComponent;
-     export default component;
-   }
-   ```
-
-This approach offers better integration with the component system, enabling SVGs to be used as first-class components with props and events.
+  // Using with v-html (ensure sanitization first)
+  <div v-html="sanitizedSvg" :style="{ color: iconColor }"></div>
+  ```
 
 #### Development Method
 
@@ -342,6 +314,64 @@ This approach offers better integration with the component system, enabling SVGs
 ### 5. Documentation & Preview
 
 **Output**: VitePress documentation and interactive previews
+
+#### Component Preview Implementation
+
+Component previews should be implemented through the VitePress theme:
+
+- Register components for preview in `docs/.vitepress/theme/index.ts`
+- Ensure all components are correctly imported and registered in the theme
+- Use the `enhanceApp` function to globally register components to the Vue application
+
+Implementation example:
+
+```typescript
+// docs/.vitepress/theme/index.ts
+import DefaultTheme from "vitepress/theme";
+import Button from "../../../src/components/Button/Button.vue";
+import Input from "../../../src/components/Input/Input.vue";
+// 导入其他组件...
+
+export default {
+  ...DefaultTheme,
+  enhanceApp({ app }) {
+    // 注册组件以便在Markdown中使用
+    app.component("Button", Button);
+    app.component("Input", Input);
+    // 注册其他组件...
+  },
+};
+```
+
+#### Component Preview Requirements
+
+Each component documentation page in VitePress MUST include a preview demo at the top of the page:
+
+- Place the demo immediately after the title and before any other content
+- Demo should showcase the component in its default state
+- Include minimal code to demonstrate basic usage
+- Ensure the demo is functional and interactive when applicable
+
+Example component documentation structure:
+
+```markdown
+# Button Component
+
+::: preview
+<template>
+
+  <div class="preview-container">
+    <Button>Default Button</Button>
+    <Button type="primary">Primary Button</Button>
+    <Button type="text">Text Button</Button>
+  </div>
+</template>
+:::
+
+## Introduction
+
+The Button component is used for...
+```
 
 #### Documentation Content
 
