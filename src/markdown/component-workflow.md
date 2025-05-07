@@ -155,12 +155,48 @@ AI must analyze component design and infer:
    - State definitions
    - Slot specifications
    - Component structure
+   - Image assets and their paths
 3. If user identifies issues:
    - Collect all feedback
    - Make required modifications to the architecture document
    - Present updated document for review
 4. Repeat review cycle until user explicitly approves the document
 5. Only proceed to Test Generation phase after user confirmation
+
+#### Image Resource Handling
+
+**CRITICAL STEP**: After user confirmation of the architecture document, and before proceeding to Test Generation:
+
+1.  **Confirm Image Paths**: Carefully check that all image resource paths referenced in the architecture document are correct.
+2.  **Copy Images**:
+    - Copy all used images (including SVG, PNG, JPG, etc.) to the `images` folder within the component directory. For example: `src/components/${componentName}/images/`.
+    - If the `images` folder does not exist, create it.
+3.  **SVG Image Import and Color Specification**:
+
+    - For SVG type images, it is recommended to import them in the following way to dynamically control their color:
+      ```typescript
+      import CloseIcon from "./images/close-icon.svg?raw"; // ?raw ensures it's imported as a string
+      ```
+    - When using SVGs in component templates, their color can be specified via CSS or by directly modifying the `fill` or `stroke` attributes in the SVG string. For example, in a Vue component:
+
+      ```html
+      <template>
+        <div v-html="CloseIcon" class="icon-class-to-color"></div>
+        <!-- or manipulate the string directly if needed -->
+      </template>
+
+      <style scoped>
+        .icon-class-to-color svg {
+          fill: currentColor; /* Or a specific color */
+        }
+        /* Or target specific paths if the SVG structure is known */
+        .icon-class-to-color svg path {
+          fill: var(--icon-color, #000); /* Example using CSS custom property */
+        }
+      </style>
+      ```
+
+    - Ensure that the architecture document specifies which SVG icons require dynamic color control, their target colors, or the method of color control.
 
 ### 2. Test Generation
 
