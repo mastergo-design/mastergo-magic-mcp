@@ -167,36 +167,75 @@ AI must analyze component design and infer:
 
 **CRITICAL STEP**: After user confirmation of the architecture document, and before proceeding to Test Generation:
 
-1.  **Confirm Image Paths**: Carefully check that all image resource paths referenced in the architecture document are correct.
+1.  **Resource Inventory and Path Documentation**:
+
+    - The architecture document must include an "Image Resources" section that clearly lists all necessary resources in a table format:
+
+    ```markdown
+    ## Image Resources
+
+    ### Resource List and Paths
+
+    | Icon Description | Original Path             | Target Path                                             | Icon Color Control                                   |
+    | ---------------- | ------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+    | Close Icon       | `/original/path/icon.svg` | `src/components/${componentName}/images/icon-close.svg` | Dynamically controlled, defaults to match text color |
+    | Other Icon       | ...                       | ...                                                     | ...                                                  |
+    ```
+
 2.  **Copy Images**:
-    - Only copy the image resources (including SVG, PNG, JPG, etc.) that are explicitly mentioned in the generated architecture document to the `images` folder within the component directory. For example: `src/components/${componentName}/images/`. When copying, rename the files with semantic names such as `icon-close.svg`, `bg-header.png`, etc., to make their purpose clear.
-    - If the `images` folder does not exist, create it.
+
+    - Copy all necessary image resources listed in the architecture document to the component-specific directory.
+    - Use semantic filenames such as `icon-close.svg`, `icon-success.svg`, `bg-header.png`, etc., ensuring the names clearly indicate the purpose of each image.
+    - The target path must be `src/components/${componentName}/images/`. Create this directory if it doesn't exist.
+    - Example:
+      ```bash
+      mkdir -p src/components/${componentName}/images
+      cp /original/path/close-icon.svg src/components/${componentName}/images/icon-close.svg
+      ```
+
 3.  **SVG Image Import and Color Specification**:
 
-    - For SVG type images, it is recommended to import them in the following way to dynamically control their color:
+    - The architecture document must clearly specify the import method and color control approach for SVG icons.
+    - SVGs must be imported using the following method to ensure dynamic color control:
+
       ```typescript
-      import CloseIcon from "./images/close-icon.svg?raw"; // ?raw ensures it's imported as a string
+      import CloseIcon from "./images/icon-close.svg?raw"; // ?raw ensures it's imported as a string
       ```
-    - When using SVGs in component templates, their color can be specified via CSS or by directly modifying the `fill` or `stroke` attributes in the SVG string. For example, in a Vue component:
+
+    - The architecture document must include code examples for SVG usage and color control:
+
+      ````markdown
+      ### Icon Import and Usage Method
+
+      ```typescript
+      // In ${componentName}.vue, import icons
+      import CloseIcon from "./images/icon-close.svg?raw";
+      import SuccessIcon from "./images/icon-success.svg?raw";
+      ```
+      ````
+
+      Using SVGs in templates and controlling their color:
 
       ```html
       <template>
-        <div v-html="CloseIcon" class="icon-class-to-color"></div>
-        <!-- or manipulate the string directly if needed -->
+        <div class="icon-container" v-html="CloseIcon"></div>
       </template>
 
       <style scoped>
-        .icon-class-to-color svg {
-          fill: currentColor; /* Or a specific color */
+        .icon-container svg {
+          fill: v-bind("dynamicColorVariable"); /* Dynamically bind color */
         }
-        /* Or target specific paths if the SVG structure is known */
-        .icon-class-to-color svg path {
-          fill: var(--icon-color, #000); /* Example using CSS custom property */
+        /* Or use CSS variables to control color */
+        .icon-container svg {
+          fill: var(--icon-color, currentColor);
         }
       </style>
       ```
 
-    - Ensure that the architecture document specifies which SVG icons require dynamic color control, their target colors, or the method of color control.
+    - For each SVG icon, the architecture document must clearly specify:
+      1. Default color
+      2. Whether the color is fixed or needs to be dynamically controlled
+      3. Color variations in different states
 
 ### 2. Test Generation
 
