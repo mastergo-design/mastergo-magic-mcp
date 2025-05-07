@@ -169,7 +169,7 @@ AI must analyze component design and infer:
 
 1.  **Confirm Image Paths**: Carefully check that all image resource paths referenced in the architecture document are correct.
 2.  **Copy Images**:
-    - Copy all used images (including SVG, PNG, JPG, etc.) to the `images` folder within the component directory. For example: `src/components/${componentName}/images/`.
+    - Only copy the image resources (including SVG, PNG, JPG, etc.) that are explicitly mentioned in the generated architecture document to the `images` folder within the component directory. For example: `src/components/${componentName}/images/`. When copying, rename the files with semantic names such as `icon-close.svg`, `bg-header.png`, etc., to make their purpose clear.
     - If the `images` folder does not exist, create it.
 3.  **SVG Image Import and Color Specification**:
 
