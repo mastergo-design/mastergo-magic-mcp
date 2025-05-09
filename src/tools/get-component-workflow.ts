@@ -6,7 +6,7 @@ import componentWorkflow from "../markdown/component-workflow.md";
 
 const COMPONENT_GENERATOR_TOOL_NAME = "mcp__getComponentGenerator";
 const COMPONENT_GENERATOR_TOOL_DESCRIPTION = `
-Use this tool when the user wants to build a Vue component or React component.
+Users need to actively call this tool to get the component development workflow. When Generator is mentioned, please actively call this tool.
 This tool provides a structured workflow for component development following best practices.
 You must provide an absolute rootPath of workspace to save workflow files.
 `;
