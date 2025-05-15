@@ -56,12 +56,12 @@ if (!token) {
 
 // Set environment variables
 const env = {
-  ...process.env,
-  MASTERGO_API_TOKEN: token,
-  API_BASE_URL: baseUrl,
+  TOKEN: token,
+  URL: baseUrl,
   DEBUG: debug ? "true" : "false",
   // Add RULES environment variable as stringified array
   RULES: JSON.stringify(rules),
+  ...process.env,
 };
 
 // Get package path

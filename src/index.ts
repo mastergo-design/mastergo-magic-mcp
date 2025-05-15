@@ -19,12 +19,12 @@ const log = (message: string) => {
 // Main function
 function main() {
   // Retrieve token and baseUrl from environment variables
-  const token = process.env.MASTERGO_API_TOKEN;
-  const baseUrl = process.env.API_BASE_URL || "http://localhost:3000";
+  const token = process.env.TOKEN;
+  const baseUrl = process.env.URL || "http://localhost:3000";
   const debug = process.env.DEBUG === "true";
 
   if (!token) {
-    console.error("Error: MASTERGO_API_TOKEN environment variable not set");
+    console.error("Error: TOKEN environment variable not set");
     process.exit(1);
   }
 
