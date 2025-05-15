@@ -6,7 +6,8 @@ const fs = require("fs");
 
 // Get arguments
 const args = process.argv.slice(2);
-let token = "";
+// Attempt to get token from environment variable first
+let token = process.env.TOKEN || "";
 let baseUrl = "http://localhost:3000";
 let debug = false;
 // Array to collect rules
@@ -14,14 +15,19 @@ let rules = [];
 
 // Parse arguments
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--token" && i + 1 < args.length) {
+  // Only parse --token if token is not already set by environment variable
+  if (
+    args[i] === "--token" &&
+    i + 1 < args.length &&
+    !process.env.MG_MCP_TOKEN
+  ) {
     token = args[i + 1];
     i++;
+  } else if (args[i].startsWith("--token=") && !process.env.MG_MCP_TOKEN) {
+    token = args[i].split("=")[1];
   } else if (args[i] === "--url" && i + 1 < args.length) {
     baseUrl = args[i + 1];
     i++;
-  } else if (args[i].startsWith("--token=")) {
-    token = args[i].split("=")[1];
   } else if (args[i].startsWith("--url=")) {
     baseUrl = args[i].split("=")[1];
   } else if (args[i] === "--debug") {
@@ -37,7 +43,10 @@ for (let i = 0; i < args.length; i++) {
 
 // Check required arguments
 if (!token) {
-  console.error("Error: Missing MasterGo API Token");
+  console.error("Error: Missing MasterGo API Token.");
+  console.error(
+    "Please set the MG_MCP_TOKEN environment variable or use the --token argument."
+  );
   console.error(
     "Usage: npx mastergo-magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME]"
   );
@@ -70,6 +79,9 @@ if (!fs.existsSync(indexPath)) {
 if (debug) {
   console.log("Debug information:");
   console.log(`Package path: ${indexPath}`);
+  console.log(
+    `Token source: ${process.env.MG_MCP_TOKEN ? "environment variable (MG_MCP_TOKEN)" : "command-line argument"}`
+  );
   console.log(`Token: ${token ? "set" : "not set"}`);
   console.log(`API URL: ${baseUrl}`);
   console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
