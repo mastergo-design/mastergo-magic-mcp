@@ -36,7 +36,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 // Check required arguments
-if (!token) {
+if (!token && !process.env.MASTERGO_API_TOKEN) {
   console.error("Error: Missing MasterGo API Token");
   console.error(
     "Usage: npx mastergo-magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME]"
@@ -47,8 +47,8 @@ if (!token) {
 
 // Set environment variables
 const env = {
-  ...process.env,
   MASTERGO_API_TOKEN: token,
+  ...process.env,
   API_BASE_URL: baseUrl,
   DEBUG: debug ? "true" : "false",
   // Add RULES environment variable as stringified array
