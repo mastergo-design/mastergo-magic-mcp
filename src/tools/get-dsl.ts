@@ -29,13 +29,13 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "MasterGo design file ID (format: file/<fileId> in MasterGo URL). Required if url is not provided."
+        "MasterGo design file ID (format: file/<fileId> in MasterGo URL). Required if shortLink is not provided."
       ),
     layerId: z
       .string()
       .optional()
       .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if url is not provided."
+        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
       ),
     shortLink: z
       .string()
