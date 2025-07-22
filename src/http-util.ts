@@ -145,4 +145,52 @@ export class HttpUtil {
       throw error;
     }
   }
+
+  /**
+   * Extract fileId and layerId from a MasterGo URL
+   * @param url MasterGo URL (can be short or full URL)
+   * @returns Promise<{fileId: string, layerId: string}>
+   */
+  public async extractIdsFromUrl(
+    url: string
+  ): Promise<{ fileId: string; layerId: string }> {
+    try {
+      // Handle short links (e.g., https://mastergo.com/goto/LhTAgwAK)
+      if (url.includes("/goto/")) {
+        const response = await axios.get(url, {
+          maxRedirects: 0,
+          validateStatus: (status) => status >= 300 && status < 400,
+        });
+
+        // Get the redirect URL from headers
+        const redirectUrl = response.headers.location;
+        if (!redirectUrl) {
+          throw new Error("No redirect URL found for short link");
+        }
+
+        url = redirectUrl;
+      }
+
+      // Parse the full URL
+      const urlObj = new URL(url);
+      const pathSegments = urlObj.pathname.split("/");
+      const searchParams = new URLSearchParams(urlObj.search);
+
+      // Extract fileId from path
+      const fileId = pathSegments.find((segment) => /^\d+$/.test(segment));
+      if (!fileId) {
+        throw new Error("Could not extract fileId from URL");
+      }
+
+      // Extract layerId from query parameters
+      const layerId = searchParams.get("layer_id");
+      if (!layerId) {
+        throw new Error("Could not extract layerId from URL");
+      }
+
+      return { fileId, layerId };
+    } catch (error: any) {
+      throw new Error(`Failed to extract IDs from URL: ${error.message}`);
+    }
+  }
 }
