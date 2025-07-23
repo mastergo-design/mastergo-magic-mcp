@@ -8,7 +8,7 @@ const DSL_TOOL_DESCRIPTION = `
 This tool is useful when you need to analyze the structure of a design, understand component hierarchy, or extract design properties.
 You can provide either:
 1. fileId and layerId directly, or
-2. a MasterGo short link (like https://mastergo.com/goto/LhGgBAK)
+2. a short link (like https://{domain}/goto/LhGgBAK)
 This tool returns the raw DSL data in JSON format that you can then parse and analyze.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks."
@@ -40,9 +40,7 @@ export class GetDslTool extends BaseTool {
     shortLink: z
       .string()
       .optional()
-      .describe(
-        "MasterGo short link (like https://mastergo.com/goto/LhGgBAK)."
-      ),
+      .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
   });
 
   async execute({ fileId, layerId, shortLink }: z.infer<typeof this.schema>) {
