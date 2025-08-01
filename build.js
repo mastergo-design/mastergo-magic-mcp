@@ -10,11 +10,6 @@ if (!fs.existsSync("dist")) {
   fs.mkdirSync("dist");
 }
 
-// Ensure the bin directory exists
-if (!fs.existsSync("bin")) {
-  fs.mkdirSync("bin");
-}
-
 // Recursively delete a directory
 function removeDir(dirPath) {
   if (fs.existsSync(dirPath)) {
@@ -100,19 +95,24 @@ async function build() {
     console.log("🔍 Verifying the build output...");
     const files = fs.readdirSync("dist");
     if (files.length > 1 || (files.length === 1 && files[0] !== "index.js")) {
-      console.warn("⚠️ Warning: The build produced multiple files, not a single file");
+      console.warn(
+        "⚠️ Warning: The build produced multiple files, not a single file"
+      );
       console.warn("📁 File list:", files);
     } else {
-      console.log("✅ Verification successful: All code has been bundled into a single file");
+      console.log(
+        "✅ Verification successful: All code has been bundled into a single file"
+      );
     }
 
     // The file header is already in the source file, no need to add it again
-    console.log("✅ The source file already includes the shebang, no need to add it again");
+    console.log(
+      "✅ The source file already includes the shebang, no need to add it again"
+    );
 
     // Add executable permissions
     console.log("🔑 Adding executable permissions...");
     fs.chmodSync("dist/index.js", "755");
-    fs.chmodSync("bin/cli.js", "755");
 
     // Display file size
     const stats = fs.statSync("dist/index.js");
@@ -121,14 +121,13 @@ async function build() {
 
     console.log("✅ Build successful！");
     console.log("📦 Executable file located at: dist/index.js");
-    console.log("📦 CLI entry located at: bin/cli.js");
 
     console.log("🚀 You can publish the package using the following command:");
     console.log("   npm publish");
     console.log("");
     console.log("🔧 Or you can test locally using the following command:");
     console.log(
-      "   node bin/cli.js --token=YOUR_TOKEN [--url=API_URL] [--framework=FRAMEWORK]"
+      "   node dist/index.js --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug]"
     );
   } catch (error) {
     console.error("❌ Build failed:", error);

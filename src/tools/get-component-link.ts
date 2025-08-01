@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
-import { HttpUtil } from "../http-util";
+import { httpUtilInstance } from "../utils/api";
 
 const COMPONENT_LINK_TOOL_NAME = "mcp__getComponentLink";
 const COMPONENT_LINK_TOOL_DESCRIPTION = `When the data returned by mcp__getDsl contains a non-empty componentDocumentLinks array, this tool is used to sequentially retrieve URLs from the componentDocumentLinks array and then obtain component documentation data. The returned document data is used for you to generate frontend code based on components.`;
@@ -8,11 +8,9 @@ const COMPONENT_LINK_TOOL_DESCRIPTION = `When the data returned by mcp__getDsl c
 export class GetComponentLinkTool extends BaseTool {
   name = COMPONENT_LINK_TOOL_NAME;
   description = COMPONENT_LINK_TOOL_DESCRIPTION;
-  private httpUtil: HttpUtil;
 
-  constructor(httpUtil: HttpUtil) {
+  constructor() {
     super();
-    this.httpUtil = httpUtil;
   }
 
   schema = z.object({
@@ -25,7 +23,7 @@ export class GetComponentLinkTool extends BaseTool {
 
   async execute({ url }: z.infer<typeof this.schema>) {
     try {
-      const data = await this.httpUtil.request({
+      const data = await httpUtilInstance.request({
         method: "GET",
         url,
       });

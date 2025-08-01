@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
-import { HttpUtil } from "../http-util";
+import { httpUtilInstance } from "../utils/api";
 import rules from "../markdown/meta.md";
 
 const META_TOOL_NAME = "mcp__getMeta";
@@ -14,11 +14,9 @@ follow the rules and use the results to analyze the site and page.
 export class GetMetaTool extends BaseTool {
   name = META_TOOL_NAME;
   description = META_TOOL_DESCRIPTION;
-  private httpUtil: HttpUtil;
 
-  constructor(httpUtil: HttpUtil) {
+  constructor() {
     super();
-    this.httpUtil = httpUtil;
   }
 
   schema = z.object({
@@ -36,14 +34,14 @@ export class GetMetaTool extends BaseTool {
 
   async execute({ fileId, layerId }: z.infer<typeof this.schema>) {
     try {
-      const result = await this.httpUtil.getMeta(fileId, layerId);
+      const result = await httpUtilInstance.getMeta(fileId, layerId);
       return {
         content: [
           {
             type: "text" as const,
             text: JSON.stringify({
-                result,
-                rules,
+              result,
+              rules,
             }),
           },
         ],

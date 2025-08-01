@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
-import { HttpUtil } from "../http-util";
+import { httpUtilInstance } from "../utils/api";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
@@ -17,11 +17,9 @@ The DSL data can also be used to transform and generate code for different frame
 export class GetDslTool extends BaseTool {
   name = DSL_TOOL_NAME;
   description = DSL_TOOL_DESCRIPTION;
-  private httpUtil: HttpUtil;
 
-  constructor(httpUtil: HttpUtil) {
+  constructor() {
     super();
-    this.httpUtil = httpUtil;
   }
 
   schema = z.object({
@@ -56,7 +54,7 @@ export class GetDslTool extends BaseTool {
 
       // If URL is provided, extract fileId and layerId from it
       if (shortLink) {
-        const ids = await this.httpUtil.extractIdsFromUrl(shortLink);
+        const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = ids.fileId;
         finalLayerId = ids.layerId;
       }
@@ -65,7 +63,7 @@ export class GetDslTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId");
       }
 
-      const dsl = await this.httpUtil.getDsl(finalFileId, finalLayerId);
+      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId);
       return {
         content: [
           {
