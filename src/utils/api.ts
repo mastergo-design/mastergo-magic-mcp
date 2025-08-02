@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { parseToken, parseUrl, parseRules } from "./args";
+import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
 
 // DSL response interface
 export interface DslResponse {
@@ -35,9 +35,10 @@ const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   return Array.from(documentLinks);
 };
 
-const buildDslRules = (): string[] => [
-  "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
-  `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
+const buildDslRules = (): string[] => {
+  return [
+    "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+    `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
 When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
 For example: 
   \`\`\`js  
@@ -50,9 +51,10 @@ For example:
       console.log(componentLink);
     }
   \`\`\``,
-  ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
-  ...parseRules(),
-];
+    ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
+    ...parseRules(),
+  ];
+};
 
 /**
  * Create HTTP utility functions with configured baseUrl and token
@@ -78,7 +80,7 @@ const createHttpUtil = () => {
       return {
         dsl: response.data,
         componentDocumentLinks: extractComponentDocumentLinks(response.data),
-        rules: buildDslRules(),
+        rules: parseNoRule() ? [] : buildDslRules(),
       };
     },
 

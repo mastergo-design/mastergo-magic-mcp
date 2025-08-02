@@ -63,23 +63,38 @@ function parseDebug(): boolean {
   return false;
 }
 
+function parseNoRule(): boolean {
+  const args = getArgs();
+
+  for (const arg of args) {
+    if (arg === "--no-rule") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function parserArgs(): {
   token: string;
   baseUrl: string;
   rules: string[];
   debug: boolean;
+  noRule: boolean;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();
   const rules = parseRules();
   const debug = parseDebug();
+  const noRule = parseNoRule();
 
   return {
     token,
     baseUrl,
     rules,
     debug,
+    noRule,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, getArgs };

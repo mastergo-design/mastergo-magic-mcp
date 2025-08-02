@@ -12,14 +12,15 @@ import { parserArgs } from "./utils/args";
 // Main function
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule } = parserArgs();
 
   if (debug) {
     process.env.DEBUG = "true";
     console.log("Debug information:");
-    console.log(`Token: ${token ? "set" : "not set"}`, token);
+    console.log(`Token: ${token ? "set" : "not set"}`);
     console.log(`API URL: ${baseUrl || "default"}`);
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
+    console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
     console.log(`Debug mode: enabled`);
   }
 
