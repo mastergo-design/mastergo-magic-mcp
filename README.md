@@ -1,19 +1,23 @@
 # MasterGo Magic MCP
+
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mastergo-design/mastergo-magic-mcp)
 
 MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed to connect MasterGo design tools with AI models. It enables AI models to directly retrieve DSL data from MasterGo design files.
 
 ## Key Features
+
 - Retrieves DSL data from MasterGo design files
 - Runs directly with npx
 - No external dependencies required, only Node.js environment needed
 
 ## Tutorial
+
 - https://mastergo.com/file/155675508499265?page_id=158:0002
 
 ## Usage
 
 ### Obtaining MG_MCP_TOKEN
+
 1. Visit https://mastergo.com
 2. Enter personal settings
 3. Click the Security Settings tab
@@ -21,20 +25,32 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 5. Click to generate the token
 
 ### Command Line Options
+
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug] [--no-rule]
 ```
 
 #### Parameters:
+
 - `--token=YOUR_TOKEN` (required): MasterGo API token for authentication
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--debug` (optional): Enable debug mode for detailed error information
+- `--no-rule` (optional): Disable default rules
 
 You can also use space-separated format for parameters:
+
 ```
 npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
 ```
+
+#### Environment Variables
+
+Alternatively, you can use environment variables instead of command line arguments:
+
+- `MG_MCP_TOKEN` or `MASTERGO_API_TOKEN`: MasterGo API token
+- `API_BASE_URL`: API base URL
+- `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
 
 ### Installing via Smithery
 
@@ -45,6 +61,7 @@ npx -y @smithery/cli install @mastergo-design/mastergo-magic-mcp --client claude
 ```
 
 ### LINGMA Usage
+
 Search for LINGMA in the VSCode extension marketplace and install it.
 
 <img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/main/images/image-20250507174245589.png" alt="image-20250507174245589" style="zoom:25%;" />
@@ -66,7 +83,12 @@ Finally, switch the chat mode to agent mode in the chat interface.
 <img src="https://github.com/mastergo-design/mastergo-magic-mcp/blob/main/images/image-20250507175107044.png" alt="image-20250507175107044" style="zoom:25%;" />
 
 ### cursor Usage
+
 Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
+
+You can configure the MCP server using either command line arguments or environment variables:
+
+**Option 1: Using command line arguments**
 
 ```json
 {
@@ -85,7 +107,27 @@ Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-
 }
 ```
 
+**Option 2: Using environment variables**
+
+```json
+{
+  "mcpServers": {
+    "mastergo-magic-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mastergo/magic-mcp"],
+      "env": {
+        "MG_MCP_TOKEN": "<YOUR_TOKEN>",
+        "API_BASE_URL": "https://mastergo.com"
+      }
+    }
+  }
+}
+```
+
 ### cline Usage
+
+**Option 1: Using command line arguments**
+
 ```json
 {
   "mcpServers": {
@@ -103,8 +145,27 @@ Cursor Mcp usage guide reference: https://docs.cursor.com/context/model-context-
 }
 ```
 
+**Option 2: Using environment variables**
+
+```json
+{
+  "mcpServers": {
+    "@master/mastergo-magic-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mastergo/magic-mcp"],
+      "env": {
+        "MG_MCP_TOKEN": "<YOUR_TOKEN>",
+        "API_BASE_URL": "https://mastergo.com"
+      }
+    }
+  }
+}
+```
+
 ## Project Structure
+
 ### src Directory
+
 The `src` directory contains the core implementation of the MasterGo Magic MCP service:
 
 - `index.ts`: Entry point of the application that initializes the MCP server and registers all tools
@@ -112,6 +173,7 @@ The `src` directory contains the core implementation of the MasterGo Magic MCP s
 - `types.d.ts`: TypeScript type definitions for the project
 
 #### src/tools
+
 Contains implementations of MCP tools:
 
 - `base-tool.ts`: Base class for all MCP tools
@@ -121,12 +183,14 @@ Contains implementations of MCP tools:
 - `get-component-workflow.ts`: Tool providing structured component development workflow for Vue and React components, generating workflow files and component specifications
 
 #### src/markdown
+
 Contains markdown files with additional documentation:
 
 - `meta.md`: Documentation about metadata structure and usage
 - `component-workflow.md`: Component development workflow documentation guiding structured component development process
 
 ## Local Development
+
 1. Run `yarn` and `yarn build` to install dependencies and build the code
 2. Find the absolute path of `bin/cli.js`
 3. Add local MCP configuration with your token
@@ -143,6 +207,7 @@ Contains markdown files with additional documentation:
   "env": {}
 },
 ```
+
 4. Restart your editor to ensure the local MCP is enabled
 
 After successful execution, you can debug based on the local running results. You can build your own MCP service based on your modifications.
@@ -150,4 +215,5 @@ After successful execution, you can debug based on the local running results. Yo
 We welcome your code contributions and look forward to building MasterGo's MCP service together.
 
 ## License
+
 ISC
