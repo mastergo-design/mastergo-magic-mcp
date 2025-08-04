@@ -27,7 +27,7 @@ MasterGo Magic MCP 是一个独立的 MCP（Model Context Protocol）服务，�
 ### 命令行选项
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug] [--no-rule]
 ```
 
 #### 参数:
@@ -36,12 +36,21 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (可选): API 基础 URL，默认为 http://localhost:3000
 - `--rule=RULE_NAME` (可选): 添加要应用的设计规则，可多次使用
 - `--debug` (可选): 启用调试模式，提供详细错误信息
+- `--no-rule` (可选): 禁用默认规则
 
 你也可以使用空格分隔的参数格式:
 
 ```
 npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
 ```
+
+#### 环境变量
+
+您也可以使用环境变量代替命令行参数：
+
+- `MG_MCP_TOKEN` 或 `MASTERGO_API_TOKEN`: MasterGo API 令牌
+- `API_BASE_URL`: API 基础 URL
+- `RULES`: 规则的 JSON 数组 (例如: `'["rule1", "rule2"]'`)
 
 ### LINGMA 使用方法
 
@@ -69,6 +78,10 @@ npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debu
 
 Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-protocol#using-mcp-tools-in-agent
 
+您可以使用命令行参数或环境变量来配置 MCP 服务：
+
+**方式一：使用命令行参数**
+
 ```json
 {
   "mcpServers": {
@@ -86,7 +99,26 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 }
 ```
 
+**方式二：使用环境变量**
+
+```json
+{
+  "mcpServers": {
+    "mastergo-magic-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mastergo/magic-mcp"],
+      "env": {
+        "MG_MCP_TOKEN": "<YOUR_TOKEN>",
+        "API_BASE_URL": "https://mastergo.com"
+      }
+    }
+  }
+}
+```
+
 ### cline 使用方法
+
+**方式一：使用命令行参数**
 
 ```json
 {
@@ -100,6 +132,23 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
         "--url=https://mastergo.com"
       ],
       "env": {}
+    }
+  }
+}
+```
+
+**方式二：使用环境变量**
+
+```json
+{
+  "mcpServers": {
+    "@master/mastergo-magic-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mastergo/magic-mcp"],
+      "env": {
+        "MG_MCP_TOKEN": "<YOUR_TOKEN>",
+        "API_BASE_URL": "https://mastergo.com"
+      }
     }
   }
 }

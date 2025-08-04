@@ -4,11 +4,10 @@
   "description": "MasterGo MCP standalone service",
   "main": "dist/index.js",
   "bin": {
-    "mastergo-magic-mcp": "bin/cli.js"
+    "mastergo-magic-mcp": "dist/index.js"
   },
   "files": [
     "dist/**/*",
-    "bin/**/*",
     "!**/*.map",
     "!**/.DS_Store",
     "!**/.idea",
@@ -19,7 +18,7 @@
   },
   "scripts": {
     "build": "node build.js",
-    "start": "node bin/cli.js --token=test --url=http://localhost:3000 --debug",
+    "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

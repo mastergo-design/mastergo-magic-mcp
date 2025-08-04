@@ -1,7 +1,7 @@
 import { z } from "zod";
 import fs from "fs";
 import { BaseTool } from "./base-tool";
-import { HttpUtil } from "../http-util";
+import { httpUtilInstance } from "../utils/api";
 import componentWorkflow from "../markdown/component-workflow.md";
 
 const COMPONENT_GENERATOR_TOOL_NAME = "mcp__getComponentGenerator";
@@ -14,11 +14,9 @@ You must provide an absolute rootPath of workspace to save workflow files.
 export class GetComponentWorkflowTool extends BaseTool {
   name = COMPONENT_GENERATOR_TOOL_NAME;
   description = COMPONENT_GENERATOR_TOOL_DESCRIPTION;
-  private httpUtil: HttpUtil;
 
-  constructor(httpUtil: HttpUtil) {
+  constructor() {
     super();
-    this.httpUtil = httpUtil;
   }
 
   schema = z.object({
@@ -45,7 +43,7 @@ export class GetComponentWorkflowTool extends BaseTool {
       fs.mkdirSync(baseDir, { recursive: true });
     }
     const workflowFilePath = `${baseDir}/component-workflow.md`;
-    const jsonData = await this.httpUtil.getComponentStyleJson(fileId, layerId);
+    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId);
     const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
     const walkLayer = (layer: any) => {
       if (layer.path && layer.path.length > 0) {
