@@ -1,6 +1,6 @@
 {
   "name": "@mastergo/magic-mcp",
-  "version": "0.0.7-beta.0",
+  "version": "0.1.0",
   "description": "MasterGo MCP standalone service",
   "main": "dist/index.js",
   "bin": {
