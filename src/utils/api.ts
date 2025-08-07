@@ -19,7 +19,30 @@ const getCommonHeader = () => ({
     process.env.MG_MCP_TOKEN || process.env.MASTERGO_API_TOKEN || parseToken(),
 });
 
-const getBaseUrl = () => process.env.API_BASE_URL || parseUrl();
+const getBaseUrl = () => {
+  const url = process.env.API_BASE_URL || parseUrl();
+  try {
+    // 解析URL
+    const urlObj = new URL(url);
+
+    // 提取域名和协议
+    const protocol = urlObj.protocol;
+    const hostname = urlObj.hostname;
+    const port = urlObj.port;
+
+    // 构建基础URL
+    let baseUrl = `${protocol}//${hostname}`;
+    if (port) {
+      baseUrl += `:${port}`;
+    }
+
+    return baseUrl;
+  } catch {
+    throw new Error(
+      `无效的URL格式: ${url}。请提供正确的URL格式，例如: https://mastergo.com`
+    );
+  }
+};
 
 const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
