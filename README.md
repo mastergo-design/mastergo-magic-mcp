@@ -192,14 +192,14 @@ Contains markdown files with additional documentation:
 ## Local Development
 
 1. Run `yarn` and `yarn build` to install dependencies and build the code
-2. Find the absolute path of `bin/cli.js`
+2. Find the absolute path of `dist/index.js`
 3. Add local MCP configuration with your token
 
 ```json
 "mastergo-mcp-local": {
   "command": "node",
   "args": [
-    "absolute/path/to/bin/cli.js",
+    "absolute/path/to/dist/index.js",
     "--token=mg_xxxxxx",
     "--url=https://mastergo.com",
     "--debug"

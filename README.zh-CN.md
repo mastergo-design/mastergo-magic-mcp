@@ -184,14 +184,14 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 ## 本地开发
 
 1. 运行 `yarn` 和 `yarn build`，安装依赖并构建代码
-2. 查看 `bin/cli.js` 的绝对路径
+2. 查看 `dist/index.js` 的绝对路径
 3. 在 MCP 配置中添加本地 MCP 配置，其中 token 为您获取的 token
 
 ```json
 "mastergo-mcp-local": {
   "command": "node",
   "args": [
-    "bin/cli.js绝对路径地址",
+    "dist/index.js绝对路径地址",
     "--token=mg_xxxxxx",
     "--url=https://mastergo.com",
     "--debug"
