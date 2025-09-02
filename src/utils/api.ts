@@ -1,5 +1,10 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
+import https from "https";
+
+axios.defaults.httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
 // DSL response interface
 export interface DslResponse {
