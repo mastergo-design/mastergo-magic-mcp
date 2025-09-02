@@ -1,5 +1,10 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
+import https from "https";
+
+axios.defaults.httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
 // DSL response interface
 export interface DslResponse {
@@ -79,9 +84,6 @@ For example:
   ];
 };
 
-const httpsAgent = {
-  rejectUnauthorized: false,
-};
 /**
  * Create HTTP utility functions with configured baseUrl and token
  */
@@ -92,7 +94,6 @@ const createHttpUtil = () => {
         timeout: 30000,
         params: { fileId, layerId },
         headers: getCommonHeader(),
-        httpsAgent,
       });
       return response.data;
     },
@@ -102,7 +103,6 @@ const createHttpUtil = () => {
         timeout: 30000,
         params: { fileId, layerId },
         headers: getCommonHeader(),
-        httpsAgent,
       });
 
       return {
@@ -117,7 +117,6 @@ const createHttpUtil = () => {
         timeout: 30000,
         params: { fileId, layerId },
         headers: getCommonHeader(),
-        httpsAgent,
       });
       return response.data;
     },
@@ -126,7 +125,6 @@ const createHttpUtil = () => {
       const response = await axios.request({
         ...config,
         headers: { ...getCommonHeader(), ...config.headers },
-        httpsAgent,
       });
       return response.data;
     },
@@ -143,7 +141,6 @@ const createHttpUtil = () => {
         const response = await axios.get(url, {
           maxRedirects: 0,
           validateStatus: (status) => status >= 300 && status < 400,
-          httpsAgent,
         });
 
         const redirectUrl = response.headers.location;
