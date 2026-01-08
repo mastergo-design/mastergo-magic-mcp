@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
 import https from "https";
+import { dslSimplifier } from "./dsl-simplifier";
 
 axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -105,9 +106,13 @@ const createHttpUtil = () => {
         headers: getCommonHeader(),
       });
 
+      // 简化 DSL 数据（原地修改）
+      const dslData = response.data;
+      dslSimplifier.simplify(dslData);
+
       return {
-        dsl: response.data,
-        componentDocumentLinks: extractComponentDocumentLinks(response.data),
+        dsl: dslData,
+        componentDocumentLinks: extractComponentDocumentLinks(dslData),
         rules: parseNoRule() ? [] : buildDslRules(),
       };
     },
