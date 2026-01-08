@@ -49,6 +49,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--rule=RULE_NAME` (可选): 添加要应用的设计规则，可多次使用
 - `--debug` (可选): 启用调试模式，提供详细错误信息
 - `--no-rule` (可选): 禁用默认规则
+- `--simplify` (可选): 启用 DSL 简化功能，将图标节点转换为 ICON_PLACEHOLDER 以减少 Token 消耗（默认：禁用） 
 
 你也可以使用空格分隔的参数格式:
 

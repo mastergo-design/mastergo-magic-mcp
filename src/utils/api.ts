@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
+import { parseToken, parseUrl, parseRules, parseNoRule, parseSimplify } from "./args";
 import https from "https";
 import { dslSimplifier } from "./dsl-simplifier";
 
@@ -106,9 +106,12 @@ const createHttpUtil = () => {
         headers: getCommonHeader(),
       });
 
-      // 简化 DSL 数据（原地修改）
       const dslData = response.data;
-      dslSimplifier.simplify(dslData);
+
+      // 根据配置决定是否简化 DSL 数据（默认不简化）
+      if (parseSimplify()) {
+        dslSimplifier.simplify(dslData);
+      }
 
       return {
         dsl: dslData,
