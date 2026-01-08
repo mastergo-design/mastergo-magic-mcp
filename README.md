@@ -24,6 +24,18 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 4. Find the personal access token
 5. Click to generate the token
 
+### Permission Requirements
+
+**Important**: If the tool is connected but returns a "no permission" error, please check the following conditions:
+
+1. **Account Version Requirement**:
+   - Requires **Team Edition** or higher MasterGo account
+   - Personal free edition does not support MCP tool access
+
+2. **File Location Requirement**:
+   - Design files must be placed in **Team Projects**
+   - Files in draft box cannot be accessed via MCP tools
+
 ### Command Line Options
 
 ```
@@ -52,13 +64,16 @@ Alternatively, you can use environment variables instead of command line argumen
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
 
-### Installing via Smithery
+### Installing via Smithery Marketplace
 
-To install MasterGo Magic for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@mastergo-design/mastergo-magic-mcp):
+Smithery is an MCP server marketplace that makes it easy to install and manage MCP services.
 
-```bash
-npx -y @smithery/cli install @mastergo-design/mastergo-magic-mcp --client claude
-```
+#### Method 1: Install via Smithery Website
+
+1. Visit [Smithery Marketplace](https://smithery.ai/server/master/mastergo-magic-mcp-smithery)
+2. Click the "Connect" or "Install" button
+3. Select your MCP client (e.g., Claude Desktop, Cursor, etc.)
+4. Follow the prompts to complete installation and configuration
 
 ### LINGMA Usage
 
