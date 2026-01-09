@@ -12,7 +12,7 @@ import { parserArgs } from "./utils/args";
 // Main function
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, simplify } = parserArgs();
 
   if (debug) {
     process.env.DEBUG = "true";
@@ -21,6 +21,7 @@ function main() {
     console.log(`API URL: ${baseUrl || "default"}`);
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
+    console.log(`Simplify DSL: ${simplify ? "enabled" : "disabled"}`);
     console.log(`Debug mode: enabled`);
   }
 
