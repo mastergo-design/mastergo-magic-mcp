@@ -49,13 +49,13 @@ export class GetDslTool extends BaseTool {
         );
       }
 
-      let finalFileId = fileId;
+      let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
 
       // If URL is provided, extract fileId and layerId from it
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
-        finalFileId = ids.fileId;
+        finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
       }
 
@@ -85,4 +85,10 @@ export class GetDslTool extends BaseTool {
       };
     }
   }
+
+  private normalizeFileId(fileId?: string) {
+    if (!fileId) return fileId;
+    return fileId.replace(/^file\//, "");
+  }
+
 }
