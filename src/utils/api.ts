@@ -112,6 +112,17 @@ const createHttpUtil = () => {
       };
     },
 
+    async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
+      const params: Record<string, any> = { contentId: contentId, documentId: documentId };
+      const response = await axios.get(`${getBaseUrl()}/mcp/d2c/events`, {
+        timeout: 30000,
+        params,
+        headers: getCommonHeader(),
+      });
+
+      return response.data;
+    },
+
     async getComponentStyleJson(fileId: string, layerId: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
