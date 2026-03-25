@@ -123,6 +123,22 @@ const createHttpUtil = () => {
       return response.data;
     },
 
+    async postC2d(
+      data: string | Record<string, any>,
+      fileId?: string,
+      layerId?: string
+    ): Promise<any> {
+      const response = await axios.post(
+        `${getBaseUrl()}/mcp/c2d`,
+        { data, fileId, layerId },
+        {
+          timeout: 30000,
+          headers: getCommonHeader(),
+        }
+      );
+      return response.data;
+    },
+
     async getComponentStyleJson(fileId: string, layerId: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
@@ -158,7 +174,7 @@ const createHttpUtil = () => {
         if (!redirectUrl) {
           throw new Error("No redirect URL found for short link");
         }
-        targetUrl = redirectUrl;
+        targetUrl = new URL(redirectUrl, url).href;
       }
 
       // Parse the URL

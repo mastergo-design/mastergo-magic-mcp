@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { GetDslTool } from "./tools/get-dsl";
 import { GetD2cTool } from "./tools/get-d2c";
+import { GetC2dTool } from "./tools/get-c2d";
 import { GetComponentLinkTool } from "./tools/get-component-link";
 import { GetMetaTool } from "./tools/get-meta";
 import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
@@ -35,6 +36,7 @@ function main() {
   new GetVersionTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
+  new GetC2dTool().register(server);
   new GetComponentLinkTool().register(server);
   new GetMetaTool().register(server);
   new GetComponentWorkflowTool().register(server);
