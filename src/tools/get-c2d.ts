@@ -8,10 +8,10 @@ const C2D_TOOL_DESCRIPTION = `
 
 参数说明：
 - data：需要转换的代码内容，一般为完整的 HTML 字符串，也可以是其他文本格式。
-- fileId / layerId：可选，如果不提供 shortLink，可以直接传入 fileId 和 layerId。
-- shortLink：可选，和 getDsl 工具相同的短链接形式（例如 https://{domain}/goto/xxxx），内部会自动解析出 fileId 和 layerId。
+- fileId / layerId：可选；不提供 shortLink 时至少需要 fileId，layerId 可不传。
+- shortLink：可选，短链接形式（例如 https://{domain}/goto/xxxx），会解析出 fileId；若 URL 中带 layer_id 也会一并解析。
 
-工具只负责把 data 原样传给后端服务，并附带解析出的 fileId 和 layerId，不关心后续如何处理或生成设计。
+工具把 data 原样传给后端，并附带 fileId 与可选的 layerId。
 `;
 
 export class GetC2dTool extends BaseTool {
@@ -31,13 +31,13 @@ export class GetC2dTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "MasterGo design file ID (format: file/<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "文件 ID（URL 中 file= 或路径中的数字段）。未传 shortLink 时必填。"
       ),
     layerId: z
       .string()
       .optional()
       .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "可选。图层 ID（URL 中 layer_id）。不传则仅按 file 维度同步。"
       ),
     shortLink: z
       .string()
@@ -63,17 +63,15 @@ export class GetC2dTool extends BaseTool {
         const ids = await httpUtilInstance.extractIdsFromUrl(link);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
-      } else if (fid && lid) {
+      } else if (fid) {
         finalFileId = this.normalizeFileId(fid);
-        finalLayerId = lid;
+        finalLayerId = lid || undefined;
       } else {
-        throw new Error(
-          "请只传一种：shortLink，或同时传 fileId 与 layerId"
-        );
+        throw new Error("请传 shortLink，或至少传 fileId（layerId 可选）");
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
+      if (!finalFileId) {
+        throw new Error("Could not determine fileId");
       }
 
       const result = await httpUtilInstance.postC2d(
