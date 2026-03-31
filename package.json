@@ -31,7 +31,7 @@
   "private": false,
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
-    "axios": "^1.6.0",
+    "axios": "1.6.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
