@@ -7,11 +7,12 @@ const C2D_TOOL_DESCRIPTION = `
 使用此工具将代码内容发送到 MasterGo MCP 服务进行 C2D（代码转设计）处理，将用户代码同步到设计稿。
 
 参数说明：
-- data：需要转换的代码内容，一般为完整的 HTML 字符串，也可以是其他文本格式。
-- fileId / layerId：可选；不提供 shortLink 时至少需要 fileId。layerId 可不传。
+- data：需要转换的代码内容，一般为完整的 HTML 字符串。
+- fileId： 不提供 shortLink 时至少需要 fileId。layerId 不是必填，没有就不要传。
+- layerId： 可选。图层 ID（只读取 URL 参数 layer_id）。不传或解析不到则仅按 file 维度同步；pageid/page_id 不会被当作 layerId。
 - shortLink：可选，短链接形式（例如 https://{domain}/goto/xxxx）。
-  注意事项：仅从 URL 中的 layer_id 参数读取 layerId；pageid/page_id 不会被当作 layerId。
-  如果短链接或 URL 中没有解析出 layer_id，也可以不传 layerId。
+  注意事项：只允许使用 URL 中的 layer_id 参数作为 layerId，严禁将 pageid/page_id 等任何页面 ID 当作 layerId。
+  如果短链接或 URL 中没有解析出 layer_id，则不传 layerId。
 
 工具把 data 原样传给后端，并附带 fileId 与可选的 layerId。
 `;
