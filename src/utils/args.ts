@@ -75,18 +75,32 @@ function parseNoRule(): boolean {
   return false;
 }
 
+function parseSimplify(): boolean {
+  const args = getArgs();
+
+  for (const arg of args) {
+    if (arg === "--simplify") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function parserArgs(): {
   token: string;
   baseUrl: string;
   rules: string[];
   debug: boolean;
   noRule: boolean;
+  simplify: boolean;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();
   const rules = parseRules();
   const debug = parseDebug();
   const noRule = parseNoRule();
+  const simplify = parseSimplify();
 
   return {
     token,
@@ -94,7 +108,8 @@ export function parserArgs(): {
     rules,
     debug,
     noRule,
+    simplify,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseSimplify, getArgs };
