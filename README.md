@@ -49,6 +49,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
+- `--simplify` (optional): Enable DSL simplification, converting icon nodes to ICON_PLACEHOLDER to reduce token consumption (default: disabled)
 
 You can also use space-separated format for parameters:
 
