@@ -261,7 +261,7 @@ async function runWithConcurrency<T, R>(
 /**
  * Ensure a Flutter asset directory is registered in pubspec.yaml while preserving
  * existing comments and key order. Uses textual patching rather than YAML parsing
- * because js-yaml strips comments on stringify.
+ * to avoid rewriting unrelated sections.
  */
 function ensurePubspecAsset(rootPath: string, assetDirRelative: string): "added" | "exists" | "no-pubspec" {
   const pubspecPath = path.join(rootPath, "pubspec.yaml");
