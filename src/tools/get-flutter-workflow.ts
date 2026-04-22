@@ -37,6 +37,7 @@ interface AssetSummary {
   downloaded: number;
   skipped: number;
   failed: number;
+  recovered: number;
   lost: number;
   byFormat: Record<string, number>;
 }
@@ -410,6 +411,89 @@ function walkForAssets(
   }
 }
 
+function parsePaintOrder(key: string): number {
+  const m = key.match(/paint_(\d+):(\d+)/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  return Number(m[2]);
+}
+
+/**
+ * Fallback source: pull style paint URLs from DSL response.
+ * This recovers bitmap URLs that are lost in `style` API as `url([object Object])`.
+ */
+async function collectDslStyleFallbackAssets(
+  fileId: string,
+  layerId: string,
+  warnings: string[]
+): Promise<DiscoveredAsset[]> {
+  try {
+    const dslResp = await httpUtilInstance.getDsl(fileId, layerId);
+    const dsl = dslResp?.dsl ?? {};
+    const styles = (dsl as any)?.styles ?? {};
+    const keys = Object.keys(styles)
+      .filter((k) => k.startsWith("paint_"))
+      .sort((a, b) => parsePaintOrder(a) - parsePaintOrder(b) || a.localeCompare(b));
+
+    const out: DiscoveredAsset[] = [];
+    for (const key of keys) {
+      const values = styles[key]?.value;
+      if (!Array.isArray(values)) continue;
+      values.forEach((v: any, idx: number) => {
+        const url = typeof v?.url === "string" ? v.url : "";
+        if (!url || !looksLikeImageUrl(url)) return;
+        out.push({
+          token: `dsl.styles.${key}.value[${idx}].url`,
+          url,
+          kind: "remote",
+        });
+      });
+    }
+    return out;
+  } catch (err: any) {
+    warnings.push(
+      `DSL fallback fetch failed: ${err?.message ?? String(err)}`
+    );
+    return [];
+  }
+}
+
+/**
+ * Replace `url([object Object])` placeholders in cssCode using replacement paths
+ * in traversal order. Returns how many placeholders were replaced.
+ */
+function fillLostCssPlaceholders(node: any, replacementPaths: string[]): number {
+  if (!replacementPaths.length) return 0;
+  let cursor = 0;
+  let replaced = 0;
+
+  const walk = (n: any) => {
+    if (!n || typeof n !== "object") return;
+    if (Array.isArray(n)) {
+      n.forEach(walk);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(n)) {
+      if (typeof value === "string" && key === "cssCode" && value.includes("[object Object]")) {
+        n[key] = value.replace(
+          /url\(\s*\[object Object\]\s*\)/g,
+          (match: string) => {
+            if (cursor >= replacementPaths.length) return match;
+            const next = replacementPaths[cursor++];
+            replaced++;
+            return `url(${next})`;
+          }
+        );
+      } else if (value && typeof value === "object") {
+        walk(value);
+      }
+    }
+  };
+
+  walk(node);
+  return replaced;
+}
+
 /**
  * Emit an SVG file for a vector layer, preserving individual path fills when
  * the layer is multi-colour. Returns metadata used to register the asset.
@@ -601,6 +685,21 @@ export class GetFlutterWorkflowTool extends BaseTool {
     // -----------------------------------------------------------------------
     const discoveredMap = new Map<string, DiscoveredAsset>();
     walkForAssets(rootNode, "", discoveredMap, lostImageRefs);
+
+    // If style API loses image refs as [object Object], pull paint URLs from DSL styles.
+    if (lostImageRefs.length > 0) {
+      const dslFallbackAssets = await collectDslStyleFallbackAssets(
+        fileId,
+        layerId,
+        warnings
+      );
+      for (const item of dslFallbackAssets) {
+        if (!discoveredMap.has(item.url)) {
+          discoveredMap.set(item.url, item);
+        }
+      }
+    }
+
     const discoveredAssets = Array.from(discoveredMap.values());
 
     // -----------------------------------------------------------------------
@@ -611,6 +710,7 @@ export class GetFlutterWorkflowTool extends BaseTool {
       downloaded: 0,
       skipped: 0,
       failed: 0,
+      recovered: 0,
       lost: lostImageRefs.length,
       byFormat: {},
     };
@@ -735,6 +835,26 @@ export class GetFlutterWorkflowTool extends BaseTool {
     }
     rewriteDslUrls(rootNode, urlMap);
 
+    // If we recovered paint URLs from DSL styles, backfill lost css placeholders.
+    const dslRecoveredPaths = assetRecords
+      .filter(
+        (r) =>
+          r.token.startsWith("dsl.styles.paint_") &&
+          r.status !== "failed" &&
+          Boolean(r.flutterPath)
+      )
+      .map((r) => r.flutterPath);
+    const recoveredCount = fillLostCssPlaceholders(rootNode, dslRecoveredPaths);
+    summary.recovered = recoveredCount;
+    summary.lost = Math.max(0, summary.lost - recoveredCount);
+    if (recoveredCount > 0) {
+      warnings.push(
+        `Recovered ${recoveredCount} lost image placeholder(s) via DSL styles paint fallback.`
+      );
+    }
+
+    const unresolvedLostImageRefs = lostImageRefs.slice(recoveredCount);
+
     // -----------------------------------------------------------------------
     // 8. Write output files
     // -----------------------------------------------------------------------
@@ -762,7 +882,7 @@ export class GetFlutterWorkflowTool extends BaseTool {
         ...(r.needsColorFilter !== undefined ? { needsColorFilter: r.needsColorFilter } : {}),
         ...(r.error ? { error: r.error } : {}),
       })),
-      lostImageRefs,
+      lostImageRefs: unresolvedLostImageRefs,
     };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
@@ -771,13 +891,13 @@ export class GetFlutterWorkflowTool extends BaseTool {
     // -----------------------------------------------------------------------
     const assetRulePath = assetDirRelative;
     const lostMsg =
-      lostImageRefs.length > 0
-        ? `WARNING: ${lostImageRefs.length} image references were LOST by the MasterGo upstream (cssCode contains url([object Object])). These cannot be recovered from the style API. Affected node IDs: ${Array.from(
-            new Set(lostImageRefs.map((l) => l.nodeId))
+      unresolvedLostImageRefs.length > 0
+        ? `WARNING: ${unresolvedLostImageRefs.length} image references were LOST by the MasterGo upstream (cssCode contains url([object Object])). These cannot be recovered from the style API. Affected node IDs: ${Array.from(
+            new Set(unresolvedLostImageRefs.map((l) => l.nodeId))
           )
             .slice(0, 20)
             .join(", ")}${
-            lostImageRefs.length > 20 ? " …" : ""
+            unresolvedLostImageRefs.length > 20 ? " …" : ""
           }. Use placeholder widgets (Container with grey background + Icon) or ask the user to re-export via mcp__getD2c for those nodes.`
         : null;
 
@@ -795,9 +915,9 @@ export class GetFlutterWorkflowTool extends BaseTool {
             },
             assetSummary: summary,
             failedAssets,
-            lostImageRefs: lostImageRefs.slice(0, 50),
+            lostImageRefs: unresolvedLostImageRefs.slice(0, 50),
             warnings,
-            message: `Flutter component files created. ${summary.downloaded} downloaded, ${summary.skipped} skipped, ${summary.failed} failed, ${summary.lost} lost upstream. Assets copied to ${assetDirRelative}/${
+            message: `Flutter component files created. ${summary.downloaded} downloaded, ${summary.skipped} skipped, ${summary.failed} failed, ${summary.recovered} recovered, ${summary.lost} still lost. Assets copied to ${assetDirRelative}/${
               pubspecResult === "added"
                 ? " and registered in pubspec.yaml."
                 : pubspecResult === "exists"
