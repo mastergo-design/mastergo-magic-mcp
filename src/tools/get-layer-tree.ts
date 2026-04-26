@@ -2,21 +2,25 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 
-const DSL_TOOL_NAME = "mcp__getDsl";
-const DSL_TOOL_DESCRIPTION = `
-"Use this tool to retrieve the DSL (Domain Specific Language) data from MasterGo design files and the rules you must follow when generating code.
-This tool is useful when you need to analyze the structure of a design, understand component hierarchy, or extract design properties.
+const LAYER_TREE_TOOL_NAME = "mcp__getLayerTree";
+const LAYER_TREE_TOOL_DESCRIPTION = `
+Use this tool to get a lightweight structural overview of a MasterGo design layer.
+Returns only the layer hierarchy: IDs, names, types, positions, sizes, and children counts.
+No style details, fills, strokes, effects, or SVG paths are included. TEXT nodes include their text content.
+
+This is the recommended FIRST step for large designs. Use it to understand the structure,
+then use mcp__getDslByLayerIds to get full details for specific subtrees.
+
+For small designs, you can use mcp__getDsl directly.
+
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
-This tool also returns the rules you must follow when generating code.
-The DSL data can also be used to transform and generate code for different frameworks."
 `;
 
-export class GetDslTool extends BaseTool {
-  name = DSL_TOOL_NAME;
-  description = DSL_TOOL_DESCRIPTION;
+export class GetLayerTreeTool extends BaseTool {
+  name = LAYER_TREE_TOOL_NAME;
+  description = LAYER_TREE_TOOL_DESCRIPTION;
 
   constructor() {
     super();
@@ -39,23 +43,13 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
-    layerLimit: z
-      .number()
-      .optional()
-      .describe(
-        "Maximum number of child layers to include. Truncated nodes get needParse=true. Recommended: 50 for large designs."
-      ),
-    svgDataLimit: z
-      .number()
-      .optional()
-      .describe("Maximum SVG path data length. Paths exceeding this are marked needParse=true."),
   });
 
-  async execute({ fileId, layerId, shortLink, layerLimit, svgDataLimit }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a MasterGo URL"
+          "Either provide both fileId and layerId, or provide a shortLink"
         );
       }
 
@@ -72,15 +66,16 @@ export class GetDslTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId");
       }
 
-      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
-        layerLimit,
-        svgDataLimit,
-      });
+      const result = await httpUtilInstance.getLayerTree(
+        finalFileId,
+        finalLayerId
+      );
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: JSON.stringify(result),
           },
         ],
       };
@@ -102,5 +97,4 @@ export class GetDslTool extends BaseTool {
     if (!fileId) return fileId;
     return fileId.replace(/^file\//, "");
   }
-
 }

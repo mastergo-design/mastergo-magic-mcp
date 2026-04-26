@@ -2,21 +2,18 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 
-const DSL_TOOL_NAME = "mcp__getDsl";
-const DSL_TOOL_DESCRIPTION = `
-"Use this tool to retrieve the DSL (Domain Specific Language) data from MasterGo design files and the rules you must follow when generating code.
-This tool is useful when you need to analyze the structure of a design, understand component hierarchy, or extract design properties.
+const EXTRACT_SVG_TOOL_NAME = "mcp__extractSvg";
+const EXTRACT_SVG_TOOL_DESCRIPTION = `
+Extract SVG data from MasterGo design files. This tool retrieves the DSL from a design layer, finds all PATH nodes (typically inside INSTANCE/icon components), resolves their color references, and generates SVG markup strings.
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
-This tool also returns the rules you must follow when generating code.
-The DSL data can also be used to transform and generate code for different frameworks."
+Returns an array of SVG strings, one per icon/instance found in the design.
 `;
 
-export class GetDslTool extends BaseTool {
-  name = DSL_TOOL_NAME;
-  description = DSL_TOOL_DESCRIPTION;
+export class ExtractSvgTool extends BaseTool {
+  name = EXTRACT_SVG_TOOL_NAME;
+  description = EXTRACT_SVG_TOOL_DESCRIPTION;
 
   constructor() {
     super();
@@ -33,29 +30,27 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId>). Required if shortLink is not provided."
       ),
     shortLink: z
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
-    layerLimit: z
-      .number()
+    backgroundColor: z
+      .string()
       .optional()
       .describe(
-        "Maximum number of child layers to include. Truncated nodes get needParse=true. Recommended: 50 for large designs."
+        "Solid background color for the SVG (e.g. '#000000', 'black'). Useful for previewing white/light icons."
       ),
-    svgDataLimit: z
-      .number()
-      .optional()
-      .describe("Maximum SVG path data length. Paths exceeding this are marked needParse=true."),
   });
 
-  async execute({ fileId, layerId, shortLink, layerLimit, svgDataLimit }: z.infer<typeof this.schema>) {
+  async execute(params: z.infer<typeof this.schema>) {
     try {
+      const { fileId, layerId, shortLink, backgroundColor } = params;
+
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a MasterGo URL"
+          "Either provide both fileId and layerId, or provide a shortLink"
         );
       }
 
@@ -72,15 +67,17 @@ export class GetDslTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId");
       }
 
-      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
-        layerLimit,
-        svgDataLimit,
-      });
+      const result = await httpUtilInstance.extractSvg(
+        finalFileId,
+        finalLayerId,
+        backgroundColor
+      );
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: JSON.stringify(result),
           },
         ],
       };
@@ -102,5 +99,4 @@ export class GetDslTool extends BaseTool {
     if (!fileId) return fileId;
     return fileId.replace(/^file\//, "");
   }
-
 }
