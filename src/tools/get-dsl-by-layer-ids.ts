@@ -4,18 +4,19 @@ import { httpUtilInstance } from "../utils/api";
 
 const DSL_BY_IDS_TOOL_NAME = "mcp__getDslByLayerIds";
 const DSL_BY_IDS_TOOL_DESCRIPTION = `
-Use this tool to get full DSL details for specific layer IDs within a MasterGo design.
-This is the second step after mcp__getLayerTree: first get the structural overview,
-identify important subtrees, then use this tool to get their complete DSL (styles, fills, strokes, SVG paths).
+Use this tool to get full DSL details for ONE section at a time from a MasterGo design.
 
-Each target layer's subtree is independently processed with a configurable layer budget.
+IMPORTANT: Pass only ONE section layer ID per call. Do NOT batch multiple section IDs into one call.
+Fetching sections one at a time ensures no data is lost due to response size limits.
+
+After calling mcp__getLayerTree, iterate through each section:
+- Call this tool with targetLayerIds=["section_1_id"] → process the response
+- Call this tool with targetLayerIds=["section_2_id"] → process the response
+- ... and so on for each section
 
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-
-The layerId/shortLink identifies the root layer (used to fetch the design data).
-The targetLayerIds specify which child layers within that root to return full DSL for.
 `;
 
 export class GetDslByLayerIdsTool extends BaseTool {

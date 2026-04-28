@@ -2,23 +2,26 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 
-const LAYER_TREE_TOOL_NAME = "mcp__getLayerTree";
-const LAYER_TREE_TOOL_DESCRIPTION = `
-Use this tool to get a lightweight structural overview of a MasterGo design layer.
-Returns the layer hierarchy: IDs, names, types, positions, sizes, and children counts.
-No style details, fills, strokes, effects, or SVG paths are included. TEXT nodes include their text content.
+const DESIGN_SECTIONS_TOOL_NAME = "mcp__getDesignSections";
+const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
+Use this tool to get the complete DSL for ALL sections of a MasterGo design in a single call.
 
-This is the FIRST step for ALL designs. Use it to identify ALL direct child sections of the root node.
-Each direct child is a section that must be fetched individually using mcp__getDslByLayerIds.
+This tool automatically:
+1. Fetches the layer tree to identify all sections
+2. Fetches full DSL for each section with no data limits
+3. Returns complete data for all sections
+
+This is the RECOMMENDED tool for design-to-code conversion. It ensures no data is lost.
+You do NOT need to call mcp__getLayerTree or mcp__getDslByLayerIds separately when using this tool.
 
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
 `;
 
-export class GetLayerTreeTool extends BaseTool {
-  name = LAYER_TREE_TOOL_NAME;
-  description = LAYER_TREE_TOOL_DESCRIPTION;
+export class GetDesignSectionsTool extends BaseTool {
+  name = DESIGN_SECTIONS_TOOL_NAME;
+  description = DESIGN_SECTIONS_TOOL_DESCRIPTION;
 
   constructor() {
     super();
@@ -29,13 +32,13 @@ export class GetLayerTreeTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "MasterGo design file ID (format: file/<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "MasterGo design file ID. Required if shortLink is not provided."
       ),
     layerId: z
       .string()
       .optional()
       .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "Root layer ID of the design. Required if shortLink is not provided."
       ),
     shortLink: z
       .string()
@@ -64,7 +67,7 @@ export class GetLayerTreeTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId");
       }
 
-      const result = await httpUtilInstance.getLayerTree(
+      const result = await httpUtilInstance.getDesignSections(
         finalFileId,
         finalLayerId
       );

@@ -11,27 +11,28 @@ import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetLayerTreeTool } from "./tools/get-layer-tree";
 import { GetDslByLayerIdsTool } from "./tools/get-dsl-by-layer-ids";
+import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
 const SERVER_INSTRUCTIONS = `
-## MasterGo Design DSL - Required Workflow
+## MasterGo Design DSL Strategy
 
-You MUST follow the layered query workflow for ALL designs. Do NOT use mcp__getDsl for the full design — it returns too much data in a single response and causes detail loss in bottom/side sections.
+### Primary Approach (RECOMMENDED)
+Call \`mcp__getDesignSections\` to get the complete DSL for ALL sections in a single call.
+This tool automatically fetches the layer tree and all section DSL data — no data limits, no truncation.
+No additional calls to mcp__getLayerTree or mcp__getDslByLayerIds are needed.
 
-### Required workflow (ALL designs):
-1. **First**: Call mcp__getLayerTree to get a lightweight structural overview (IDs, names, types, positions, sizes, children counts). No style/SVG data.
-2. **Then**: Analyze the tree structure. Identify ALL direct child frames/groups of the root — each is a section that must be rendered.
-3. **Next**: Call mcp__getDslByLayerIds with ALL section layer IDs. Pass them together in a single call. Do NOT skip any section.
-4. **Iterate**: If any returned nodes have needParse=true, call mcp__getDslByLayerIds again with those node IDs.
-5. **Render**: Generate code for ALL sections in the order they appear in the layer tree. Do not omit or simplify any section.
+### After getting design data:
+- If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
+- Generate a single complete HTML file containing ALL sections in the correct order.
+- token fields must be generated as CSS variables with comments indicating the token name.
 
-### Critical rules:
-- NEVER use mcp__getDsl for complex designs with multiple sections. It WILL cause data loss.
-- When calling mcp__getDslByLayerIds, include ALL section IDs from the layer tree, not just the first few.
-- The layer tree's children order is the z-index/rendering order. Preserve this order in your output.
-- token fields must be generated as variables and displayed in comments.
-- When componentDocumentLinks exists and is not empty, use mcp__getComponentLink to fetch component documentation.
+### Anti-Hallucination Rules:
+- You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
+- If a section has empty or missing text data, render it as an empty placeholder — do NOT fabricate text.
+- NEVER generate placeholder values, generic tags, fabricated amounts, or invented statistics.
+- Every piece of text, every number, every label in your output MUST come directly from the DSL data.
 `;
 
 function main() {
@@ -56,6 +57,7 @@ function main() {
   );
 
   new GetVersionTool().register(server);
+  new GetDesignSectionsTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);

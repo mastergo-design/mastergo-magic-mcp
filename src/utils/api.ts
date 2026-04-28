@@ -168,6 +168,15 @@ const createHttpUtil = () => {
       return response.data;
     },
 
+    async getDesignSections(fileId: string, layerId: string): Promise<any> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
+        timeout: 120000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
       const params: Record<string, any> = { contentId: contentId, documentId: documentId };
       const response = await axios.get(`${getBaseUrl()}/mcp/d2c/events`, {
