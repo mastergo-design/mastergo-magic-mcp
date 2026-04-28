@@ -15,20 +15,21 @@ import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
 const SERVER_INSTRUCTIONS = `
-## MasterGo Design DSL - Recommended Workflow
+## MasterGo Design DSL - Required Workflow
 
-When working with MasterGo design files, follow this workflow for best results:
+You MUST follow the layered query workflow for ALL designs. Do NOT use mcp__getDsl for the full design — it returns too much data in a single response and causes detail loss in bottom/side sections.
 
-### For large or complex designs (recommended):
+### Required workflow (ALL designs):
 1. **First**: Call mcp__getLayerTree to get a lightweight structural overview (IDs, names, types, positions, sizes, children counts). No style/SVG data.
-2. **Then**: Analyze the tree structure to identify important subtrees (main layout containers, content areas, components).
-3. **Next**: Call mcp__getDslByLayerIds with specific layer IDs to get full DSL details (styles, fills, strokes, SVG paths) for those subtrees.
+2. **Then**: Analyze the tree structure. Identify ALL direct child frames/groups of the root — each is a section that must be rendered.
+3. **Next**: Call mcp__getDslByLayerIds with ALL section layer IDs. Pass them together in a single call. Do NOT skip any section.
 4. **Iterate**: If any returned nodes have needParse=true, call mcp__getDslByLayerIds again with those node IDs.
+5. **Render**: Generate code for ALL sections in the order they appear in the layer tree. Do not omit or simplify any section.
 
-### For small or simple designs:
-- You can call mcp__getDsl directly for the full DSL output.
-
-### Key guidelines:
+### Critical rules:
+- NEVER use mcp__getDsl for complex designs with multiple sections. It WILL cause data loss.
+- When calling mcp__getDslByLayerIds, include ALL section IDs from the layer tree, not just the first few.
+- The layer tree's children order is the z-index/rendering order. Preserve this order in your output.
 - token fields must be generated as variables and displayed in comments.
 - When componentDocumentLinks exists and is not empty, use mcp__getComponentLink to fetch component documentation.
 `;
