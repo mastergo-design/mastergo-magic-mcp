@@ -4,15 +4,21 @@ import { httpUtilInstance } from "../utils/api";
 
 const DESIGN_SECTIONS_TOOL_NAME = "mcp__getDesignSections";
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
-Use this tool to get the complete DSL for ALL sections of a MasterGo design in a single call.
+This tool operates in TWO modes:
 
-This tool automatically:
-1. Fetches the layer tree to identify all sections
-2. Fetches full DSL for each section with no data limits
-3. Returns complete data for all sections
+Mode 1 — Get section list (sectionIndex NOT provided):
+Returns the list of all sections (id, name, type) in the design.
+Example: { "fileId": "123", "layerId": "456:789" }
 
-This is the RECOMMENDED tool for design-to-code conversion. It ensures no data is lost.
-You do NOT need to call mcp__getLayerTree or mcp__getDslByLayerIds separately when using this tool.
+Mode 2 — Get section DSL (sectionIndex provided):
+Returns the full DSL for ONE specific section.
+Example: { "fileId": "123", "layerId": "456:789", "sectionIndex": 0 }
+
+IMPORTANT workflow:
+1. First call WITHOUT sectionIndex to get the section list.
+2. Then call WITH sectionIndex=0, sectionIndex=1, ... up to totalSections-1.
+3. You MUST fetch ALL sections. Do NOT skip any section index.
+4. After fetching all sections, generate the complete HTML.
 
 You can provide either:
 1. fileId and layerId directly, or
@@ -44,9 +50,15 @@ export class GetDesignSectionsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    sectionIndex: z
+      .number()
+      .optional()
+      .describe(
+        "0-based section index. If omitted, returns the section list only. If provided, returns full DSL for that specific section."
+      ),
   });
 
-  async execute({ fileId, layerId, shortLink }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink, sectionIndex }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -69,7 +81,8 @@ export class GetDesignSectionsTool extends BaseTool {
 
       const result = await httpUtilInstance.getDesignSections(
         finalFileId,
-        finalLayerId
+        finalLayerId,
+        sectionIndex
       );
 
       return {

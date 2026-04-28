@@ -168,10 +168,13 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDesignSections(fileId: string, layerId: string): Promise<any> {
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<any> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+
       const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
         timeout: 120000,
-        params: { fileId, layerId },
+        params,
         headers: getCommonHeader(),
       });
       return response.data;

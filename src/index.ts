@@ -16,17 +16,24 @@ import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
 const SERVER_INSTRUCTIONS = `
-## MasterGo Design DSL Strategy
+## MasterGo Design DSL - Section-by-Section Workflow (MANDATORY)
 
-### Primary Approach (RECOMMENDED)
-Call \`mcp__getDesignSections\` to get the complete DSL for ALL sections in a single call.
-This tool automatically fetches the layer tree and all section DSL data — no data limits, no truncation.
-No additional calls to mcp__getLayerTree or mcp__getDslByLayerIds are needed.
+You MUST use \`mcp__getDesignSections\` for ALL designs. Follow these steps exactly:
 
-### After getting design data:
-- If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
-- Generate a single complete HTML file containing ALL sections in the correct order.
+### Step 1: Get Section List
+Call \`mcp__getDesignSections\` WITHOUT sectionIndex to get the list of all sections.
+The response contains \`sections\` array and \`totalSections\` (let this be N).
+
+### Step 2: Fetch Each Section DSL (MANDATORY - ALL N sections)
+For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
+You MUST call this tool N times. Do NOT skip any section.
+Process each section's DSL before moving to the next.
+
+### Step 3: Generate Complete Code
+After ALL N sections have been fetched:
+- Generate a single complete HTML file containing ALL sections in order.
 - token fields must be generated as CSS variables with comments indicating the token name.
+- If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
 ### Anti-Hallucination Rules:
 - You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
