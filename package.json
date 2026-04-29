@@ -19,7 +19,9 @@
   "scripts": {
     "build": "node build.js",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "publish:beta": "npm run build && npm version prerelease --preid=beta && npm publish --tag=beta",
+    "publish:release": "npm run build && npm version patch && npm publish"
   },
   "keywords": [
     "mastergo",
