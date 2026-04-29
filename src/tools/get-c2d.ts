@@ -43,12 +43,6 @@ export class GetC2dTool extends BaseTool {
       .describe(
         "可选。图层 ID（只读取 URL 参数 layer_id）。不传或解析不到则仅按 file 维度同步；pageid/page_id 不会被当作 layerId。"
       ),
-    sourceLayerId: z
-      .string()
-      .optional()
-      .describe(
-        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId."
-      ),
     shortLink: z
       .string()
       .optional()
@@ -59,7 +53,6 @@ export class GetC2dTool extends BaseTool {
     filePath,
     fileId,
     layerId,
-    sourceLayerId,
     shortLink,
   }: z.infer<typeof this.schema>) {
     try {
@@ -69,13 +62,11 @@ export class GetC2dTool extends BaseTool {
 
       let finalFileId: string | undefined;
       let finalLayerId: string | undefined;
-      let finalSourceLayerId: string | undefined = sourceLayerId?.trim() || undefined;
 
       if (link) {
         const ids = await httpUtilInstance.extractIdsFromUrl(link);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
-        finalSourceLayerId = ids.sourceLayerId ?? finalSourceLayerId;
       } else if (fid) {
         finalFileId = this.normalizeFileId(fid);
         finalLayerId = lid || undefined;
