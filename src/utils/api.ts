@@ -89,19 +89,19 @@ For example:
  */
 const createHttpUtil = () => {
   return {
-    async getMeta(fileId: string, layerId: string): Promise<string> {
+    async getMeta(fileId: string, layerId: string, sourceLayerId?: string): Promise<string> {
       const response = await axios.get(`${getBaseUrl()}/mcp/meta`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
     },
 
-    async getDsl(fileId: string, layerId: string): Promise<DslResponse> {
+    async getDsl(fileId: string, layerId: string, sourceLayerId?: string): Promise<DslResponse> {
       const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
 
@@ -139,10 +139,10 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getComponentStyleJson(fileId: string, layerId: string) {
+    async getComponentStyleJson(fileId: string, layerId: string, sourceLayerId?: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
@@ -160,7 +160,7 @@ const createHttpUtil = () => {
      */
     async extractIdsFromUrl(
       url: string
-    ): Promise<{ fileId: string; layerId: string }> {
+    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
       let targetUrl = url;
 
       // Handle short links
@@ -189,7 +189,9 @@ const createHttpUtil = () => {
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
 
-      return { fileId, layerId };
+      const sourceLayerId = searchParams.get("source_layer_id") || undefined;
+
+      return { fileId, layerId, sourceLayerId };
     },
   };
 };

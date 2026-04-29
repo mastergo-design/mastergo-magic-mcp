@@ -35,15 +35,21 @@ export class GetComponentWorkflowTool extends BaseTool {
       .describe(
         "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL)"
       ),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
   });
 
-  async execute({ rootPath, fileId, layerId }: z.infer<typeof this.schema>) {
+  async execute({ rootPath, fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
     const baseDir = `${rootPath}/.mastergo/`;
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
     const workflowFilePath = `${baseDir}/component-workflow.md`;
-    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId);
+    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
     const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
     const walkLayer = (layer: any) => {
       if (layer.path && layer.path.length > 0) {
