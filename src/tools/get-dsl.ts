@@ -35,6 +35,12 @@ export class GetDslTool extends BaseTool {
       .describe(
         "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
       ),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
     shortLink: z
       .string()
       .optional()
@@ -51,7 +57,7 @@ export class GetDslTool extends BaseTool {
       .describe("Maximum SVG path data length. Paths exceeding this are marked needParse=true."),
   });
 
-  async execute({ fileId, layerId, shortLink, layerLimit, svgDataLimit }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, shortLink, layerLimit, svgDataLimit }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -61,11 +67,13 @@ export class GetDslTool extends BaseTool {
 
       let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
+      let finalSourceLayerId = sourceLayerId;
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
+        finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
       if (!finalFileId || !finalLayerId) {
@@ -75,6 +83,7 @@ export class GetDslTool extends BaseTool {
       const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
         layerLimit,
         svgDataLimit,
+        sourceLayerId: finalSourceLayerId,
       });
       return {
         content: [

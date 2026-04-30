@@ -68,8 +68,8 @@ const buildDslRules = (): string[] => {
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
 When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
-For example: 
-  \`\`\`js  
+For example:
+  \`\`\`js
     const componentDocumentLinks = [
       'https://example.com/ant/button.mdx',
       'https://example.com/ant/button.mdx'
@@ -89,10 +89,10 @@ For example:
  */
 const createHttpUtil = () => {
   return {
-    async getMeta(fileId: string, layerId: string): Promise<string> {
+    async getMeta(fileId: string, layerId: string, sourceLayerId?: string): Promise<string> {
       const response = await axios.get(`${getBaseUrl()}/mcp/meta`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
@@ -101,11 +101,12 @@ const createHttpUtil = () => {
     async getDsl(
       fileId: string,
       layerId: string,
-      options?: { layerLimit?: number; svgDataLimit?: number }
+      options?: { layerLimit?: number; svgDataLimit?: number; sourceLayerId?: string }
     ): Promise<DslResponse> {
       const params: Record<string, any> = { fileId, layerId };
       if (options?.layerLimit !== undefined) params.layerLimit = options.layerLimit;
       if (options?.svgDataLimit !== undefined) params.svgDataLimit = options.svgDataLimit;
+      if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
 
       const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
         timeout: 30000,
@@ -207,10 +208,10 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getComponentStyleJson(fileId: string, layerId: string) {
+    async getComponentStyleJson(fileId: string, layerId: string, sourceLayerId?: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
@@ -228,7 +229,7 @@ const createHttpUtil = () => {
      */
     async extractIdsFromUrl(
       url: string
-    ): Promise<{ fileId: string; layerId: string }> {
+    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
       let targetUrl = url;
 
       // Handle short links
@@ -257,7 +258,9 @@ const createHttpUtil = () => {
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
 
-      return { fileId, layerId };
+      const sourceLayerId = searchParams.get("source_layer_id") || undefined;
+
+      return { fileId, layerId, sourceLayerId };
     },
   };
 };
