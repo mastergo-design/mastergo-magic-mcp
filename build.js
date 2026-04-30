@@ -28,29 +28,35 @@ function removeDir(dirPath) {
   }
 }
 
+const isWatch = process.argv.includes("--watch");
+
 async function build() {
   try {
     console.log("🚀 Starting the build process...");
 
     // Clean up old build files
-    console.log("🧹 Cleaning up old build files...");
-    if (fs.existsSync("dist")) {
-      // First delete the dist directory
-      removeDir("dist");
-      // Re-create the dist directory
+    if (!isWatch) {
+      console.log("🧹 Cleaning up old build files...");
+      if (fs.existsSync("dist")) {
+        // First delete the dist directory
+        removeDir("dist");
+        // Re-create the dist directory
+        fs.mkdirSync("dist");
+      }
+    } else if (!fs.existsSync("dist")) {
       fs.mkdirSync("dist");
     }
 
     // Use esbuild to bundle all code into a single file
-    console.log("📦 Using esbuild to bundle all code into a single file...");
-    await esbuild.build({
+    console.log(`📦 Using esbuild to bundle all code into a single file${isWatch ? " (watch mode)" : ""}...`);
+    const ctx = await esbuild.context({
       entryPoints: ["src/index.ts"],
       bundle: true,
       platform: "node",
       target: "node16",
       outfile: "dist/index.js",
-      minify: true,
-      sourcemap: false,
+      minify: !isWatch,
+      sourcemap: isWatch,
       format: "cjs",
       // Exclude only node built-in modules to ensure all third-party dependencies are bundled
       external: [
@@ -85,50 +91,58 @@ async function build() {
       },
       // Define environment variables
       define: {
-        "process.env.NODE_ENV": '"production"',
+        "process.env.NODE_ENV": isWatch ? '"development"' : '"production"',
       },
       // Enable tree shaking
       treeShaking: true,
     });
 
-    // Verify if only one file is generated
-    console.log("🔍 Verifying the build output...");
-    const files = fs.readdirSync("dist");
-    if (files.length > 1 || (files.length === 1 && files[0] !== "index.js")) {
-      console.warn(
-        "⚠️ Warning: The build produced multiple files, not a single file"
-      );
-      console.warn("📁 File list:", files);
+    if (isWatch) {
+      await ctx.watch();
+      console.log("👀 Watching for changes...");
     } else {
+      await ctx.rebuild();
+      await ctx.dispose();
+
+      // Verify if only one file is generated
+      console.log("🔍 Verifying the build output...");
+      const files = fs.readdirSync("dist");
+      if (files.length > 1 || (files.length === 1 && files[0] !== "index.js")) {
+        console.warn(
+          "⚠️ Warning: The build produced multiple files, not a single file"
+        );
+        console.warn("📁 File list:", files);
+      } else {
+        console.log(
+          "✅ Verification successful: All code has been bundled into a single file"
+        );
+      }
+
+      // The file header is already in the source file, no need to add it again
       console.log(
-        "✅ Verification successful: All code has been bundled into a single file"
+        "✅ The source file already includes the shebang, no need to add it again"
+      );
+
+      // Add executable permissions
+      console.log("🔑 Adding executable permissions...");
+      fs.chmodSync("dist/index.js", "755");
+
+      // Display file size
+      const stats = fs.statSync("dist/index.js");
+      const fileSizeInKB = (stats.size / 1024).toFixed(2);
+      console.log(`📦 Build output size: ${fileSizeInKB} KB`);
+
+      console.log("✅ Build successful！");
+      console.log("📦 Executable file located at: dist/index.js");
+
+      console.log("🚀 You can publish the package using the following command:");
+      console.log("   npm publish");
+      console.log("");
+      console.log("🔧 Or you can test locally using the following command:");
+      console.log(
+        "   node dist/index.js --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--no-rule] [--debug]"
       );
     }
-
-    // The file header is already in the source file, no need to add it again
-    console.log(
-      "✅ The source file already includes the shebang, no need to add it again"
-    );
-
-    // Add executable permissions
-    console.log("🔑 Adding executable permissions...");
-    fs.chmodSync("dist/index.js", "755");
-
-    // Display file size
-    const stats = fs.statSync("dist/index.js");
-    const fileSizeInKB = (stats.size / 1024).toFixed(2);
-    console.log(`📦 Build output size: ${fileSizeInKB} KB`);
-
-    console.log("✅ Build successful！");
-    console.log("📦 Executable file located at: dist/index.js");
-
-    console.log("🚀 You can publish the package using the following command:");
-    console.log("   npm publish");
-    console.log("");
-    console.log("🔧 Or you can test locally using the following command:");
-    console.log(
-      "   node dist/index.js --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--no-rule] [--debug]"
-    );
   } catch (error) {
     console.error("❌ Build failed:", error);
     process.exit(1);
