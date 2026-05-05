@@ -1,10 +1,10 @@
-import { z } from "zod";
-import fs from "fs";
-import { BaseTool } from "./base-tool";
-import { httpUtilInstance } from "../utils/api";
-import componentWorkflow from "../markdown/component-workflow.md";
+import fs from 'fs';
+import { z } from 'zod';
+import componentWorkflow from '../markdown/component-workflow.md';
+import { httpUtilInstance } from '../utils/api';
+import { BaseTool } from './base-tool';
 
-const COMPONENT_GENERATOR_TOOL_NAME = "mcp__getComponentGenerator";
+const COMPONENT_GENERATOR_TOOL_NAME = 'mcp__getComponentGenerator';
 const COMPONENT_GENERATOR_TOOL_DESCRIPTION = `
 Users need to actively call this tool to get the component development workflow. When Generator is mentioned, please actively call this tool.
 This tool provides a structured workflow for component development following best practices.
@@ -12,112 +12,108 @@ You must provide an absolute rootPath of workspace to save workflow files.
 `;
 
 export class GetComponentWorkflowTool extends BaseTool {
-  name = COMPONENT_GENERATOR_TOOL_NAME;
-  description = COMPONENT_GENERATOR_TOOL_DESCRIPTION;
+    name = COMPONENT_GENERATOR_TOOL_NAME;
+    description = COMPONENT_GENERATOR_TOOL_DESCRIPTION;
 
-  constructor() {
-    super();
-  }
-
-  schema = z.object({
-    rootPath: z
-      .string()
-      .describe(
-        "The root path of the project, if the user does not provide, you can use the current directory as the root path"
-      ),
-    fileId: z
-      .string()
-      .describe(
-        "MasterGo design file ID (format: file/<fileId> in MasterGo URL)"
-      ),
-    layerId: z
-      .string()
-      .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL)"
-      ),
-    sourceLayerId: z
-      .string()
-      .optional()
-      .describe(
-        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
-      ),
-  });
-
-  async execute({ rootPath, fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
-    const baseDir = `${rootPath}/.mastergo/`;
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir, { recursive: true });
+    constructor() {
+        super();
     }
-    const workflowFilePath = `${baseDir}/component-workflow.md`;
-    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
-    const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
-    const walkLayer = (layer: any) => {
-      if (layer.path && layer.path.length > 0) {
-        layer.imageUrls = [];
-        const id = layer.id.replaceAll("/", "&");
-        const imageDir = `${baseDir}/images`;
-        if (!fs.existsSync(imageDir)) {
-          fs.mkdirSync(imageDir, { recursive: true });
+
+    schema = z.object({
+        rootPath: z
+            .string()
+            .describe(
+                'The root path of the project, if the user does not provide, you can use the current directory as the root path'
+            ),
+        fileId: z.string().describe('MasterGo design file ID (format: file/<fileId> in MasterGo URL)'),
+        layerId: z
+            .string()
+            .describe(
+                'Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL)'
+            ),
+        sourceLayerId: z
+            .string()
+            .optional()
+            .describe(
+                'Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries.'
+            )
+    });
+
+    async execute({ rootPath, fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
+        const baseDir = `${rootPath}/.mastergo/`;
+        if (!fs.existsSync(baseDir)) {
+            fs.mkdirSync(baseDir, { recursive: true });
         }
-        (layer.path ?? []).forEach((svgPath: string, index: number) => {
-          const filePath = `${imageDir}/${id}-${index}.svg`;
-          if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(
-              filePath,
-              `<svg width="100%" height="100%" viewBox="0 0 16 16"xmlns="http://www.w3.org/2000/svg">
+        const workflowFilePath = `${baseDir}/component-workflow.md`;
+        const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
+        const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
+        const walkLayer = (layer: any) => {
+            if (layer.path && layer.path.length > 0) {
+                layer.imageUrls = [];
+                const id = layer.id.replaceAll('/', '&');
+                const imageDir = `${baseDir}/images`;
+                if (!fs.existsSync(imageDir)) {
+                    fs.mkdirSync(imageDir, { recursive: true });
+                }
+                (layer.path ?? []).forEach((svgPath: string, index: number) => {
+                    const filePath = `${imageDir}/${id}-${index}.svg`;
+                    if (!fs.existsSync(filePath)) {
+                        fs.writeFileSync(
+                            filePath,
+                            `<svg width="100%" height="100%" viewBox="0 0 16 16"xmlns="http://www.w3.org/2000/svg">
   <path d="${svgPath}" fill="currentColor"/>
 </svg>`
-            );
-          }
-          layer.imageUrls.push(filePath);
-        });
-        delete layer.path;
-      }
-      if (layer.children) {
-        layer.children.forEach((child: any) => {
-          walkLayer(child);
-        });
-      }
-    };
-    walkLayer(jsonData[0]);
+                        );
+                    }
+                    layer.imageUrls.push(filePath);
+                });
+                delete layer.path;
+            }
+            if (layer.children) {
+                layer.children.forEach((child: any) => {
+                    walkLayer(child);
+                });
+            }
+        };
+        walkLayer(jsonData[0]);
 
-    //文件夹可能也不存在递归创建
-    if (!fs.existsSync(workflowFilePath)) {
-      fs.writeFileSync(workflowFilePath, componentWorkflow);
+        //文件夹可能也不存在递归创建
+        if (!fs.existsSync(workflowFilePath)) {
+            fs.writeFileSync(workflowFilePath, componentWorkflow);
+        }
+
+        fs.writeFileSync(componentJsonDir, JSON.stringify(jsonData[0]));
+
+        try {
+            return {
+                content: [
+                    {
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            files: {
+                                workflow: workflowFilePath,
+                                componentSpec: componentJsonDir
+                            },
+                            message: 'Component development files successfully created',
+                            rules: [
+                                `Follow the component workflow process defined in file://${workflowFilePath} for structured development. This workflow contains a lot of content, you'll need to read it in multiple sessions.`,
+                                `Implement the component according to the specifications in file://${componentJsonDir}, ensuring all properties and states are properly handled.`
+                            ]
+                        })
+                    }
+                ]
+            };
+        } catch (error: any) {
+            const errorMessage = error.response?.data ?? error?.message;
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: 'text' as const,
+                        text: JSON.stringify(errorMessage)
+                    }
+                ]
+            };
+        }
     }
-
-    fs.writeFileSync(componentJsonDir, JSON.stringify(jsonData[0]));
-
-    try {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              files: {
-                workflow: workflowFilePath,
-                componentSpec: componentJsonDir,
-              },
-              message: "Component development files successfully created",
-              rules: [
-                `Follow the component workflow process defined in file://${workflowFilePath} for structured development. This workflow contains a lot of content, you'll need to read it in multiple sessions.`,
-                `Implement the component according to the specifications in file://${componentJsonDir}, ensuring all properties and states are properly handled.`,
-              ],
-            }),
-          },
-        ],
-      };
-    } catch (error: any) {
-      const errorMessage = error.response?.data ?? error?.message;
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(errorMessage),
-          },
-        ],
-      };
-    }
-  }
 }
