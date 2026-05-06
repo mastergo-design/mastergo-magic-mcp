@@ -12,7 +12,7 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 
 ## Tutorial
 
-- https://mastergo.com/file/155675508499265?page_id=158:0002
+- [https://mastergo.com/file/192644601973042](https://mastergo.com/file/192644601973042)
 
 ## Usage
 
