@@ -34,12 +34,11 @@ After ALL N sections have been fetched:
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
 ### SVG Path Data:
-Each section response may include a \`pathData\` field — a map of nodeId -> {svgHtml, paths}.
-\`svgHtml\` is a complete SVG string with correct viewBox. Match DSL node "id" to the map key.
-Insert svgHtml directly into HTML. Do NOT construct your own SVG for path nodes.
+DSL nodes of type PATH have an \`svgHtml\` field containing a complete SVG string with correct viewBox.
+Insert node.svgHtml directly into HTML. Do NOT construct your own SVG for path nodes.
 
 ### Anti-Hallucination Rules:
-- NEVER fabricate SVG path data for icons or vector shapes — use pathData from the section response.
+- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml field from DSL PATH nodes.
 `;
 
 function main() {

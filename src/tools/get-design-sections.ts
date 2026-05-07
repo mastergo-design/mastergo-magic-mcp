@@ -11,9 +11,8 @@ Returns the list of all sections (id, name, type) in the design.
 Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
-Returns the full DSL for ONE specific section, plus optional "textData" and "pathData" maps.
-- textData: maps placeholder (e.g. "TEXT_0") to actual text string. DSL text nodes contain {{TEXT_0}} placeholders — look up in textData for exact text. Do NOT paraphrase.
-- pathData: maps nodeId -> {svgHtml: complete SVG string, paths: [{data, fill, transform?}]}. Use svgHtml directly in HTML.
+Returns the full DSL for ONE specific section.
+- PATH nodes in the DSL have a "svgHtml" field containing a complete SVG string. Use it directly in HTML.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list.
@@ -51,6 +50,12 @@ export class GetDesignSectionsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
     sectionIndex: z
       .number()
       .optional()
@@ -59,7 +64,7 @@ export class GetDesignSectionsTool extends BaseTool {
       ),
   });
 
-  async execute({ fileId, layerId, shortLink, sectionIndex }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -69,20 +74,24 @@ export class GetDesignSectionsTool extends BaseTool {
 
       let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
+      let finalSourceLayerId = sourceLayerId;
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
+        finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
       if (!finalFileId || !finalLayerId) {
         throw new Error("Could not determine fileId or layerId");
       }
 
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+
       const result = await httpUtilInstance.getDesignSections(
         finalFileId,
-        finalLayerId,
+        effectiveLayerId,
         sectionIndex
       );
 
