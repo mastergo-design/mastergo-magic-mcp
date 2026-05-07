@@ -4,10 +4,8 @@ import { httpUtilInstance } from "../utils/api";
 
 const DESIGN_PATHS_TOOL_NAME = "mcp__getDesignPaths";
 const DESIGN_PATHS_TOOL_DESCRIPTION = `
-After fetching ALL sections via mcp__getDesignSections and generating the HTML structure,
-call this tool to retrieve the cached path (SVG vector) data for the design.
-The returned data is a map of nodeId -> path entries, each containing "data" (SVG path string), "fill", and optional "transform".
-Use this data to fill in SVG path elements in the generated HTML by matching nodeId.
+(DEPRECATED — pathData is now included directly in mcp__getDesignSections responses.)
+Retrieve cached SVG path data for the design.
 
 You can provide either:
 1. fileId and layerId directly, or

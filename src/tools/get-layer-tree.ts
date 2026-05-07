@@ -4,12 +4,9 @@ import { httpUtilInstance } from "../utils/api";
 
 const LAYER_TREE_TOOL_NAME = "mcp__getLayerTree";
 const LAYER_TREE_TOOL_DESCRIPTION = `
-Use this tool to get a lightweight structural overview of a MasterGo design layer.
-Returns the layer hierarchy: IDs, names, types, positions, sizes, and children counts.
-No style details, fills, strokes, effects, or SVG paths are included. TEXT nodes include their text content.
-
-This is the FIRST step for ALL designs. Use it to identify ALL direct child sections of the root node.
-Each direct child is a section that must be fetched individually using mcp__getDslByLayerIds.
+(DEPRECATED — use mcp__getDesignSections instead, which handles section splitting and DSL in one workflow.)
+Returns a lightweight structural overview of a MasterGo design layer: IDs, names, types, positions, sizes, and children counts.
+No style details, fills, strokes, effects, or SVG paths are included.
 
 You can provide either:
 1. fileId and layerId directly, or

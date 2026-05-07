@@ -9,8 +9,6 @@ import { GetComponentLinkTool } from "./tools/get-component-link";
 import { GetMetaTool } from "./tools/get-meta";
 import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetVersionTool } from "./tools/get-version";
-import { GetLayerTreeTool } from "./tools/get-layer-tree";
-import { GetDslByLayerIdsTool } from "./tools/get-dsl-by-layer-ids";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
@@ -35,11 +33,13 @@ After ALL N sections have been fetched:
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
+### SVG Path Data:
+Each section response may include a \`pathData\` field — a map of nodeId -> {svgHtml, paths}.
+\`svgHtml\` is a complete SVG string with correct viewBox. Match DSL node "id" to the map key.
+Insert svgHtml directly into HTML. Do NOT construct your own SVG for path nodes.
+
 ### Anti-Hallucination Rules:
-- You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
-- If a section has empty or missing text data, render it as an empty placeholder — do NOT fabricate text.
-- NEVER generate placeholder values, generic tags, fabricated amounts, or invented statistics.
-- Every piece of text, every number, every label in your output MUST come directly from the DSL data.
+- NEVER fabricate SVG path data for icons or vector shapes — use pathData from the section response.
 `;
 
 function main() {
@@ -71,8 +71,6 @@ function main() {
   new GetComponentLinkTool().register(server);
   new GetMetaTool().register(server);
   new GetComponentWorkflowTool().register(server);
-  new GetLayerTreeTool().register(server);
-  new GetDslByLayerIdsTool().register(server);
   new ExtractSvgTool().register(server);
 
   server.connect(new StdioServerTransport());

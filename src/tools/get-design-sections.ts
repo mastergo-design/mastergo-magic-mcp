@@ -11,8 +11,9 @@ Returns the list of all sections (id, name, type) in the design.
 Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
-Returns the full DSL for ONE specific section.
-Example: { "fileId": "123", "layerId": "456:789", "sectionIndex": 0 }
+Returns the full DSL for ONE specific section, plus optional "textData" and "pathData" maps.
+- textData: maps placeholder (e.g. "TEXT_0") to actual text string. DSL text nodes contain {{TEXT_0}} placeholders — look up in textData for exact text. Do NOT paraphrase.
+- pathData: maps nodeId -> {svgHtml: complete SVG string, paths: [{data, fill, transform?}]}. Use svgHtml directly in HTML.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list.
