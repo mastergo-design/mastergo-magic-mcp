@@ -37,6 +37,11 @@ After ALL N sections have been fetched:
 DSL nodes of type PATH have an \`svgHtml\` field containing a complete SVG string with correct viewBox.
 Insert node.svgHtml directly into HTML. Do NOT construct your own SVG for path nodes.
 
+### Text Fidelity Rules:
+- TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
+- Do NOT duplicate text from one node to another — each TEXT node has unique content.
+- Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
+
 ### Anti-Hallucination Rules:
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml field from DSL PATH nodes.
 `;
