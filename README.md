@@ -64,6 +64,22 @@ Alternatively, you can use environment variables instead of command line argumen
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
 
+### Per-call token (`tools/call` `_meta.userToken`)
+
+Hosted / multi-tenant MCP hosts can pass a different MasterGo token per tool invocation without spawning extra processes. When present, it overrides startup `--token` / env for **that request only** (via `AsyncLocalStorage`). Empty strings are ignored.
+
+MCP client example (pseudo JSON-RPC `tools/call` params):
+
+```json
+{
+  "name": "mcp__getDsl",
+  "arguments": { "fileId": "123", "layerId": "456:789" },
+  "_meta": { "userToken": "mg_your_runtime_token" }
+}
+```
+
+If `_meta.userToken` is omitted, behavior matches upstream (argv → `MG_MCP_TOKEN` → `MASTERGO_API_TOKEN`).
+
 ### Installing via Smithery Marketplace
 
 Smithery is an MCP server marketplace that makes it easy to install and manage MCP services.
