@@ -68,8 +68,8 @@ const buildDslRules = (): string[] => {
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
 When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
-For example: 
-  \`\`\`js  
+For example:
+  \`\`\`js
     const componentDocumentLinks = [
       'https://example.com/ant/button.mdx',
       'https://example.com/ant/button.mdx'
@@ -98,10 +98,19 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDsl(fileId: string, layerId: string, sourceLayerId?: string): Promise<DslResponse> {
+    async getDsl(
+      fileId: string,
+      layerId: string,
+      options?: { layerLimit?: number; svgDataLimit?: number; sourceLayerId?: string }
+    ): Promise<DslResponse> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (options?.layerLimit !== undefined) params.layerLimit = options.layerLimit;
+      if (options?.svgDataLimit !== undefined) params.svgDataLimit = options.svgDataLimit;
+      if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
+
       const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
         timeout: 30000,
-        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
+        params,
         headers: getCommonHeader(),
       });
 
@@ -110,6 +119,84 @@ const createHttpUtil = () => {
         componentDocumentLinks: extractComponentDocumentLinks(response.data),
         rules: parseNoRule() ? [] : buildDslRules(),
       };
+    },
+
+    async getLayerTree(fileId: string, layerId: string): Promise<any> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/layer-tree`, {
+        timeout: 30000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    async getDslByLayerIds(
+      fileId: string,
+      layerId: string,
+      targetLayerIds: string[],
+      options?: { layerLimit?: number; svgDataLimit?: number }
+    ): Promise<DslResponse> {
+      const params: Record<string, any> = { fileId, layerId, targetLayerIds: targetLayerIds.join(",") };
+      if (options?.layerLimit !== undefined) params.layerLimit = options.layerLimit;
+      if (options?.svgDataLimit !== undefined) params.svgDataLimit = options.svgDataLimit;
+
+      const response = await axios.get(`${getBaseUrl()}/mcp/dsl-by-layer-ids`, {
+        timeout: 30000,
+        params,
+        headers: getCommonHeader(),
+      });
+
+      return {
+        dsl: response.data,
+        componentDocumentLinks: extractComponentDocumentLinks(response.data),
+        rules: parseNoRule() ? [] : buildDslRules(),
+      };
+    },
+
+    async extractSvg(
+      fileId: string,
+      layerId: string,
+      backgroundColor?: string
+    ): Promise<any> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (backgroundColor) params.backgroundColor = backgroundColor;
+
+      const response = await axios.get(`${getBaseUrl()}/mcp/extract-svg`, {
+        timeout: 30000,
+        params,
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<any> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+
+      const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
+        timeout: 120000,
+        params,
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    async getDesignPaths(fileId: string, layerId: string): Promise<any> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/design-paths`, {
+        timeout: 30000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
+        timeout: 30000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {

@@ -9,11 +9,48 @@ import { GetComponentLinkTool } from "./tools/get-component-link";
 import { GetMetaTool } from "./tools/get-meta";
 import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetVersionTool } from "./tools/get-version";
+import { GetDesignSectionsTool } from "./tools/get-design-sections";
+import { GetDesignSvgsTool } from "./tools/get-design-svgs";
+import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
-// Main function
+const SERVER_INSTRUCTIONS = `
+## MasterGo Design DSL - Section-by-Section Workflow (MANDATORY)
+
+You MUST use \`mcp__getDesignSections\` for ALL designs. Follow these steps exactly:
+
+### Step 1: Get Section List
+Call \`mcp__getDesignSections\` WITHOUT sectionIndex to get the list of all sections.
+The response contains \`sections\` array and \`totalSections\` (let this be N).
+
+### Step 2: Fetch Each Section DSL (MANDATORY - ALL N sections)
+For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
+You MUST call this tool N times. Do NOT skip any section.
+Process each section's DSL before moving to the next.
+
+### Step 3: Fetch SVG Data (MANDATORY)
+After ALL N sections have been fetched, call \`mcp__getDesignSvgs\` with the same fileId/layerId.
+This returns all cached SVG HTML strings as a map of nodeId -> svgHtml.
+- Each PATH node in the DSL has an \`id\`. Look up that id in the returned \`svgs\` map.
+- Insert the svgHtml string directly where the icon/PATH should appear.
+- Do NOT construct your own SVG — use the exact svgHtml from the response.
+
+### Step 4: Generate Complete Code
+After ALL N sections have been fetched and SVG data retrieved:
+- Generate a single complete HTML file containing ALL sections in order.
+- token fields must be generated as CSS variables with comments indicating the token name.
+- If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
+
+### Text Fidelity Rules:
+- TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
+- Do NOT duplicate text from one node to another — each TEXT node has unique content.
+- Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
+
+### Anti-Hallucination Rules:
+- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
+`;
+
 function main() {
-  // Parse command line arguments and set environment variables
   const { token, baseUrl, rules, debug, noRule } = parserArgs();
 
   if (debug) {
@@ -26,24 +63,26 @@ function main() {
     console.log(`Debug mode: enabled`);
   }
 
-  // Create server instance
-  const server = new McpServer({
-    name: "MasterGoMcpServer",
-    version: "0.0.1",
-  });
+  const server = new McpServer(
+    {
+      name: "MasterGoMcpServer",
+      version: "0.0.1",
+    },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
 
-  // Register tools
   new GetVersionTool().register(server);
+  new GetDesignSectionsTool().register(server);
+  new GetDesignSvgsTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);
   new GetComponentLinkTool().register(server);
   new GetMetaTool().register(server);
   new GetComponentWorkflowTool().register(server);
+  new ExtractSvgTool().register(server);
 
-  // Connect to standard input/output
   server.connect(new StdioServerTransport());
 }
 
-// Start the program
 main();
