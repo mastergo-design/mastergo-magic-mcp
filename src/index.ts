@@ -10,6 +10,7 @@ import { GetMetaTool } from "./tools/get-meta";
 import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
+import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
@@ -27,15 +28,18 @@ For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
 Process each section's DSL before moving to the next.
 
-### Step 3: Generate Complete Code
-After ALL N sections have been fetched:
+### Step 3: Fetch SVG Data (MANDATORY)
+After ALL N sections have been fetched, call \`mcp__getDesignSvgs\` with the same fileId/layerId.
+This returns all cached SVG HTML strings as a map of nodeId -> svgHtml.
+- Each PATH node in the DSL has an \`id\`. Look up that id in the returned \`svgs\` map.
+- Insert the svgHtml string directly where the icon/PATH should appear.
+- Do NOT construct your own SVG — use the exact svgHtml from the response.
+
+### Step 4: Generate Complete Code
+After ALL N sections have been fetched and SVG data retrieved:
 - Generate a single complete HTML file containing ALL sections in order.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
-
-### SVG Path Data:
-DSL nodes of type PATH have an \`svgHtml\` field containing a complete SVG string with correct viewBox.
-Insert node.svgHtml directly into HTML. Do NOT construct your own SVG for path nodes.
 
 ### Text Fidelity Rules:
 - TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
@@ -43,7 +47,7 @@ Insert node.svgHtml directly into HTML. Do NOT construct your own SVG for path n
 - Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
 
 ### Anti-Hallucination Rules:
-- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml field from DSL PATH nodes.
+- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
 `;
 
 function main() {
@@ -69,6 +73,7 @@ function main() {
 
   new GetVersionTool().register(server);
   new GetDesignSectionsTool().register(server);
+  new GetDesignSvgsTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);
