@@ -121,38 +121,6 @@ const createHttpUtil = () => {
       };
     },
 
-    async getLayerTree(fileId: string, layerId: string): Promise<any> {
-      const response = await axios.get(`${getBaseUrl()}/mcp/layer-tree`, {
-        timeout: 30000,
-        params: { fileId, layerId },
-        headers: getCommonHeader(),
-      });
-      return response.data;
-    },
-
-    async getDslByLayerIds(
-      fileId: string,
-      layerId: string,
-      targetLayerIds: string[],
-      options?: { layerLimit?: number; svgDataLimit?: number }
-    ): Promise<DslResponse> {
-      const params: Record<string, any> = { fileId, layerId, targetLayerIds: targetLayerIds.join(",") };
-      if (options?.layerLimit !== undefined) params.layerLimit = options.layerLimit;
-      if (options?.svgDataLimit !== undefined) params.svgDataLimit = options.svgDataLimit;
-
-      const response = await axios.get(`${getBaseUrl()}/mcp/dsl-by-layer-ids`, {
-        timeout: 30000,
-        params,
-        headers: getCommonHeader(),
-      });
-
-      return {
-        dsl: response.data,
-        componentDocumentLinks: extractComponentDocumentLinks(response.data),
-        rules: parseNoRule() ? [] : buildDslRules(),
-      };
-    },
-
     async extractSvg(
       fileId: string,
       layerId: string,
