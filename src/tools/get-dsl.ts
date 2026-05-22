@@ -11,7 +11,9 @@ You can provide either:
 2. a short link (like https://{domain}/goto/LhGgBAK)
 This tool returns the raw DSL data in JSON format that you can then parse and analyze.
 This tool also returns the rules you must follow when generating code.
-The DSL data can also be used to transform and generate code for different frameworks."
+The DSL data can also be used to transform and generate code for different frameworks.
+
+⚠️ For LARGE designs (complex pages with many layers), prefer using mcp__getDesignSections instead — it splits the design into sections to avoid context overflow. Use mcp__getDsl only for small designs or single components."
 `;
 
 export class GetDslTool extends BaseTool {

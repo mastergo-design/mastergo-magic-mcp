@@ -173,12 +173,22 @@ const createHttpUtil = () => {
       const params: Record<string, any> = { fileId, layerId };
       if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
 
-      const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
-        timeout: 120000,
-        params,
-        headers: getCommonHeader(),
-      });
-      return response.data;
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
+          timeout: 120000,
+          params,
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-sections API not available on this server. ` +
+            `Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
     },
 
     async getDesignPaths(fileId: string, layerId: string): Promise<any> {
@@ -191,12 +201,21 @@ const createHttpUtil = () => {
     },
 
     async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
-      const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
-        timeout: 30000,
-        params: { fileId, layerId },
-        headers: getCommonHeader(),
-      });
-      return response.data;
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
+          timeout: 30000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-svgs API not available on this server. Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
