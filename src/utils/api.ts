@@ -159,15 +159,6 @@ const createHttpUtil = () => {
       }
     },
 
-    async getDesignPaths(fileId: string, layerId: string): Promise<any> {
-      const response = await axios.get(`${getBaseUrl()}/mcp/design-paths`, {
-        timeout: 30000,
-        params: { fileId, layerId },
-        headers: getCommonHeader(),
-      });
-      return response.data;
-    },
-
     async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
       try {
         const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
