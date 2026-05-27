@@ -15,31 +15,36 @@ import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
 const SERVER_INSTRUCTIONS = `
-## MasterGo Design DSL - Section-by-Section Workflow (MANDATORY)
+## MasterGo Design DSL - Section-by-Section Workflow
 
-You MUST use \`mcp__getDesignSections\` for ALL designs. Follow these steps exactly:
+### Step 0: Get Layout Overview (MANDATORY)
+Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
+The response contains \`sections\` array with \`nodeCount\` per section, \`totalSections\`, and \`totalNodes\`.
+Use this to understand the design scope before fetching details.
 
-### Step 1: Get Section List
-Call \`mcp__getDesignSections\` WITHOUT sectionIndex to get the list of all sections.
-The response contains \`sections\` array and \`totalSections\` (let this be N).
-
-### Step 2: Fetch Each Section DSL (MANDATORY - ALL N sections)
+### Step 1: Fetch Each Section DSL (MANDATORY - ALL N sections)
 For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
 Process each section's DSL before moving to the next.
 
-### Step 3: Fetch SVG Data (MANDATORY)
+### Step 2: Fetch SVG Data (MANDATORY)
 After ALL N sections have been fetched, call \`mcp__getDesignSvgs\` with the same fileId/layerId.
-This returns all cached SVG HTML strings as a map of nodeId -> svgHtml.
-- Each PATH node in the DSL has an \`id\`. Look up that id in the returned \`svgs\` map.
+This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}:{namedAncestor}|{ancestorId}\`.
+- Match each SVG to its section by the \`S{sectionIndex}\` prefix.
 - Insert the svgHtml string directly where the icon/PATH should appear.
 - Do NOT construct your own SVG — use the exact svgHtml from the response.
 
-### Step 4: Generate Complete Code
+### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
 - Generate a single complete HTML file containing ALL sections in order.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
+
+### Tool Selection Rules:
+- \`mcp__getDesignSections\` is the PRIMARY tool. Always start here.
+- \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
+- NEVER call both \`getDesignSections\` AND \`getDsl\` / \`extractSvg\` for the same design.
+- The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Text Fidelity Rules:
 - TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.

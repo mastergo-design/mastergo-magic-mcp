@@ -4,16 +4,15 @@ import { httpUtilInstance } from "../utils/api";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
-"Use this tool to retrieve the DSL (Domain Specific Language) data from MasterGo design files and the rules you must follow when generating code.
-This tool is useful when you need to analyze the structure of a design, understand component hierarchy, or extract design properties.
+[FALLBACK] Use only when mcp__getDesignSections is unavailable or returns an error.
+This returns the FULL DSL in one response — may be large and exceed context limits for complex designs.
+Prefer mcp__getDesignSections as the primary tool for all designs.
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
 This tool returns the raw DSL data in JSON format that you can then parse and analyze.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
-
-⚠️ For LARGE designs (complex pages with many layers), prefer using mcp__getDesignSections instead — it splits the design into sections to avoid context overflow. Use mcp__getDsl only for small designs or single components."
 `;
 
 export class GetDslTool extends BaseTool {

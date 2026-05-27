@@ -4,10 +4,11 @@ import { httpUtilInstance } from "../utils/api";
 
 const DESIGN_SECTIONS_TOOL_NAME = "mcp__getDesignSections";
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
-This tool operates in TWO modes:
+[PRIMARY] This is the main tool for all designs. Operates in TWO modes:
 
-Mode 1 — Get section list (sectionIndex NOT provided):
-Returns the list of all sections (id, name, type) in the design.
+Mode 1 — Get layout overview (sectionIndex NOT provided):
+Returns the list of all sections with id, name, type, and nodeCount, plus totalSections and totalNodes.
+Use this FIRST to understand the design scope.
 Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
@@ -15,11 +16,14 @@ Returns the full DSL for ONE specific section.
 - PATH nodes have their svgHtml stripped. After fetching ALL sections, call mcp__getDesignSvgs to retrieve them.
 
 IMPORTANT workflow:
-1. First call WITHOUT sectionIndex to get the section list.
+1. First call WITHOUT sectionIndex to get the section list with node counts.
 2. Then call WITH sectionIndex=0, sectionIndex=1, ... up to totalSections-1.
 3. You MUST fetch ALL sections. Do NOT skip any section index.
 4. After fetching all sections, call mcp__getDesignSvgs to get SVG icons.
 5. Generate the complete HTML with all SVG data.
+
+DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
+If this tool returns an error (e.g. old server), fall back to mcp__getDsl.
 
 You can provide either:
 1. fileId and layerId directly, or
