@@ -25,7 +25,7 @@ Use this to understand the design scope before fetching details.
 ### Step 1: Fetch Each Section DSL (MANDATORY - ALL N sections)
 For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
-Process each section's DSL before moving to the next.
+CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 
 ### Step 2: Fetch SVG Data (MANDATORY)
 After ALL N sections have been fetched, call \`mcp__getDesignSvgs\` with the same fileId/layerId.

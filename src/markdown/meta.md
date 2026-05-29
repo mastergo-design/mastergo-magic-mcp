@@ -11,7 +11,7 @@ I need you to write a task.md file in the current directory according to the fol
 3. Analyze the `action` field, and write the page information into task.md.
 4. For each `targetLayerId` from the `action` field, use the section-by-section workflow to get page data:
    - **Step 4a**: Call `mcp__getDesignSections` WITHOUT `sectionIndex` to get the list of all sections.
-   - **Step 4b**: For each section (index 0 to N-1), call `mcp__getDesignSections` WITH `sectionIndex=i` to get the full DSL.
+   - **Step 4b**: For each section (index 0 to N-1), call `mcp__getDesignSections` WITH `sectionIndex=i` to get the full DSL. Fetch in BATCHES of 3-5 at a time — do NOT request all sections simultaneously to avoid timeouts.
    - **Note**: You MUST fetch ALL sections. Do NOT skip any section index.
 5. Analyze the page data to check if there is an `interactive` field. If it exists, this field contains information about the current node's navigation to another page. You must continue to get the target page data using the section-by-section workflow (repeat step 4).
 6. Repeat step 5 until all page data has been parsed and written into task.md.
@@ -48,7 +48,7 @@ Food Delivery Page (layerId: 0:2)
 
 ```
 
-Use `mcp__getDesignSections` to get the section list for page 0:1 (without sectionIndex), then fetch each section's DSL by calling with sectionIndex=0, 1, ... until all sections are fetched.
+Use `mcp__getDesignSections` to get the section list for page 0:1 (without sectionIndex), then fetch each section's DSL by calling with sectionIndex=0, 1, ... until all sections are fetched. Fetch in batches of 3-5 at a time to avoid timeouts.
 
 The data might be:
 ```json
