@@ -139,6 +139,24 @@ You can configure the MCP server using either command line arguments or environm
 }
 ```
 
+**Option 3: Using SSE (Streamable HTTP)**
+
+No local installation required. The MCP server runs remotely and is accessed via SSE:
+
+```json
+{
+  "mcpServers": {
+    "mastergo-magic-mcp": {
+      "type": "http",
+      "url": "https://mastergo.com/mcp/xf/sse",
+      "headers": {
+        "x-mg-useraccesstoken": "<YOUR_TOKEN>"
+      }
+    }
+  }
+}
+```
+
 ### cline Usage
 
 **Option 1: Using command line arguments**

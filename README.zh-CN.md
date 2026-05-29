@@ -138,6 +138,24 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
 }
 ```
 
+**方式三：使用 SSE（Streamable HTTP）**
+
+无需本地安装，MCP 服务在远端运行，通过 SSE 访问：
+
+```json
+{
+  "mcpServers": {
+    "mastergo-magic-mcp": {
+      "type": "http",
+      "url": "https://mastergo.com/mcp/xf/sse",
+      "headers": {
+        "x-mg-useraccesstoken": "<YOUR_TOKEN>"
+      }
+    }
+  }
+}
+```
+
 ### cline 使用方法
 
 **方式一：使用命令行参数**
