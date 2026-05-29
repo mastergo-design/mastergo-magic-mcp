@@ -113,7 +113,7 @@ You can configure the MCP server using either command line arguments or environm
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -169,7 +169,7 @@ No local installation required. The MCP server runs remotely and is accessed via
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -190,6 +190,31 @@ No local installation required. The MCP server runs remotely and is accessed via
         "MG_MCP_TOKEN": "<YOUR_TOKEN>",
         "API_BASE_URL": "https://mastergo.com"
       }
+    }
+  }
+}
+```
+
+### Open Code Usage
+
+Open Code uses a `mcp` configuration block with `type: "local"` and `command` array:
+
+```json
+{
+  "mcp": {
+    "mastergo-magic-mcp": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@mastergo/magic-mcp",
+        "--token=<YOUR_TOKEN>",
+        "--url=https://mastergo.com"
+      ],
+      "environment": {
+        "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org/"
+      },
+      "enabled": true
     }
   }
 }

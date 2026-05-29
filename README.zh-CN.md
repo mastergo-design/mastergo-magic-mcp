@@ -112,7 +112,7 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -168,7 +168,7 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -189,6 +189,31 @@ Cursor Mcp 使用指南参考：https://docs.cursor.com/context/model-context-pr
         "MG_MCP_TOKEN": "<YOUR_TOKEN>",
         "API_BASE_URL": "https://mastergo.com"
       }
+    }
+  }
+}
+```
+
+### Open Code 使用方法
+
+Open Code 使用 `mcp` 配置块，通过 `type: "local"` 和 `command` 数组来配置：
+
+```json
+{
+  "mcp": {
+    "mastergo-magic-mcp": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@mastergo/magic-mcp",
+        "--token=<YOUR_TOKEN>",
+        "--url=https://mastergo.com"
+      ],
+      "environment": {
+        "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org/"
+      },
+      "enabled": true
     }
   }
 }
