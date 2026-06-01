@@ -51,8 +51,15 @@ After ALL N sections have been fetched and SVG data retrieved:
 - Do NOT duplicate text from one node to another — each TEXT node has unique content.
 - Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
 
+### Background & Color Rules:
+- The DSL \`styles\` map contains fill/stroke style definitions. Use the node's \`fillStyleId\`/\`strokeStyleId\` to look up the actual color from \`styles\`.
+- The root/frame node's background comes from its fill style. Do NOT invent gradient or solid backgrounds — use ONLY the colors from the DSL data.
+- If a node has no fill or the fill style is empty/transparent, do NOT add a background color. Leave it transparent or inherit from parent.
+- Status bar, title bar, and other container backgrounds MUST match the DSL fill data exactly.
+
 ### Anti-Hallucination Rules:
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
+- NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
 `;
 
 function main() {
