@@ -23,6 +23,7 @@ The response contains \`sections\` array with \`nodeCount\` per section, \`total
 Use this to understand the design scope before fetching details.
 
 \`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
+\`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, and layout properties (layoutMode, itemSpacing, padding). Use these to understand how the split sections should be arranged — they share the container's layout direction and spacing.
 
 ### Step 1: Fetch Each Section DSL (MANDATORY - ALL N sections)
 For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
