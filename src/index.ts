@@ -22,6 +22,9 @@ Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
 The response contains \`sections\` array with \`nodeCount\` per section, \`totalSections\`, and \`totalNodes\`.
 Use this to understand the design scope before fetching details.
 
+\`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
+\`flattenedContainer\` (if present) indicates a main content container was flattened — its layoutMode, itemSpacing, and padding describe how the sections should be arranged relative to each other.
+
 ### Step 1: Fetch Each Section DSL (MANDATORY - ALL N sections)
 For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
