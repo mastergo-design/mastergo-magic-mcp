@@ -54,7 +54,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 你也可以使用空格分隔的参数格式:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --proxy PROXY_URL --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --debug
 ```
 
 #### 环境变量

@@ -54,7 +54,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 You can also use space-separated format for parameters:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --proxy PROXY_URL --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --debug
 ```
 
 #### Environment Variables
