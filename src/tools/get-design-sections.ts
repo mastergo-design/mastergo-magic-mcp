@@ -8,7 +8,7 @@ const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 
 Mode 1 — Get layout overview (sectionIndex NOT provided):
 Returns the list of all sections with id, name, type, and nodeCount, plus totalSections and totalNodes.
-Also returns rootMetadata (root layer width/height/name/type/fill) and flattenedContainer (layout direction/spacing/padding) when available.
+Also returns rootMetadata (root layer width/height/name/type/fill) when available.
 Use this FIRST to understand the design scope.
 Example: { "fileId": "123", "layerId": "456:789" }
 
