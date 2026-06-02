@@ -1,32 +1,33 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy } from "./args";
 import https from "https";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
-// Configure proxy from --proxy arg; env vars (HTTPS_PROXY/HTTP_PROXY) are
-// auto-detected by axios via proxy-from-env, so no manual handling needed.
-const proxyUrl = parseProxy();
+// Configure proxy from --proxy arg or HTTP_PROXY/HTTPS_PROXY env vars
+const proxyUrl =
+  parseProxy() ||
+  process.env.HTTPS_PROXY ||
+  process.env.https_proxy ||
+  process.env.HTTP_PROXY ||
+  process.env.http_proxy;
 
 if (proxyUrl) {
   try {
-    const parsed = new URL(proxyUrl);
-    axios.defaults.proxy = {
-      protocol: parsed.protocol,
-      host: parsed.hostname,
-      port: Number(parsed.port) || (parsed.protocol === "https:" ? 443 : 80),
-      ...(parsed.username && {
-        auth: {
-          username: parsed.username,
-          password: parsed.password,
-        },
-      }),
-    };
+    const proxyAgent = new HttpsProxyAgent(proxyUrl, {
+      rejectUnauthorized: false,
+    });
+    axios.defaults.httpAgent = proxyAgent;
+    axios.defaults.httpsAgent = proxyAgent;
+    // Disable axios built-in proxy to avoid double-proxying via proxy-from-env
+    axios.defaults.proxy = false;
   } catch {
     throw new Error(`Invalid proxy URL: ${proxyUrl}`);
   }
+} else {
+  axios.defaults.httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+  });
 }
-
-// Keep rejectUnauthorized:false for TLS flexibility (e.g. corporate MITM proxies)
-axios.defaults.httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 // DSL response interface
 export interface DslResponse {
