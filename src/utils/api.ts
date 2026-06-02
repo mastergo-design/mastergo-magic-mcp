@@ -18,6 +18,8 @@ if (proxyUrl) {
     });
     axios.defaults.httpAgent = proxyAgent;
     axios.defaults.httpsAgent = proxyAgent;
+    // Disable axios built-in proxy to avoid double-proxying via proxy-from-env
+    axios.defaults.proxy = false;
   } catch {
     throw new Error(`Invalid proxy URL: ${proxyUrl}`);
   }
