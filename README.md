@@ -39,7 +39,7 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule]
 ```
 
 #### Parameters:
@@ -47,13 +47,14 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--token=YOUR_TOKEN` (required): MasterGo API token for authentication
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
+- `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
 
 You can also use space-separated format for parameters:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --proxy PROXY_URL --debug
 ```
 
 #### Environment Variables
@@ -63,6 +64,7 @@ Alternatively, you can use environment variables instead of command line argumen
 - `MG_MCP_TOKEN` or `MASTERGO_API_TOKEN`: MasterGo API token
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
+- `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) proxy URL (the `--proxy` argument takes priority)
 
 ### Installing via Smithery Marketplace
 
