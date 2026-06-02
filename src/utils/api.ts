@@ -1,10 +1,31 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
+import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy } from "./args";
 import https from "https";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
-axios.defaults.httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+// Configure proxy from --proxy arg or HTTP_PROXY/HTTPS_PROXY env vars
+const proxyUrl =
+  parseProxy() ||
+  process.env.HTTPS_PROXY ||
+  process.env.https_proxy ||
+  process.env.HTTP_PROXY ||
+  process.env.http_proxy;
+
+if (proxyUrl) {
+  try {
+    const proxyAgent = new HttpsProxyAgent(proxyUrl, {
+      rejectUnauthorized: false,
+    });
+    axios.defaults.httpAgent = proxyAgent;
+    axios.defaults.httpsAgent = proxyAgent;
+  } catch {
+    throw new Error(`Invalid proxy URL: ${proxyUrl}`);
+  }
+} else {
+  axios.defaults.httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+  });
+}
 
 // DSL response interface
 export interface DslResponse {
