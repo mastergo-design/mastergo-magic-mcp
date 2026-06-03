@@ -18,10 +18,10 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 
 Once the MCP server is connected, you can use the following prompts in your AI chat:
 
-**Extract SVG from a design layer:**
+**Extract SVG and preview in HTML:**
 
 ```
-Extract SVG: https://{domain}/file/{fileId}?layer_id={layerId}
+Extract SVG and preview in HTML: https://{domain}/file/{fileId}?layer_id={layerId}
 ```
 
 **Restore a design to code:**
