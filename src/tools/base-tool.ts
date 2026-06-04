@@ -18,4 +18,9 @@ export abstract class BaseTool {
   abstract execute(args: z.infer<typeof this.schema>): Promise<{
     content: Array<{ type: "text"; text: string }>;
   }>;
+
+  protected normalizeFileId(fileId?: string): string | undefined {
+    if (!fileId) return fileId;
+    return fileId.replace(/^file\//, "");
+  }
 }

@@ -108,9 +108,4 @@ export class GetDslTool extends BaseTool {
     }
   }
 
-  private normalizeFileId(fileId?: string) {
-    if (!fileId) return fileId;
-    return fileId.replace(/^file\//, "");
-  }
-
 }

@@ -34,6 +34,12 @@ export class GetDesignSvgsTool extends BaseTool {
       .describe(
         "Root layer ID of the design. Required if shortLink is not provided."
       ),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
     shortLink: z
       .string()
       .optional()
@@ -43,6 +49,7 @@ export class GetDesignSvgsTool extends BaseTool {
   async execute({
     fileId,
     layerId,
+    sourceLayerId,
     shortLink,
   }: z.infer<typeof this.schema>) {
     try {
@@ -54,20 +61,24 @@ export class GetDesignSvgsTool extends BaseTool {
 
       let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
+      let finalSourceLayerId = sourceLayerId;
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
+        finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
       if (!finalFileId || !finalLayerId) {
         throw new Error("Could not determine fileId or layerId");
       }
 
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+
       const result = await httpUtilInstance.getDesignSvgs(
         finalFileId,
-        finalLayerId
+        effectiveLayerId
       );
 
       return {
@@ -90,10 +101,5 @@ export class GetDesignSvgsTool extends BaseTool {
         ],
       };
     }
-  }
-
-  private normalizeFileId(fileId?: string) {
-    if (!fileId) return fileId;
-    return fileId.replace(/^file\//, "");
   }
 }
