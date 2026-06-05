@@ -11,6 +11,7 @@ import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
+import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
 
@@ -30,12 +31,20 @@ For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
 CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 
-### Step 2: Fetch SVG Data (MANDATORY)
-After ALL N sections have been fetched, call \`mcp__getDesignSvgs\` with the same fileId/layerId.
+### Step 2: Fetch SVG and Text Data (MANDATORY)
+After ALL N sections have been fetched, call BOTH tools below:
+
+**SVG Data** — Call \`mcp__getDesignSvgs\` with the same fileId/layerId.
 This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}:{namedAncestor}|{ancestorId}\`.
 - Match each SVG to its section by the \`S{sectionIndex}\` prefix.
 - Insert the svgHtml string directly where the icon/PATH should appear.
 - Do NOT construct your own SVG — use the exact svgHtml from the response.
+
+**Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
+This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}:{name}|{id}\`.
+- Look up the key in the returned texts map to get the exact text string.
+- Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
+- This is the ONLY source of truth for large text content. The DSL key is a reference, not the actual text.
 
 ### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
@@ -89,6 +98,7 @@ function main() {
   new GetVersionTool().register(server);
   new GetDesignSectionsTool().register(server);
   new GetDesignSvgsTool().register(server);
+  new GetDesignTextsTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);

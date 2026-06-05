@@ -178,6 +178,24 @@ const createHttpUtil = () => {
       }
     },
 
+    async getDesignTexts(fileId: string, layerId: string): Promise<any> {
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-texts`, {
+          timeout: 120000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-texts API not available on this server. Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
+    },
+
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
       const params: Record<string, any> = { contentId: contentId, documentId: documentId };
       const response = await axios.get(`${getBaseUrl()}/mcp/d2c/events`, {
