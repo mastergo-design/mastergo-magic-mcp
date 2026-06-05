@@ -102,11 +102,9 @@ const createHttpUtil = () => {
     async getDsl(
       fileId: string,
       layerId: string,
-      options?: { layerLimit?: number; svgDataLimit?: number; sourceLayerId?: string }
+      options?: { sourceLayerId?: string }
     ): Promise<DslResponse> {
       const params: Record<string, any> = { fileId, layerId };
-      if (options?.layerLimit !== undefined) params.layerLimit = options.layerLimit;
-      if (options?.svgDataLimit !== undefined) params.svgDataLimit = options.svgDataLimit;
       if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
 
       const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {

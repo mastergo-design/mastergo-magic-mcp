@@ -46,19 +46,9 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
-    layerLimit: z
-      .number()
-      .optional()
-      .describe(
-        "Maximum number of child layers to include. Truncated nodes get needParse=true. Recommended: 50 for large designs."
-      ),
-    svgDataLimit: z
-      .number()
-      .optional()
-      .describe("Maximum SVG path data length. Paths exceeding this are marked needParse=true."),
   });
 
-  async execute({ fileId, layerId, sourceLayerId, shortLink, layerLimit, svgDataLimit }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, shortLink }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -82,8 +72,6 @@ export class GetDslTool extends BaseTool {
       }
 
       const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
-        layerLimit,
-        svgDataLimit,
         sourceLayerId: finalSourceLayerId,
       });
       return {
