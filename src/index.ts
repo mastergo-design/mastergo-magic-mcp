@@ -41,7 +41,7 @@ This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}
 - Do NOT construct your own SVG — use the exact svgHtml from the response.
 
 **Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
-This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}:{name}|{id}\`.
+This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
 - Look up the key in the returned texts map to get the exact text string.
 - Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
 - This is the ONLY source of truth for large text content. The DSL key is a reference, not the actual text.

@@ -5,7 +5,7 @@ import { httpUtilInstance } from "../utils/api";
 const DESIGN_TEXTS_TOOL_NAME = "mcp__getDesignTexts";
 const DESIGN_TEXTS_TOOL_DESCRIPTION = `
 After fetching ALL sections via mcp__getDesignSections, call this tool to retrieve exact text content for large text nodes.
-In the section DSL, TEXT nodes with long content (>50 chars) have their "text" field replaced with a key like "T{sectionIndex}:{name}|{id}".
+In the section DSL, TEXT nodes with long content (>50 chars) have their "text" field replaced with a key like "T{sectionIndex}|{nodeId}".
 This tool returns the original text mapped by those keys. You MUST use the exact text from this response — never invent, paraphrase, or translate text.
 
 You can provide either:

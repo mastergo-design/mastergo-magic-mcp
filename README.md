@@ -36,6 +36,18 @@ Replace `{domain}`, `{fileId}`, and `{layerId}` with your actual values. You can
 Restore design: https://{domain}/goto/{shortLink}
 ```
 
+**Restore a design and save as an HTML file:**
+
+```
+Restore design, save as HTML file: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+You can also use short links:
+
+```
+Restore design, save as HTML file: https://{domain}/goto/{shortLink}
+```
+
 ## Usage
 
 ### Obtaining MG_MCP_TOKEN

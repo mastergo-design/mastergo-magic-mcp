@@ -36,6 +36,18 @@ MCP 服务连接成功后，可以在 AI 对话中使用以下提示词：
 还原设计稿：https://{domain}/goto/{shortLink}
 ```
 
+**还原设计稿并保存为 HTML 文件：**
+
+```
+还原设计稿，保存为 html 文件：https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+也可以使用短链接：
+
+```
+还原设计稿，保存为 html 文件：https://{domain}/goto/{shortLink}
+```
+
 ## 使用方法
 
 ### 获取 MG_MCP_TOKEN
