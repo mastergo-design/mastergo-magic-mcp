@@ -54,7 +54,7 @@ export class GetComponentWorkflowTool extends BaseTool {
     const walkLayer = (layer: any) => {
       if (layer.path && layer.path.length > 0) {
         layer.imageUrls = [];
-        const id = layer.id.replaceAll("/", "&");
+        const id = layer.id.replaceAll("/", "&").replaceAll(":", "_");
         const imageDir = `${baseDir}/images`;
         if (!fs.existsSync(imageDir)) {
           fs.mkdirSync(imageDir, { recursive: true });
