@@ -75,7 +75,8 @@ After ALL N sections have been fetched and SVG data retrieved:
 `;
 
 function main() {
-  const { token, baseUrl, rules, debug, noRule } = parserArgs();
+  // Parse command line arguments and set environment variables
+  const { token, baseUrl, rules, debug, noRule, proxy } = parserArgs();
 
   if (debug) {
     process.env.DEBUG = "true";
@@ -84,6 +85,7 @@ function main() {
     console.log(`API URL: ${baseUrl || "default"}`);
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
+    console.log(`Proxy: ${proxy || "none"}`);
     console.log(`Debug mode: enabled`);
   }
 

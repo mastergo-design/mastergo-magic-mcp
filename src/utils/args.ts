@@ -75,18 +75,37 @@ function parseNoRule(): boolean {
   return false;
 }
 
+function parseProxy(): string {
+  const args = getArgs();
+  let proxy = "";
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--proxy" && i + 1 < args.length) {
+      proxy = args[i + 1];
+      break;
+    } else if (args[i].startsWith("--proxy=")) {
+      proxy = args[i].split("=")[1];
+      break;
+    }
+  }
+
+  return proxy;
+}
+
 export function parserArgs(): {
   token: string;
   baseUrl: string;
   rules: string[];
   debug: boolean;
   noRule: boolean;
+  proxy: string;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();
   const rules = parseRules();
   const debug = parseDebug();
   const noRule = parseNoRule();
+  const proxy = parseProxy();
 
   return {
     token,
@@ -94,7 +113,8 @@ export function parserArgs(): {
     rules,
     debug,
     noRule,
+    proxy,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, getArgs };

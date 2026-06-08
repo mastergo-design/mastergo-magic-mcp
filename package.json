@@ -1,6 +1,6 @@
 {
   "name": "@mastergo/magic-mcp",
-  "version": "0.1.7-beta.0",
+  "version": "0.1.8",
   "description": "MasterGo MCP standalone service",
   "main": "dist/index.js",
   "bin": {
@@ -20,6 +20,7 @@
     "build": "node build.js",
     "build:watch": "node build.js --watch",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -33,6 +34,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "axios": "1.6.0",
+    "https-proxy-agent": "^9.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
