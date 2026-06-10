@@ -1,6 +1,6 @@
 {
   "name": "@mastergo/magic-mcp",
-  "version": "0.1.9-alpha.0",
+  "version": "0.2.0",
   "description": "MasterGo MCP standalone service",
   "homepage": "https://github.com/mastergo-design/mastergo-magic-mcp#readme",
   "repository": {
