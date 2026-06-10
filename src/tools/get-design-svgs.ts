@@ -2,22 +2,20 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 
-const DSL_TOOL_NAME = "mcp__getDsl";
-const DSL_TOOL_DESCRIPTION = `
-[FALLBACK] Use only when mcp__getDesignSections is unavailable or returns an error.
-This returns the FULL DSL in one response — may be large and exceed context limits for complex designs.
-Prefer mcp__getDesignSections as the primary tool for all designs.
+const DESIGN_SVGS_TOOL_NAME = "mcp__getDesignSvgs";
+const DESIGN_SVGS_TOOL_DESCRIPTION = `
+After fetching ALL sections via mcp__getDesignSections, call this tool to retrieve all cached SVG HTML strings.
+Each PATH node in the DSL has an id. Look up that id in the returned svgs map to get the complete SVG string.
+Insert the svgHtml string directly into HTML where icons should appear.
+
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
-This tool also returns the rules you must follow when generating code.
-The DSL data can also be used to transform and generate code for different frameworks.
 `;
 
-export class GetDslTool extends BaseTool {
-  name = DSL_TOOL_NAME;
-  description = DSL_TOOL_DESCRIPTION;
+export class GetDesignSvgsTool extends BaseTool {
+  name = DESIGN_SVGS_TOOL_NAME;
+  description = DESIGN_SVGS_TOOL_DESCRIPTION;
 
   constructor() {
     super();
@@ -28,13 +26,13 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "MasterGo design file ID (format: file/<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "MasterGo design file ID. Required if shortLink is not provided."
       ),
     layerId: z
       .string()
       .optional()
       .describe(
-        "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL). Required if shortLink is not provided."
+        "Root layer ID of the design. Required if shortLink is not provided."
       ),
     sourceLayerId: z
       .string()
@@ -48,11 +46,16 @@ export class GetDslTool extends BaseTool {
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
   });
 
-  async execute({ fileId, layerId, sourceLayerId, shortLink }: z.infer<typeof this.schema>) {
+  async execute({
+    fileId,
+    layerId,
+    sourceLayerId,
+    shortLink,
+  }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a MasterGo URL"
+          "Either provide both fileId and layerId, or provide a shortLink"
         );
       }
 
@@ -71,14 +74,18 @@ export class GetDslTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId");
       }
 
-      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
-        sourceLayerId: finalSourceLayerId,
-      });
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+
+      const result = await httpUtilInstance.getDesignSvgs(
+        finalFileId,
+        effectiveLayerId
+      );
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: JSON.stringify(result),
           },
         ],
       };
@@ -95,5 +102,4 @@ export class GetDslTool extends BaseTool {
       };
     }
   }
-
 }

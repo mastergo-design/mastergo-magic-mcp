@@ -113,9 +113,4 @@ export class GetC2dTool extends BaseTool {
       };
     }
   }
-
-  private normalizeFileId(fileId?: string) {
-    if (!fileId) return fileId;
-    return fileId.replace(/^file\//, "");
-  }
 }

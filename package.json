@@ -26,6 +26,7 @@
   },
   "scripts": {
     "build": "node build.js",
+    "build:watch": "node build.js --watch",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
