@@ -2,6 +2,14 @@
   "name": "@mastergo/magic-mcp",
   "version": "0.1.9-alpha.0",
   "description": "MasterGo MCP standalone service",
+  "homepage": "https://github.com/mastergo-design/mastergo-magic-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mastergo-design/mastergo-magic-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mastergo-design/mastergo-magic-mcp/issues"
+  },
   "main": "dist/index.js",
   "bin": {
     "mastergo-magic-mcp": "dist/index.js"
