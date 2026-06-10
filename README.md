@@ -12,7 +12,41 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 
 ## Tutorial
 
-- https://mastergo.com/file/155675508499265?page_id=158:0002
+- [https://mastergo.com/file/192644601973042](https://mastergo.com/file/192644601973042)
+
+## Example Prompts
+
+Once the MCP server is connected, you can use the following prompts in your AI chat:
+
+**Extract SVG and preview in HTML:**
+
+```
+Extract SVG and preview in HTML: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+**Restore a design to code:**
+
+```
+Restore design: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+Replace `{domain}`, `{fileId}`, and `{layerId}` with your actual values. You can also use short links:
+
+```
+Restore design: https://{domain}/goto/{shortLink}
+```
+
+**Restore a design and save as an HTML file:**
+
+```
+Restore design, save as HTML file: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+You can also use short links:
+
+```
+Restore design, save as HTML file: https://{domain}/goto/{shortLink}
+```
 
 ## Usage
 
@@ -39,7 +73,7 @@ MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule]
 ```
 
 #### Parameters:
@@ -47,13 +81,14 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--token=YOUR_TOKEN` (required): MasterGo API token for authentication
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
+- `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
 
 You can also use space-separated format for parameters:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --debug
 ```
 
 #### Environment Variables
@@ -63,6 +98,7 @@ Alternatively, you can use environment variables instead of command line argumen
 - `MG_MCP_TOKEN` or `MASTERGO_API_TOKEN`: MasterGo API token
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
+- `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) proxy URL (the `--proxy` argument takes priority)
 
 ### Installing via Smithery Marketplace
 
@@ -113,7 +149,7 @@ You can configure the MCP server using either command line arguments or environm
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -139,6 +175,24 @@ You can configure the MCP server using either command line arguments or environm
 }
 ```
 
+**Option 3: Using SSE (Streamable HTTP)**
+
+No local installation required. The MCP server runs remotely and is accessed via SSE:
+
+```json
+{
+  "mcpServers": {
+    "mastergo-magic-mcp": {
+      "type": "http",
+      "url": "https://mastergo.com/mcp/xf/sse",
+      "headers": {
+        "x-mg-useraccesstoken": "<YOUR_TOKEN>"
+      }
+    }
+  }
+}
+```
+
 ### cline Usage
 
 **Option 1: Using command line arguments**
@@ -151,7 +205,7 @@ You can configure the MCP server using either command line arguments or environm
       "args": [
         "-y",
         "@mastergo/magic-mcp",
-        "--token=<MG_MCP_TOKEN>",
+        "--token=<YOUR_TOKEN>",
         "--url=https://mastergo.com"
       ],
       "env": {}
@@ -172,6 +226,31 @@ You can configure the MCP server using either command line arguments or environm
         "MG_MCP_TOKEN": "<YOUR_TOKEN>",
         "API_BASE_URL": "https://mastergo.com"
       }
+    }
+  }
+}
+```
+
+### Open Code Usage
+
+Open Code uses a `mcp` configuration block with `type: "local"` and `command` array:
+
+```json
+{
+  "mcp": {
+    "mastergo-magic-mcp": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@mastergo/magic-mcp",
+        "--token=<YOUR_TOKEN>",
+        "--url=https://mastergo.com"
+      ],
+      "environment": {
+        "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org/"
+      },
+      "enabled": true
     }
   }
 }

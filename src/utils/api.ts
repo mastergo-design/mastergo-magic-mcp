@@ -1,10 +1,33 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { parseToken, parseUrl, parseRules, parseNoRule } from "./args";
+import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy } from "./args";
 import https from "https";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
-axios.defaults.httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+// Configure proxy from --proxy arg or HTTP_PROXY/HTTPS_PROXY env vars
+const proxyUrl =
+  parseProxy() ||
+  process.env.HTTPS_PROXY ||
+  process.env.https_proxy ||
+  process.env.HTTP_PROXY ||
+  process.env.http_proxy;
+
+if (proxyUrl) {
+  try {
+    const proxyAgent = new HttpsProxyAgent(proxyUrl, {
+      rejectUnauthorized: false,
+    });
+    axios.defaults.httpAgent = proxyAgent;
+    axios.defaults.httpsAgent = proxyAgent;
+    // Disable axios built-in proxy to avoid double-proxying via proxy-from-env
+    axios.defaults.proxy = false;
+  } catch {
+    throw new Error(`Invalid proxy URL: ${proxyUrl}`);
+  }
+} else {
+  axios.defaults.httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+  });
+}
 
 // DSL response interface
 export interface DslResponse {
@@ -66,10 +89,11 @@ const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
 const buildDslRules = (): string[] => {
   return [
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+    "Background colors come from the node's fillStyleId — look it up in the DSL styles map. Do NOT invent background gradients or colors. If a node has no fill style, leave its background transparent.",
     `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
 When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
-For example: 
-  \`\`\`js  
+For example:
+  \`\`\`js
     const componentDocumentLinks = [
       'https://example.com/ant/button.mdx',
       'https://example.com/ant/button.mdx'
@@ -89,19 +113,26 @@ For example:
  */
 const createHttpUtil = () => {
   return {
-    async getMeta(fileId: string, layerId: string): Promise<string> {
+    async getMeta(fileId: string, layerId: string, sourceLayerId?: string): Promise<string> {
       const response = await axios.get(`${getBaseUrl()}/mcp/meta`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
     },
 
-    async getDsl(fileId: string, layerId: string): Promise<DslResponse> {
+    async getDsl(
+      fileId: string,
+      layerId: string,
+      options?: { sourceLayerId?: string }
+    ): Promise<DslResponse> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
+
       const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params,
         headers: getCommonHeader(),
       });
 
@@ -110,6 +141,80 @@ const createHttpUtil = () => {
         componentDocumentLinks: extractComponentDocumentLinks(response.data),
         rules: parseNoRule() ? [] : buildDslRules(),
       };
+    },
+
+    async extractSvg(
+      fileId: string,
+      layerId: string,
+      backgroundColor?: string
+    ): Promise<any> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (backgroundColor) params.backgroundColor = backgroundColor;
+
+      const response = await axios.get(`${getBaseUrl()}/mcp/extract-svg`, {
+        timeout: 30000,
+        params,
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<any> {
+      const params: Record<string, any> = { fileId, layerId };
+      if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
+          timeout: 120000,
+          params,
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-sections API not available on this server. ` +
+            `Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
+    },
+
+    async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
+          timeout: 120000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-svgs API not available on this server. Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
+    },
+
+    async getDesignTexts(fileId: string, layerId: string): Promise<any> {
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/design-texts`, {
+          timeout: 120000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `design-texts API not available on this server. Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
@@ -139,10 +244,10 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getComponentStyleJson(fileId: string, layerId: string) {
+    async getComponentStyleJson(fileId: string, layerId: string, sourceLayerId?: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
-        params: { fileId, layerId },
+        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
         headers: getCommonHeader(),
       });
       return response.data;
@@ -160,7 +265,7 @@ const createHttpUtil = () => {
      */
     async extractIdsFromUrl(
       url: string
-    ): Promise<{ fileId: string; layerId: string }> {
+    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
       let targetUrl = url;
 
       // Handle short links
@@ -189,7 +294,9 @@ const createHttpUtil = () => {
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
 
-      return { fileId, layerId };
+      const sourceLayerId = searchParams.get("source_layer_id") || undefined;
+
+      return { fileId, layerId, sourceLayerId };
     },
   };
 };
