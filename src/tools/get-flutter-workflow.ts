@@ -187,7 +187,7 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
         httpsAgent: relaxedAgent,
         maxRedirects: 5,
       });
-      fs.writeFileSync(destPath, Buffer.from(resp.data));
+      await fs.promises.writeFile(destPath, Buffer.from(resp.data));
       return;
     } catch (err: any) {
       lastError = err;
@@ -204,7 +204,7 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
             timeout: DOWNLOAD_TIMEOUT,
             maxRedirects: 5,
           });
-          fs.writeFileSync(destPath, Buffer.from(resp.data));
+          await fs.promises.writeFile(destPath, Buffer.from(resp.data));
           return;
         } catch (httpErr) {
           lastError = httpErr;
@@ -226,7 +226,7 @@ async function persistDataUrl(dataUrl: string, destPath: string): Promise<string
   const payload = match[2];
   const ext = extFromContentType(mime);
   const finalDest = destPath.endsWith(`.${ext}`) ? destPath : `${destPath}.${ext}`;
-  fs.writeFileSync(finalDest, Buffer.from(payload, "base64"));
+  await fs.promises.writeFile(finalDest, Buffer.from(payload, "base64"));
   return finalDest;
 }
 
@@ -305,23 +305,6 @@ function ensurePubspecAsset(rootPath: string, assetDirRelative: string): "added"
 
   fs.writeFileSync(pubspecPath, next);
   return "added";
-}
-
-/**
- * Resolve the Flutter asset subdirectory for resolution-aware PNGs (@2x/@3x).
- */
-function resolveFlutterAssetSubdir(featureAssetDir: string, url: string, fileName: string): string {
-  if (url.includes("@3x") || url.includes("_3x") || url.includes("/3.0x/")) {
-    const dir = path.join(featureAssetDir, "3.0x");
-    ensureDir(dir);
-    return path.join(dir, fileName);
-  }
-  if (url.includes("@2x") || url.includes("_2x") || url.includes("/2.0x/")) {
-    const dir = path.join(featureAssetDir, "2.0x");
-    ensureDir(dir);
-    return path.join(dir, fileName);
-  }
-  return path.join(featureAssetDir, fileName);
 }
 
 // ---------------------------------------------------------------------------
@@ -503,7 +486,7 @@ function emitLayerSvg(
   imageDir: string,
   featureAssetDir: string,
   assetDirRelative: string
-): { flutterPath: string; needsColorFilter: boolean } | null {
+): { flutterPath: string; localPath: string; needsColorFilter: boolean; created: boolean } | null {
   if (!Array.isArray(layer?.path) || layer.path.length === 0) return null;
 
   const id = safeName(String(layer.id ?? "icon"));
@@ -516,6 +499,7 @@ function emitLayerSvg(
   const svgFileName = `${id}.svg`;
   const filePath = path.join(imageDir, svgFileName);
 
+  let created = false;
   if (!fs.existsSync(filePath)) {
     const pathElements = layer.path
       .map((d: string, i: number) => {
@@ -535,6 +519,7 @@ function emitLayerSvg(
       filePath,
       `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">\n${pathElements}\n</svg>`
     );
+    created = true;
   }
 
   const flutterSvgPath = path.join(featureAssetDir, svgFileName);
@@ -544,7 +529,9 @@ function emitLayerSvg(
 
   return {
     flutterPath: `${assetDirRelative}/${svgFileName}`,
+    localPath: filePath,
     needsColorFilter,
+    created,
   };
 }
 
@@ -552,17 +539,30 @@ function walkVectorLayers(
   layer: any,
   imageDir: string,
   featureAssetDir: string,
-  assetDirRelative: string
+  assetDirRelative: string,
+  svgRecords: AssetRecord[]
 ): void {
   const result = emitLayerSvg(layer, imageDir, featureAssetDir, assetDirRelative);
   if (result) {
     layer.imageUrls = layer.imageUrls ?? [];
-    layer.imageUrls.push(result);
+    layer.imageUrls.push({
+      flutterPath: result.flutterPath,
+      needsColorFilter: result.needsColorFilter,
+    });
+    svgRecords.push({
+      token: `vector.${safeName(String(layer.id ?? "icon"))}`,
+      sourceUrl: "",
+      localPath: result.localPath,
+      flutterPath: result.flutterPath,
+      format: "svg",
+      status: result.created ? "downloaded" : "skipped",
+      needsColorFilter: result.needsColorFilter,
+    });
     delete layer.path;
   }
   if (Array.isArray(layer?.children)) {
     layer.children.forEach((child: any) =>
-      walkVectorLayers(child, imageDir, featureAssetDir, assetDirRelative)
+      walkVectorLayers(child, imageDir, featureAssetDir, assetDirRelative, svgRecords)
     );
   }
 }
@@ -678,7 +678,8 @@ export class GetFlutterWorkflowTool extends BaseTool {
     // -----------------------------------------------------------------------
     // 3. Extract vector (SVG path) layers into on-disk SVGs
     // -----------------------------------------------------------------------
-    walkVectorLayers(rootNode, imageDir, featureAssetDir, assetDirRelative);
+    const svgAssetRecords: AssetRecord[] = [];
+    walkVectorLayers(rootNode, imageDir, featureAssetDir, assetDirRelative, svgAssetRecords);
 
     // -----------------------------------------------------------------------
     // 4. Discover image assets (URLs + data URLs + lost refs)
@@ -731,8 +732,8 @@ export class GetFlutterWorkflowTool extends BaseTool {
           if (!fs.existsSync(localPath)) {
             await persistDataUrl(asset.url, path.join(imageDir, baseFileName));
           }
-          const flutterAssetPath = resolveFlutterAssetSubdir(featureAssetDir, asset.url, fileName);
-          if (!fs.existsSync(flutterAssetPath)) fs.copyFileSync(localPath, flutterAssetPath);
+          const flutterAssetPath = path.join(featureAssetDir, fileName);
+          if (!fs.existsSync(flutterAssetPath)) await fs.promises.copyFile(localPath, flutterAssetPath);
           summary.downloaded++;
           summary.byFormat[ext] = (summary.byFormat[ext] ?? 0) + 1;
           return {
@@ -763,8 +764,8 @@ export class GetFlutterWorkflowTool extends BaseTool {
         const localPath = path.join(imageDir, fileName);
 
         if (fs.existsSync(localPath)) {
-          const flutterAssetPath = resolveFlutterAssetSubdir(featureAssetDir, asset.url, fileName);
-          if (!fs.existsSync(flutterAssetPath)) fs.copyFileSync(localPath, flutterAssetPath);
+          const flutterAssetPath = path.join(featureAssetDir, fileName);
+          if (!fs.existsSync(flutterAssetPath)) await fs.promises.copyFile(localPath, flutterAssetPath);
           summary.skipped++;
           summary.byFormat[ext] = (summary.byFormat[ext] ?? 0) + 1;
           return {
@@ -778,8 +779,8 @@ export class GetFlutterWorkflowTool extends BaseTool {
         }
 
         await downloadFile(asset.url, localPath);
-        const flutterAssetPath = resolveFlutterAssetSubdir(featureAssetDir, asset.url, fileName);
-        fs.copyFileSync(localPath, flutterAssetPath);
+        const flutterAssetPath = path.join(featureAssetDir, fileName);
+        await fs.promises.copyFile(localPath, flutterAssetPath);
 
         summary.downloaded++;
         summary.byFormat[ext] = (summary.byFormat[ext] ?? 0) + 1;
@@ -808,11 +809,21 @@ export class GetFlutterWorkflowTool extends BaseTool {
       }
     };
 
-    const assetRecords = await runWithConcurrency(
+    const downloadedRecords = await runWithConcurrency(
       discoveredAssets,
       DOWNLOAD_CONCURRENCY,
       processAsset
     );
+
+    // Merge locally-emitted vector SVGs into the asset records so they appear in
+    // the manifest (with their needsColorFilter flag) and the summary counts.
+    for (const svg of svgAssetRecords) {
+      summary.discovered++;
+      if (svg.status === "downloaded") summary.downloaded++;
+      else summary.skipped++;
+      summary.byFormat.svg = (summary.byFormat.svg ?? 0) + 1;
+    }
+    const assetRecords = [...downloadedRecords, ...svgAssetRecords];
 
     // -----------------------------------------------------------------------
     // 6. Register asset directory in pubspec.yaml
@@ -829,7 +840,7 @@ export class GetFlutterWorkflowTool extends BaseTool {
     // -----------------------------------------------------------------------
     const urlMap = new Map<string, string>();
     for (const r of assetRecords) {
-      if (r.status !== "failed" && r.flutterPath) {
+      if (r.status !== "failed" && r.flutterPath && r.sourceUrl) {
         urlMap.set(r.sourceUrl, r.flutterPath);
       }
     }
