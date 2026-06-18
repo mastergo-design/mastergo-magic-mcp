@@ -7,9 +7,9 @@ const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 [PRIMARY] This is the main tool for all designs. Operates in TWO modes:
 
 Mode 1 — Get layout overview (sectionIndex NOT provided):
-Returns the list of all sections with id, name, type, and nodeCount, plus totalSections and totalNodes.
+Returns the list of all sections with id, name, type, nodeCount, and a page-absolute bounding box (x, y, width, height) for each section, plus totalSections and totalNodes.
 Also returns rootMetadata (root layer width/height/name/type/fill) when available.
-Use this FIRST to understand the design scope.
+Use this FIRST to understand the design scope. The per-section bbox tells you exactly where each section sits inside the root container — use it for absolute positioning when generating code.
 Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
