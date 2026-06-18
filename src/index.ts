@@ -21,6 +21,7 @@ const SERVER_INSTRUCTIONS = `
 ### Step 0: Get Layout Overview (MANDATORY)
 Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
 The response contains \`sections\` array with \`nodeCount\` per section, \`totalSections\`, and \`totalNodes\`.
+Each \`sections[]\` entry ALSO carries a **page-absolute bounding box**: \`x\`, \`y\` (top-left corner relative to the root container's origin), \`width\`, \`height\`. This tells you exactly where each section sits on the canvas.
 Use this to understand the design scope before fetching details.
 
 \`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
@@ -48,7 +49,9 @@ This returns exact text content for large text nodes (>50 chars). In the section
 
 ### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
-- Generate a single complete HTML file containing ALL sections in order.
+- MANDATORY: Use \`rootContainer\` from the section list response to create the root container div. Apply ALL its CSS properties (width, minHeight, background, overflow, position:relative) to a wrapping div. ALL sections MUST be placed inside this root container.
+- CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning. Intra-section layout still uses each node's \`layoutStyle.relativeX/relativeY\` as before.
+- Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
