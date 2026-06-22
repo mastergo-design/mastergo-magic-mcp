@@ -75,6 +75,18 @@ After ALL N sections have been fetched and SVG data retrieved:
 ### Anti-Hallucination Rules:
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
+
+### Data Completeness Rules:
+- You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
+- Some sections may have nodeCount=3 and no visible TEXT nodes (text is in component property overrides). Do NOT skip them — the TEXT is resolved during DSL transfer. These sections contribute real content.
+- Keep a checklist: track which section indices have been requested. Do not stop until every index 0..N-1 has been fetched.
+- If you accidentally skipped a section, go back and request the missing indices. An incomplete section set WILL cause missing content in the final HTML.
+
+### Data Interpretation Rules:
+- Pagination/table-footer labels (e.g. "共 10 项", "X rows/page", "items per page") reflect UI control state — NOT data to replicate.
+- "共 X 项" is the pagination widget showing "total X items". The actual data rows come from the table body sections (preceding the pagination section).
+- Do NOT fabricate data rows based on pagination "total" values. Render ONLY the actual data rows present in the DSL.
+- If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
 `;
 
 function main() {
