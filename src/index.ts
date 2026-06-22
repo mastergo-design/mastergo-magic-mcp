@@ -40,6 +40,7 @@ This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}
 - Match each SVG to its section by the \`S{sectionIndex}\` prefix.
 - Insert the svgHtml string directly where the icon/PATH should appear.
 - Do NOT construct your own SVG — use the exact svgHtml from the response.
+- NEVER compute viewBox, path data, or fill colors from DSL layout properties — the svgHtml from getDesignSvgs IS the authoritative SVG. Use it verbatim. Any manually constructed SVG will have rounded coordinates, wrong viewBox offsets, and missing path precision.
 
 **Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
 This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
@@ -56,9 +57,11 @@ After ALL N sections have been fetched and SVG data retrieved:
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
 ### Tool Selection Rules:
-- \`mcp__getDesignSections\` is the PRIMARY tool. Always start here.
+- \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
+- \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` or \`getDesignSvgs\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
-- NEVER call both \`getDesignSections\` AND \`getDsl\` / \`extractSvg\` for the same design.
+- NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
+- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which includes \`getDesignSvgs\` for SVG data).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Text Fidelity Rules:
