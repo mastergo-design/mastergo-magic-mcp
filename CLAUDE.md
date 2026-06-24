@@ -28,3 +28,14 @@
 - build.js 中的注释必须保留，不要删除。新增功能时，在原有注释结构基础上扩展。
 - `npm run build` — 生产构建（压缩、无 sourcemap）
 - `npm run build:watch` — 开发模式（不压缩、开启 sourcemap、文件变更自动 rebuild）
+
+## 输出格式验证（format / 序列化）
+
+- **任何涉及 `format`（json/yaml/tree）或按 payload shape 分发的改动，必须用真实 server 响应验证所有 shape，不能只用构造样例。**（历史教训：构造的 `{nodes}` 样例通过测试，但真实响应把节点树嵌在 `dsl.nodes` / `sections` 下，导致 tree 静默回退 JSON。）
+- 必须覆盖的真实响应 shape（用真实 fileId/layerId，经 stdio 驱动 `dist/index.js`，或直连 `/mcp/*` 路由）：
+  - `mcp__getDesignSections` Mode 1 — section 列表：`{ sections, totalSections, rootMetadata, rootContainer, splitContainers }`
+  - `mcp__getDesignSections` Mode 2 — 单个 section：`{ sectionIndex, section, dsl: { styles, nodes }, ... }`（节点在 **`dsl.nodes`**）
+  - `mcp__getDsl` — `{ dsl: { styles, nodes }, componentDocumentLinks, rules }`（节点在 `dsl.nodes`）
+  - `mcp__getDesignSvgs` — `{ svgs: { key: value }, nodeCount }`，含空缓存 `{ message, svgs: {}, nodeCount: 0 }`
+  - `mcp__getDesignTexts` — `{ texts: { key: value }, textCount }`，含空缓存
+- 验证清单：每种 shape 用 `--format=json|yaml|tree` 各跑一次，确认：① 输出符合该格式（不是 JSON 回退）；② 无损往返（yaml 可 `yaml.load` 还原，tree 的 SVG/text 值逐字节保留）；③ dispatch 能穿透 `dsl`/`nodes`/`sections`/`svgs`/`texts` 等 wrapper 键。

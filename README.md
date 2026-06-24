@@ -120,7 +120,7 @@ Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerI
 
 Notes:
 
-- Only DSL node-tree payloads (the full section DSL and `mcp__getDsl` output) use the compact `tree` layout; the section list, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, and other lightweight responses fall back to JSON so no data is ever mis-formatted.
+- `tree` applies to all four tools' responses: `mcp__getDesignSections` (section list and per-section DSL), `mcp__getDsl` (full DSL), `mcp__getDesignSvgs`, and `mcp__getDesignTexts`. Truly unknown shapes fall back to JSON — no data is ever mis-formatted.
 - For `mcp__getDesignTexts`, `json` is recommended for maximum verbatim-text fidelity — though all formats round-trip without data loss.
 - All formats round-trip without data loss. An invalid or omitted `format` value falls back to `json`.
 

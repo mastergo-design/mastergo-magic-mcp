@@ -120,7 +120,7 @@ Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerI
 
 注意事项：
 
-- 只有 DSL 节点树数据（完整的 section DSL 和 `mcp__getDsl` 输出）使用紧凑的 `tree` 布局；section 列表、`mcp__getDesignSvgs`、`mcp__getDesignTexts` 及其他轻量响应回退为 JSON，以确保数据不会被错误格式化。
+- `tree` 适用于全部四个工具的响应：`mcp__getDesignSections`（section 列表与单个 section DSL）、`mcp__getDsl`（完整 DSL）、`mcp__getDesignSvgs`、`mcp__getDesignTexts`。只有真正未知的 shape 才回退为 JSON —— 数据不会被错误格式化。
 - 对于 `mcp__getDesignTexts`，建议使用 `json` 以保证文本的逐字还原精度 —— 尽管所有格式均可无损往返。
 - 所有格式均可无损往返。无效或省略的 `format` 值会回退为 `json`。
 

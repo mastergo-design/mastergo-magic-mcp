@@ -137,26 +137,49 @@ const RESERVED_NODE_KEYS = new Set([
   "children",
 ]);
 
-function isDslPayload(data: unknown): data is DslPayload {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    !Array.isArray(data) &&
-    Array.isArray((data as DslPayload).nodes)
-  );
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+/**
+ * Dispatch on the real response shapes returned by the server:
+ *   - Mode 2 section DSL: { sectionIndex, section, dsl: { styles, nodes, ... }, ... }
+ *   - getDsl:              { dsl: { styles, nodes, ... }, componentDocumentLinks, rules }
+ *   - Raw DSL:             { styles, nodes, components?, ... }
+ *   - Mode 1 section list: { sections, totalSections, rootMetadata, ... }
+ *   - getDesignSvgs/Texts: { svgs|texts: { key: value }, nodeCount|textCount }
+ * Primitives, arrays, and truly unknown objects fall back to JSON so data is never
+ * mis-formatted.
+ */
 function toTree(data: unknown): string {
-  if (!isDslPayload(data)) {
-    // Only DSL node-trees get the compact layout; everything else stays JSON.
+  if (!isPlainObject(data)) {
     return JSON.stringify(data);
   }
-  const dsl = data;
-  const lines: string[] = [];
+  const obj = data;
+  if (isPlainObject(obj.dsl) && Array.isArray((obj.dsl as DslPayload).nodes)) {
+    return wrappedDslToTree(obj);
+  }
+  if (Array.isArray(obj.nodes)) {
+    return renderDslBody(obj as DslPayload, []).join("\n");
+  }
+  if (Array.isArray(obj.sections)) {
+    return sectionListToTree(obj);
+  }
+  if (isPlainObject(obj.svgs) || isPlainObject(obj.texts)) {
+    return kvMapToTree(obj);
+  }
+  return JSON.stringify(data);
+}
 
+/**
+ * Render a raw DSL object ({ styles, nodes, components? }) as globalVars + tree.
+ * Other top-level keys pass through verbatim (fidelity safety net).
+ * Appends to (and returns) `lines` so callers can prepend wrapper metadata.
+ */
+function renderDslBody(dsl: DslPayload, lines: string[]): string[] {
   // globalVars: the styles map is already deduplicated by the server; surface it verbatim.
   lines.push("globalVars:");
-  if (dsl.styles && typeof dsl.styles === "object") {
+  if (isPlainObject(dsl.styles)) {
     for (const [key, val] of Object.entries(dsl.styles)) {
       lines.push(`  ${key}: ${JSON.stringify(val)}`);
     }
@@ -166,7 +189,7 @@ function toTree(data: unknown): string {
     lines.push(`components: ${JSON.stringify(dsl.components)}`);
   }
 
-  // Other top-level keys (e.g. componentDocumentLinks, rules, sectionIndex) pass through.
+  // Other top-level keys (e.g. componentDocumentLinks, rules) pass through.
   for (const [key, val] of Object.entries(dsl)) {
     if (key === "styles" || key === "nodes" || key === "components") continue;
     lines.push(`${key}: ${JSON.stringify(val)}`);
@@ -176,7 +199,101 @@ function toTree(data: unknown): string {
   for (const node of dsl.nodes ?? []) {
     renderNode(node, 1, lines);
   }
+  return lines;
+}
+
+/** Wrapped DSL (Mode 2 section DSL or getDsl): emit sibling metadata, then the nested `dsl` body. */
+function wrappedDslToTree(obj: Record<string, unknown>): string {
+  const lines: string[] = [];
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === "dsl") continue; // rendered as body below
+    lines.push(`${key}: ${JSON.stringify(val)}`);
+  }
+  renderDslBody(obj.dsl as DslPayload, lines);
   return lines.join("\n");
+}
+
+const SECTION_ENTRY_KEYS = new Set([
+  "type", "id", "name", "nodeCount", "x", "y", "width", "height", "layoutStyle",
+]);
+
+/** Mode 1: emit list metadata, then a compact `sections:` block (lossless pass-through). */
+function sectionListToTree(obj: Record<string, unknown>): string {
+  const lines: string[] = [];
+  const sections = Array.isArray(obj.sections) ? (obj.sections as DslNode[]) : [];
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === "sections") continue;
+    lines.push(`${key}: ${JSON.stringify(val)}`);
+  }
+  lines.push("sections:");
+  sections.forEach((s, i) => {
+    const ls = (s.layoutStyle as Record<string, unknown> | undefined) ?? {};
+    const w = s.width ?? ls.width;
+    const h = s.height ?? ls.height;
+    const x = s.x ?? ls.relativeX;
+    const y = s.y ?? ls.relativeY;
+    const extras: string[] = [];
+    pushIf(extras, "nodeCount", s.nodeCount);
+    lines.push(
+      `  [${i}] ${s.type ?? "?"} ${s.id ?? "?"} ${quote(s.name)} ` +
+        `${fmtNum(w)}x${fmtNum(h)} @${fmtNum(x)},${fmtNum(y)}` +
+        (extras.length ? " " + extras.join(" ") : "")
+    );
+    // Fidelity safety net: any other section field.
+    for (const [k, v] of Object.entries(s)) {
+      if (SECTION_ENTRY_KEYS.has(k) || v === undefined) continue;
+      lines.push(`    ${k}=${JSON.stringify(v)}`);
+    }
+  });
+  return lines.join("\n");
+}
+
+/**
+ * Flat key→value map payloads: getDesignSvgs `{ svgs, nodeCount }` and
+ * getDesignTexts `{ texts, textCount }` (including the empty-cache variants).
+ * Sibling scalars pass through; the map renders as a `svgs:`/`texts:` block with
+ * one entry per line. Single-line values stay inline; multi-line values (SVG with
+ * newlines, long text) indent on the following line(s) — value bytes are emitted
+ * verbatim, never escaped, so SVG/text fidelity is preserved exactly.
+ */
+function kvMapToTree(obj: Record<string, unknown>): string {
+  const lines: string[] = [];
+  const mapKey = isPlainObject(obj.svgs) ? "svgs" : isPlainObject(obj.texts) ? "texts" : null;
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === mapKey) continue;
+    lines.push(`${key}: ${JSON.stringify(val)}`);
+  }
+  if (mapKey) {
+    lines.push(`${mapKey}:`);
+    const map = obj[mapKey] as Record<string, unknown>;
+    for (const [k, v] of Object.entries(map)) {
+      renderKvEntry(k, v, "  ", lines);
+    }
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Render one map entry. Single-line string values go inline (`key: value`);
+ * anything else puts the key on its own line and the value indented beneath, so
+ * multi-line SVG / text content is preserved without escaping.
+ */
+function renderKvEntry(key: string, v: unknown, pad: string, lines: string[]): void {
+  if (typeof v === "string" && !v.includes("\n")) {
+    lines.push(`${pad}${key}: ${v}`);
+    return;
+  }
+  lines.push(`${pad}${key}:`);
+  const vpad = pad + "  ";
+  if (typeof v === "string") {
+    if (v === "") {
+      lines.push(`${vpad}""`);
+    } else {
+      for (const ln of v.split("\n")) lines.push(vpad + ln);
+    }
+  } else {
+    lines.push(`${vpad}${JSON.stringify(v)}`);
+  }
 }
 
 function renderNode(node: DslNode, depth: number, lines: string[]): void {
