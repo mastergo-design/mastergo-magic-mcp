@@ -73,7 +73,7 @@ Restore design, save as HTML file: https://{domain}/goto/{shortLink}
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule] [--header=Key: Value]
 ```
 
 #### Parameters:
@@ -82,9 +82,9 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
-- `--header=xxxx` (optional): HTTP Request Header, can be used multiple times
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
+- `--header=Key: Value` (optional): HTTP Request Header, can be used multiple times
 
 You can also use space-separated format for parameters:
 
