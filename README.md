@@ -82,6 +82,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
+- `--header=xxxx` (optional): HTTP Request Header, can be used multiple times
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
 
