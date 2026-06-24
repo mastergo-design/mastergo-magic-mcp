@@ -10,12 +10,21 @@
   - 工具描述（`*_TOOL_DESCRIPTION`）— 两个项目中对应的 tool 文件
 - 修改一处后，必须检查另一个项目的对应文件并同步变更。
 
+## 文档同步（README 双语）
+
+- 本项目同时维护 `README.md`（英文）和 `README.zh-CN.md`（中文），两份文档内容必须保持一致，仅语言不同。
+- **更新 `README.md` 时，必须同步更新 `README.zh-CN.md`**（反之亦然）。新增小节、修改参数说明、调整结构等任何内容变更都要在另一份文档中对应同步。
+- 检查清单：改动一处后，立即检查另一份文档的对应位置是否需要同步。
+
 ## Code Style
 
 - All imports must be placed at the top of the file. Do not use dynamic `import()` or write `import` statements in the middle of code.
 
 ## Build
 
+- **新增功能或依赖时，必须检查 `build.js` 是否需要同步更新**。检查项：`external` 列表（仅排除 Node 内建模块，所有第三方依赖默认打包）、`loader`、`entryPoints`、`target`、`resolveExtensions`、`minify`/`sourcemap`。
+  - 纯 JS 依赖（如 `js-yaml`）会随 `bundle: true` 自动打进 `dist/index.js`，无需改动 `build.js` —— 但仍必须**显式确认**它没有被误加进 `external`，且构建产物体积合理、`npm run build` 通过。
+  - 涉及**原生模块（.node）、新的文件类型入口、或需要 external 化的依赖**时，必须同步修改 `build.js` 并在对应位置扩展注释。
 - build.js 中的注释必须保留，不要删除。新增功能时，在原有注释结构基础上扩展。
 - `npm run build` — 生产构建（压缩、无 sourcemap）
 - `npm run build:watch` — 开发模式（不压缩、开启 sourcemap、文件变更自动 rebuild）

@@ -140,7 +140,7 @@ async function build() {
       console.log("");
       console.log("🔧 Or you can test locally using the following command:");
       console.log(
-        "   node dist/index.js --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--no-rule] [--debug]"
+        "   node dist/index.js --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--format=FORMAT] [--no-rule] [--debug]"
       );
     }
   } catch (error) {

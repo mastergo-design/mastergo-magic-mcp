@@ -14,6 +14,7 @@ import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs } from "./utils/args";
+import { normalizeFormat } from "./utils/format";
 
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
@@ -79,7 +80,20 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule, proxy } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, proxy, format } = parserArgs();
+
+  // `--format` (json|yaml|tree) sets the default output format for design-data tools.
+  // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
+  if (format) {
+    const normalized = normalizeFormat(format);
+    if (normalized) {
+      process.env.DEFAULT_FORMAT = normalized;
+    } else {
+      console.warn(
+        `Invalid --format value: "${format}". Must be one of: json, yaml, tree. Falling back to json.`
+      );
+    }
+  }
 
   if (debug) {
     process.env.DEBUG = "true";
@@ -89,6 +103,7 @@ function main() {
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
     console.log(`Proxy: ${proxy || "none"}`);
+    console.log(`Format: ${process.env.DEFAULT_FORMAT || "json (default)"}`);
     console.log(`Debug mode: enabled`);
   }
 

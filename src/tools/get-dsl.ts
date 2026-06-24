@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
@@ -46,9 +47,10 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    format: formatField(),
   });
 
-  async execute({ fileId, layerId, sourceLayerId, shortLink }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, shortLink, format }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -78,7 +80,7 @@ export class GetDslTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: formatOutput(dsl, format),
           },
         ],
       };

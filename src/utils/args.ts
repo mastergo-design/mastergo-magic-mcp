@@ -92,6 +92,23 @@ function parseProxy(): string {
   return proxy;
 }
 
+function parseFormat(): string {
+  const args = getArgs();
+  let format = "";
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--format" && i + 1 < args.length) {
+      format = args[i + 1];
+      break;
+    } else if (args[i].startsWith("--format=")) {
+      format = args[i].split("=")[1];
+      break;
+    }
+  }
+
+  return format;
+}
+
 export function parserArgs(): {
   token: string;
   baseUrl: string;
@@ -99,6 +116,7 @@ export function parserArgs(): {
   debug: boolean;
   noRule: boolean;
   proxy: string;
+  format: string;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();
@@ -106,6 +124,7 @@ export function parserArgs(): {
   const debug = parseDebug();
   const noRule = parseNoRule();
   const proxy = parseProxy();
+  const format = parseFormat();
 
   return {
     token,
@@ -114,7 +133,8 @@ export function parserArgs(): {
     debug,
     noRule,
     proxy,
+    format,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseFormat, getArgs };

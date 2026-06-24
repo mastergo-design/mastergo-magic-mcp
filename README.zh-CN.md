@@ -73,7 +73,7 @@ MCP 服务连接成功后，可以在 AI 对话中使用以下提示词：
 ### 命令行选项
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--debug] [--no-rule]
 ```
 
 #### 参数:
@@ -82,13 +82,14 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (可选): API 基础 URL，默认为 http://localhost:3000
 - `--rule=RULE_NAME` (可选): 添加要应用的设计规则，可多次使用
 - `--proxy=PROXY_URL` (可选): HTTP/HTTPS 代理地址（如 `http://127.0.0.1:7890`），也支持 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量
+- `--format=FORMAT` (可选): 设计数据工具的默认输出格式 —— 取值 `json`（默认）、`yaml`、`tree`。工具调用时显式传入的 `format` 参数优先级更高。也可通过 `DEFAULT_FORMAT` 环境变量设置。
 - `--debug` (可选): 启用调试模式，提供详细错误信息
 - `--no-rule` (可选): 禁用默认规则
 
 你也可以使用空格分隔的参数格式:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --format FORMAT --debug
 ```
 
 #### 环境变量
@@ -98,7 +99,30 @@ npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --prox
 - `MG_MCP_TOKEN` 或 `MASTERGO_API_TOKEN`: MasterGo API 令牌
 - `API_BASE_URL`: API 基础 URL
 - `RULES`: 规则的 JSON 数组 (例如: `'["rule1", "rule2"]'`)
+- `DEFAULT_FORMAT`: 设计数据工具的默认输出格式（`json` | `yaml` | `tree`）；`--format` 参数和工具调用时显式传入的 `format` 参数优先级更高。
 - `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) 代理地址（`--proxy` 参数优先级更高）
+
+### 工具输出格式
+
+设计数据工具（`mcp__getDesignSections`、`mcp__getDsl`、`mcp__getDesignSvgs`、`mcp__getDesignTexts`）接受一个可选的 `format` 参数，用于控制数据的序列化方式。默认值为 `json`，或通过 `--format` / `DEFAULT_FORMAT` 设置的值（见[命令行选项](#命令行选项)）。
+
+| 取值 | 说明 |
+| --- | --- |
+| `json` | **默认。** 紧凑 JSON —— 适合将输出传递给期望 JSON 的工具。与历史行为逐字节一致。 |
+| `yaml` | 对于典型设计比 JSON 更省 token（扁平布局、重复值较多的设计收益最大）。 |
+| `tree` | 实验性紧凑格式。结构键（`id`、`name`、`type`）按位置编码在每个节点行上，样式值去重后保留在 `globalVars` 块中。样式复用较多的设计省 token 效果最明显。 |
+
+该格式由 AI 模型在每次工具调用时选择。如需影响其选择，可在提示词中指明所需格式，例如：
+
+```
+Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+注意事项：
+
+- 只有 DSL 节点树数据（完整的 section DSL 和 `mcp__getDsl` 输出）使用紧凑的 `tree` 布局；section 列表、`mcp__getDesignSvgs`、`mcp__getDesignTexts` 及其他轻量响应回退为 JSON，以确保数据不会被错误格式化。
+- 对于 `mcp__getDesignTexts`，建议使用 `json` 以保证文本的逐字还原精度 —— 尽管所有格式均可无损往返。
+- 所有格式均可无损往返。无效或省略的 `format` 值会回退为 `json`。
 
 ### 通过 Smithery 市场安装
 
