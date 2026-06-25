@@ -183,6 +183,9 @@ function toTree(data: unknown): string {
   if (Array.isArray(obj.sections)) {
     return sectionListToTree(obj);
   }
+  if (Array.isArray(obj.svgs)) {
+    return svgListToTree(obj); // extractSvg: { count, svgs: [{ name, id, svg }] }
+  }
   if (isPlainObject(obj.svgs) || isPlainObject(obj.texts)) {
     return kvMapToTree(obj);
   }
@@ -261,6 +264,44 @@ function sectionListToTree(obj: Record<string, unknown>): string {
     for (const [k, v] of Object.entries(s)) {
       if (SECTION_ENTRY_KEYS.has(k) || v === undefined) continue;
       lines.push(`    ${k}=${JSON.stringify(v)}`);
+    }
+  });
+  return lines.join("\n");
+}
+
+/**
+ * extractSvg payload: `{ count, svgs: [{ name, id, svg }, ...] }`.
+ * Each entry renders as `[i] "name" (id)` with the SVG markup indented beneath
+ * (single-line inline; multi-line indented — bytes emitted verbatim, never escaped,
+ * so SVG fidelity is preserved exactly).
+ */
+function svgListToTree(obj: Record<string, unknown>): string {
+  const lines: string[] = [];
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === "svgs") continue;
+    lines.push(`${key}: ${JSON.stringify(val)}`);
+  }
+  const svgs = Array.isArray(obj.svgs)
+    ? (obj.svgs as Array<Record<string, unknown>>)
+    : [];
+  if (svgs.length === 0) {
+    lines.push("svgs: []");
+    return lines.join("\n");
+  }
+  lines.push("svgs:");
+  svgs.forEach((s, i) => {
+    lines.push(`  [${i}] ${quote(s.name)} (${s.id ?? "?"})`);
+    const svg = s.svg;
+    if (typeof svg === "string" && !svg.includes("\n")) {
+      lines.push(`    ${svg}`);
+    } else if (typeof svg === "string") {
+      if (svg === "") {
+        lines.push('    ""');
+      } else {
+        for (const ln of svg.split("\n")) lines.push("    " + ln);
+      }
+    } else {
+      lines.push(`    ${JSON.stringify(svg)}`);
     }
   });
   return lines.join("\n");

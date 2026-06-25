@@ -38,5 +38,6 @@
   - `mcp__getDsl` — `{ dsl: { styles, nodes }, componentDocumentLinks, rules }`（节点在 `dsl.nodes`）
   - `mcp__getDesignSvgs` — `{ svgs: { key: value }, nodeCount }`，含空缓存 `{ message, svgs: {}, nodeCount: 0 }`
   - `mcp__getDesignTexts` — `{ texts: { key: value }, textCount }`，含空缓存
+  - `mcp__extractSvg` — `{ count, svgs: [{ name, id, svg }] }`（`svgs` 是**数组**，走 `svgListToTree`，区别于 getDesignSvgs 的对象 map）
   - `mcp__getMeta` — `{ result, rules }`（`rules` 是 markdown 字符串）：`tree` 下回退 JSON（不可把 markdown 塞进 tree 布局），`json`/`yaml` 正常
 - 验证清单：每种 shape 用 `--format=json|yaml|tree` 各跑一次，确认：① 输出符合该格式（不是 JSON 回退）；② 无损往返（yaml 可 `yaml.load` 还原，tree 的 SVG/text 值逐字节保留）；③ dispatch 能穿透 `dsl`/`nodes`/`sections`/`svgs`/`texts` 等 wrapper 键。

@@ -104,7 +104,7 @@ Alternatively, you can use environment variables instead of command line argumen
 
 ### Tool Output Format
 
-The design-data tools (`mcp__getDesignSections`, `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, `mcp__getMeta`) accept an optional `format` parameter that controls how the payload is serialized. It defaults to `json`, or to the value set via `--format` / `DEFAULT_FORMAT` (see [Command Line Options](#command-line-options)).
+The design-data tools (`mcp__getDesignSections`, `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, `mcp__extractSvg`, `mcp__getMeta`) accept an optional `format` parameter that controls how the payload is serialized. It defaults to `json`, or to the value set via `--format` / `DEFAULT_FORMAT` (see [Command Line Options](#command-line-options)).
 
 | Value | Description |
 | --- | --- |
@@ -120,7 +120,7 @@ Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerI
 
 Notes:
 
-- `tree` applies to all five tools' responses: `mcp__getDesignSections` (section list and per-section DSL), `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, and `mcp__getMeta`. `mcp__getMeta` falls back to JSON under `tree` because its `rules` field is markdown (the tree layout would corrupt the markdown's headings/code blocks); other payloads render as tree. Truly unknown shapes also fall back to JSON — no data is ever mis-formatted.
+- `tree` applies to all six tools' responses: `mcp__getDesignSections` (section list and per-section DSL), `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, `mcp__extractSvg`, and `mcp__getMeta`. `mcp__getMeta` falls back to JSON under `tree` because its `rules` field is markdown (the tree layout would corrupt the markdown's headings/code blocks); other payloads render as tree. Truly unknown shapes also fall back to JSON — no data is ever mis-formatted.
 - For `mcp__getDesignTexts`, `json` is recommended for maximum verbatim-text fidelity — though all formats round-trip without data loss.
 - All formats round-trip without data loss. An invalid or omitted `format` value falls back to `json`.
 
