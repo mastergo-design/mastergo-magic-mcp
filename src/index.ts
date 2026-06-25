@@ -62,6 +62,9 @@ After ALL N sections have been fetched and SVG data retrieved:
 - NEVER call both \`getDesignSections\` AND \`getDsl\` / \`extractSvg\` for the same design.
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
+### Output Format:
+- The design-data tools (\`getDesignSections\`, \`getDsl\`, \`getDesignSvgs\`, \`getDesignTexts\`, \`extractSvg\`, \`getMeta\`) accept an optional \`format\` parameter: \`json\` (default), \`yaml\`, or \`tree\`. \`yaml\`/\`tree\` use fewer tokens for large designs; all three round-trip without data loss. Set a session-wide default with the \`--format\` CLI flag or \`DEFAULT_FORMAT\` env var.
+
 ### Text Fidelity Rules:
 - TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
 - Do NOT duplicate text from one node to another — each TEXT node has unique content.

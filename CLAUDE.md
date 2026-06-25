@@ -10,6 +10,12 @@
   - 工具描述（`*_TOOL_DESCRIPTION`）— 两个项目中对应的 tool 文件
 - 修改一处后，必须检查另一个项目的对应文件并同步变更。
 
+### 例外：`format` 功能为 client-only（不同步到 frontend-mcp-server）
+
+- `format` 参数（json/yaml/tree）、`--format` CLI flag、`DEFAULT_FORMAT` 环境变量、`src/utils/format.ts` 序列化器，以及 SERVER_INSTRUCTIONS 中的 `### Output Format` 小节，**都是 `mastergo-magic-mcp`（client）独有的**，刻意不同步到 `frontend-mcp-server`（server）。
+- 原因：format 是 client 端对其从 server HTTP 接口拿到的 JSON 做的**展示层转换**，server 的 DSL 生成逻辑（精度敏感）不涉及。两者是独立部署路径（client=stdio MCP，server=SSE MCP + HTTP 路由），client 的工具 schema 带 `format`、server 的不带，互不影响。
+- **同步 SERVER_INSTRUCTIONS / 工具描述时，注意不要把 client 独有的 `format` 相关内容（如 `### Output Format` 小节、`format` 参数描述）同步到 server。** 其他内容的 dual-sync 规则照旧。
+
 ## 文档同步（README 双语）
 
 - 本项目同时维护 `README.md`（英文）和 `README.zh-CN.md`（中文），两份文档内容必须保持一致，仅语言不同。
@@ -20,10 +26,11 @@
 
 - All imports must be placed at the top of the file. Do not use dynamic `import()` or write `import` statements in the middle of code.
 
-## Lint（每次改动必跑）
+## Lint & Test（每次改动必跑）
 
-- **每次代码改动后，必须执行 `npm run lint`，且 0 error 才算通过**（warning 不阻断，但应尽量消除）。`npm run lint:fix` 可自动修复可修复项（格式、简单规则）。
-- 提交/合并前必做清单：`npm run lint`（0 error）+ `npm run build`（构建通过）。CI（`.github/workflows/ci.yml`）已强制 lint → build，本地先跑可避免 CI 红。
+- **每次代码改动后，必须执行 `npm run lint`（0 error）+ `npm run test`（全过）**。`npm run lint:fix` 可自动修复可修复项（格式、简单规则）。
+- 提交/合并前必做清单：`npm run lint`（0 error）+ `npm run test`（全过）+ `npm run build`（构建通过）。CI（`.github/workflows/ci.yml`）已强制 lint → test → build，本地先跑可避免 CI 红。
+- 测试用 Node 内置 `node:test`（零额外依赖），测试源在 `test/`，经 esbuild 打包到 `.test/`（已 gitignore）。`format.ts` 的 6 种响应 shape × json/yaml/tree + 边界用例均在 `test/format.test.ts` 覆盖；改动 `format.ts` 或新增工具的响应 shape 时，必须同步补/改测试。
 - 规则定义在 `.eslintrc.json`：`eslint:recommended` + `plugin:@typescript-eslint/recommended`。已知约定：
   - `@typescript-eslint/no-explicit-any` 为 **warn**（本项目 catch 子句、API 边界大量使用 `any`，属有意为之；新增代码能具象化类型时尽量不用 `any`）。
   - `@typescript-eslint/no-unused-vars` 为 **error**（未使用变量是真实缺陷；故意忽略的参数/变量用 `_` 前缀）。

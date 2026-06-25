@@ -29,6 +29,7 @@
     "build:watch": "node build.js --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
+    "test": "esbuild test/format.test.ts --bundle --platform=node --format=cjs --outfile=.test/format.test.cjs && node --test .test/format.test.cjs",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"

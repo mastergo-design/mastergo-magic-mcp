@@ -9,7 +9,7 @@ Extract SVG data from MasterGo design files. This tool retrieves the DSL from a 
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-Returns an array of SVG strings, one per icon/instance found in the design.
+Returns { count, svgs: [{ name, id, svg }] } — one entry per icon/instance found in the design.
 `;
 
 export class ExtractSvgTool extends BaseTool {
