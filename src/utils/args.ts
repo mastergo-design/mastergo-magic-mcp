@@ -92,21 +92,21 @@ function parseProxy(): string {
   return proxy;
 }
 
-function parseFormat(): string {
+// Returns the raw --format value, or `undefined` when the flag is absent.
+// An explicit empty value (`--format=`) is returned as "" so the caller can warn
+// rather than silently falling back.
+function parseFormat(): string | undefined {
   const args = getArgs();
-  let format = "";
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--format" && i + 1 < args.length) {
-      format = args[i + 1];
-      break;
+      return args[i + 1];
     } else if (args[i].startsWith("--format=")) {
-      format = args[i].split("=")[1];
-      break;
+      return args[i].split("=")[1];
     }
   }
 
-  return format;
+  return undefined;
 }
 
 export function parserArgs(): {
@@ -116,7 +116,7 @@ export function parserArgs(): {
   debug: boolean;
   noRule: boolean;
   proxy: string;
-  format: string;
+  format: string | undefined;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();

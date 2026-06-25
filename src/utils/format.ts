@@ -84,9 +84,13 @@ function toYaml(data: unknown): string {
       quotingType: '"',
       sortKeys: false,
     });
-  } catch {
-    // Never lose data: fall back to JSON (with a marker) if YAML serialization fails.
-    return "# yaml serialization failed; falling back to json\n" + JSON.stringify(data);
+  } catch (err) {
+    // Never lose data: fall back to plain JSON. (A comment-prefixed hybrid would be
+    // neither clean YAML nor clean JSON, so we warn and return pure JSON instead.)
+    console.warn(
+      `[format] yaml serialization failed, returning json: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return JSON.stringify(data);
   }
 }
 
@@ -135,6 +139,20 @@ const RESERVED_NODE_KEYS = new Set([
   "text",
   "textColor",
   "children",
+]);
+
+/**
+ * layoutStyle sub-fields encoded positionally on the node header
+ * (`WxH @relativeX,relativeY`). Every OTHER layoutStyle sub-field (rotate, rotateX,
+ * min/max sizing constraints) is rendered as an explicit extra so it is not silently
+ * dropped — `layoutStyle` is reserved, so the generic pass-through would otherwise
+ * skip it and a rotated node would lose its angle (a fidelity regression).
+ */
+const LAYOUT_POSITIONAL_KEYS = new Set([
+  "width",
+  "height",
+  "relativeX",
+  "relativeY",
 ]);
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -264,10 +282,17 @@ function kvMapToTree(obj: Record<string, unknown>): string {
     lines.push(`${key}: ${JSON.stringify(val)}`);
   }
   if (mapKey) {
-    lines.push(`${mapKey}:`);
     const map = obj[mapKey] as Record<string, unknown>;
-    for (const [k, v] of Object.entries(map)) {
-      renderKvEntry(k, v, "  ", lines);
+    const entries = Object.entries(map);
+    if (entries.length === 0) {
+      // Empty map (e.g. cache miss): a single inline `{}` instead of a bare header
+      // with nothing beneath it.
+      lines.push(`${mapKey}: {}`);
+    } else {
+      lines.push(`${mapKey}:`);
+      for (const [k, v] of entries) {
+        renderKvEntry(k, v, "  ", lines);
+      }
     }
   }
   return lines.join("\n");
@@ -303,11 +328,22 @@ function renderNode(node: DslNode, depth: number, lines: string[]): void {
   const pos = `@${fmtNum(ls.relativeX)},${fmtNum(ls.relativeY)}`;
 
   const extras: string[] = [];
+  // layoutStyle is a reserved key, so the generic pass-through skips it — but only
+  // width/height/relativeX/relativeY feed the positional header. Surface every other
+  // sub-field (rotate, rotateX, and any min/max sizing constraints) or it is silently
+  // lost. A rotated node dropping its angle is a fidelity regression.
+  for (const [k, v] of Object.entries(ls)) {
+    if (LAYOUT_POSITIONAL_KEYS.has(k) || v === undefined || v === null) continue;
+    extras.push(`${k}=${v}`);
+  }
   pushIf(extras, "fill", node.fill);
   if (node.strokeColor) {
     extras.push(
       `stroke=${node.strokeColor}${node.strokeWidth ? "/" + node.strokeWidth : ""}`
     );
+  } else if (node.strokeWidth) {
+    // strokeWidth normally travels with strokeColor; surface it standalone if not.
+    pushIf(extras, "strokeWidth", node.strokeWidth);
   }
   pushIf(extras, "strokeType", node.strokeType);
   pushIf(extras, "strokeAlign", node.strokeAlign);
@@ -318,11 +354,20 @@ function renderNode(node: DslNode, depth: number, lines: string[]): void {
       (extras.length ? " " + extras.join(" ") : "")
   );
 
-  const props = (node.componentInfo as { properties?: Record<string, unknown> } | undefined)
-    ?.properties;
-  if (props && typeof props === "object") {
-    for (const [k, v] of Object.entries(props)) {
-      lines.push(`${pad}  prop ${k}=${JSON.stringify(v)}`);
+  // componentInfo is a reserved key. `.properties` renders as `prop k=v`; the sibling
+  // metadata (description / documentLink / componentSetDescription /
+  // componentSetDocumentLink) must also surface or it is silently dropped.
+  const compInfo = node.componentInfo as Record<string, unknown> | undefined;
+  if (compInfo && typeof compInfo === "object") {
+    const props = compInfo.properties;
+    if (props && typeof props === "object") {
+      for (const [k, v] of Object.entries(props)) {
+        lines.push(`${pad}  prop ${k}=${JSON.stringify(v)}`);
+      }
+    }
+    for (const [k, v] of Object.entries(compInfo)) {
+      if (k === "properties" || v === undefined) continue;
+      lines.push(`${pad}  ${k}=${JSON.stringify(v)}`);
     }
   }
 

@@ -104,7 +104,7 @@ npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --prox
 
 ### 工具输出格式
 
-设计数据工具（`mcp__getDesignSections`、`mcp__getDsl`、`mcp__getDesignSvgs`、`mcp__getDesignTexts`）接受一个可选的 `format` 参数，用于控制数据的序列化方式。默认值为 `json`，或通过 `--format` / `DEFAULT_FORMAT` 设置的值（见[命令行选项](#命令行选项)）。
+设计数据工具（`mcp__getDesignSections`、`mcp__getDsl`、`mcp__getDesignSvgs`、`mcp__getDesignTexts`、`mcp__getMeta`）接受一个可选的 `format` 参数，用于控制数据的序列化方式。默认值为 `json`，或通过 `--format` / `DEFAULT_FORMAT` 设置的值（见[命令行选项](#命令行选项)）。
 
 | 取值 | 说明 |
 | --- | --- |
@@ -120,7 +120,7 @@ Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerI
 
 注意事项：
 
-- `tree` 适用于全部四个工具的响应：`mcp__getDesignSections`（section 列表与单个 section DSL）、`mcp__getDsl`（完整 DSL）、`mcp__getDesignSvgs`、`mcp__getDesignTexts`。只有真正未知的 shape 才回退为 JSON —— 数据不会被错误格式化。
+- `tree` 适用于全部五个工具的响应：`mcp__getDesignSections`（section 列表与单个 section DSL）、`mcp__getDsl`（完整 DSL）、`mcp__getDesignSvgs`、`mcp__getDesignTexts`、`mcp__getMeta`。其中 `mcp__getMeta` 在 `tree` 下回退为 JSON —— 它的 `rules` 字段是 markdown，强行套用 tree 布局会破坏 markdown 的标题/代码块；其余 payload 正常渲染为 tree。只有真正未知的 shape 才回退为 JSON —— 数据不会被错误格式化。
 - 对于 `mcp__getDesignTexts`，建议使用 `json` 以保证文本的逐字还原精度 —— 尽管所有格式均可无损往返。
 - 所有格式均可无损往返。无效或省略的 `format` 值会回退为 `json`。
 

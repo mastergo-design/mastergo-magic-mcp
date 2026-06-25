@@ -84,7 +84,9 @@ function main() {
 
   // `--format` (json|yaml|tree) sets the default output format for design-data tools.
   // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
-  if (format) {
+  // `format` is `undefined` only when the flag is absent; any explicit-but-invalid value
+  // (including `--format=`) is warned about and falls back to json.
+  if (format !== undefined) {
     const normalized = normalizeFormat(format);
     if (normalized) {
       process.env.DEFAULT_FORMAT = normalized;
