@@ -20,6 +20,15 @@
 
 - All imports must be placed at the top of the file. Do not use dynamic `import()` or write `import` statements in the middle of code.
 
+## Lint（每次改动必跑）
+
+- **每次代码改动后，必须执行 `npm run lint`，且 0 error 才算通过**（warning 不阻断，但应尽量消除）。`npm run lint:fix` 可自动修复可修复项（格式、简单规则）。
+- 提交/合并前必做清单：`npm run lint`（0 error）+ `npm run build`（构建通过）。CI（`.github/workflows/ci.yml`）已强制 lint → build，本地先跑可避免 CI 红。
+- 规则定义在 `.eslintrc.json`：`eslint:recommended` + `plugin:@typescript-eslint/recommended`。已知约定：
+  - `@typescript-eslint/no-explicit-any` 为 **warn**（本项目 catch 子句、API 边界大量使用 `any`，属有意为之；新增代码能具象化类型时尽量不用 `any`）。
+  - `@typescript-eslint/no-unused-vars` 为 **error**（未使用变量是真实缺陷；故意忽略的参数/变量用 `_` 前缀）。
+- 新增/调整 lint 规则时：先 `npm run lint` 看全量影响，确认不会引入大量历史 error；若引入，要么修复代码、要么在该规则上加注释说明降级为 warn。
+
 ## Build
 
 - **新增功能或依赖时，必须检查 `build.js` 是否需要同步更新**。检查项：`external` 列表（仅排除 Node 内建模块，所有第三方依赖默认打包）、`loader`、`entryPoints`、`target`、`resolveExtensions`、`minify`/`sourcemap`。

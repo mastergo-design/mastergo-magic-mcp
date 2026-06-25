@@ -11,7 +11,7 @@ Prefer mcp__getDesignSections as the primary tool for all designs.
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
+This tool returns the raw DSL data that you can then parse and analyze. Use the optional 'format' parameter (json/yaml/tree, defaults to json) to control the serialization.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
 `;

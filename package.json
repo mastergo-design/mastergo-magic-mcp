@@ -27,6 +27,8 @@
   "scripts": {
     "build": "node build.js",
     "build:watch": "node build.js --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
