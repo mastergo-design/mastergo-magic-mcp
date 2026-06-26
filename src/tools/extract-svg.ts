@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const EXTRACT_SVG_TOOL_NAME = "mcp__extractSvg";
 const EXTRACT_SVG_TOOL_DESCRIPTION = `
@@ -8,7 +9,7 @@ Extract SVG data from MasterGo design files. This tool retrieves the DSL from a 
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-Returns an array of SVG strings, one per icon/instance found in the design.
+Returns { count, svgs: [{ name, id, svg }] } — one entry per icon/instance found in the design.
 `;
 
 export class ExtractSvgTool extends BaseTool {
@@ -42,11 +43,12 @@ export class ExtractSvgTool extends BaseTool {
       .describe(
         "Solid background color for the SVG (e.g. '#000000', 'black'). Useful for previewing white/light icons."
       ),
+    format: formatField(),
   });
 
   async execute(params: z.infer<typeof this.schema>) {
     try {
-      const { fileId, layerId, shortLink, backgroundColor } = params;
+      const { fileId, layerId, shortLink, backgroundColor, format } = params;
 
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -77,7 +79,7 @@ export class ExtractSvgTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result),
+            text: formatOutput(result, format),
           },
         ],
       };

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 import rules from "../markdown/meta.md";
 
 const META_TOOL_NAME = "mcp__getMeta";
@@ -36,19 +37,17 @@ export class GetMetaTool extends BaseTool {
       .describe(
         "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
       ),
+    format: formatField(),
   });
 
-  async execute({ fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, format }: z.infer<typeof this.schema>) {
     try {
       const result = await httpUtilInstance.getMeta(fileId, layerId, sourceLayerId);
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              result,
-              rules,
-            }),
+            text: formatOutput({ result, rules }, format),
           },
         ],
       };

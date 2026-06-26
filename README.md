@@ -73,7 +73,7 @@ Restore design, save as HTML file: https://{domain}/goto/{shortLink}
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--debug] [--no-rule]
 ```
 
 #### Parameters:
@@ -82,13 +82,14 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
+- `--format=FORMAT` (optional): Default output format for design-data tools — one of `json` (default), `yaml`, `tree`. An explicit per-call `format` tool parameter overrides this. Also settable via the `DEFAULT_FORMAT` environment variable.
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
 
 You can also use space-separated format for parameters:
 
 ```
-npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --debug
+npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --proxy PROXY_URL --format FORMAT --debug
 ```
 
 #### Environment Variables
@@ -98,7 +99,30 @@ Alternatively, you can use environment variables instead of command line argumen
 - `MG_MCP_TOKEN` or `MASTERGO_API_TOKEN`: MasterGo API token
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
+- `DEFAULT_FORMAT`: Default output format for design-data tools (`json` | `yaml` | `tree`); the `--format` argument and an explicit per-call `format` tool parameter take precedence.
 - `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) proxy URL (the `--proxy` argument takes priority)
+
+### Tool Output Format
+
+The design-data tools (`mcp__getDesignSections`, `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, `mcp__extractSvg`, `mcp__getMeta`) accept an optional `format` parameter that controls how the payload is serialized. It defaults to `json`, or to the value set via `--format` / `DEFAULT_FORMAT` (see [Command Line Options](#command-line-options)).
+
+| Value | Description |
+| --- | --- |
+| `json` | **Default.** Compact JSON — useful when piping output into tools that expect JSON. Byte-identical to the prior behavior. |
+| `yaml` | Fewer tokens than JSON for typical designs (flat layouts with repeated values benefit most). |
+| `tree` | Experimental compact format. Structural keys (`id`, `name`, `type`) are encoded positionally on each node line, and style values stay deduplicated in a `globalVars` block. Designs with heavy style reuse see the largest token savings. |
+
+The format is chosen per tool call by the AI model. To influence it, mention the desired format in your prompt, for example:
+
+```
+Restore design, use tree format: https://{domain}/file/{fileId}?layer_id={layerId}
+```
+
+Notes:
+
+- `tree` applies to all six tools' responses: `mcp__getDesignSections` (section list and per-section DSL), `mcp__getDsl`, `mcp__getDesignSvgs`, `mcp__getDesignTexts`, `mcp__extractSvg`, and `mcp__getMeta`. `mcp__getMeta` falls back to JSON under `tree` because its `rules` field is markdown (the tree layout would corrupt the markdown's headings/code blocks); other payloads render as tree. Truly unknown shapes also fall back to JSON — no data is ever mis-formatted.
+- For `mcp__getDesignTexts`, `json` is recommended for maximum verbatim-text fidelity — though all formats round-trip without data loss.
+- All formats round-trip without data loss. An invalid or omitted `format` value falls back to `json`.
 
 ### Installing via Smithery Marketplace
 

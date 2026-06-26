@@ -1,0 +1,25 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "env": {
+    "node": true,
+    "es2020": true
+  },
+  "ignorePatterns": ["dist/", "node_modules/", "build.js"],
+  "rules": {
+    // The codebase intentionally uses `any` for catch clauses and loose API shapes;
+    // flagging every `any` would drown out real issues. Surface as a warning instead.
+    "@typescript-eslint/no-explicit-any": "warn",
+    // Unused vars are real bugs — error on them, but ignore intentionally-unnamed args.
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-unused-vars": "off",
+    // Allow console.* (the client is a CLI; index.ts uses console for debug output).
+    "no-console": "off"
+  }
+}

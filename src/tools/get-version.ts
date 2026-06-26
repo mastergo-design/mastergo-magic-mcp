@@ -15,7 +15,7 @@ export class GetVersionTool extends BaseTool {
 
   schema = z.object({});
 
-  async execute({}: z.infer<typeof this.schema>) {
+  async execute() {
     return {
       content: [
         {
