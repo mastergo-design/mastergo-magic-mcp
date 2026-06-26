@@ -83,7 +83,7 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule, proxy, format } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, proxy, format, headers } = parserArgs();
 
   // `--format` (json|yaml|tree) sets the default output format for design-data tools.
   // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
@@ -108,6 +108,7 @@ function main() {
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
     console.log(`Proxy: ${proxy || "none"}`);
+    console.log(`Custom Headers: ${Object.keys(headers).length > 0 ? JSON.stringify(headers) : "none"}`);
     console.log(`Format: ${process.env.DEFAULT_FORMAT || "json (default)"}`);
     console.log(`Debug mode: enabled`);
   }

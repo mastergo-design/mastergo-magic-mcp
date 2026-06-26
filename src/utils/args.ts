@@ -92,6 +92,33 @@ function parseProxy(): string {
   return proxy;
 }
 
+// 解析 --header "Key: Value" 参数（可重复多次）
+function parseHeaders(): Record<string, string> {
+  const args = getArgs();
+  const headers: Record<string, string> = {};
+
+  for (let i = 0; i < args.length; i++) {
+    let raw = "";
+    if (args[i] === "--header" && i + 1 < args.length) {
+      raw = args[i + 1];
+      i++;
+    } else if (args[i].startsWith("--header=")) {
+      raw = args[i].slice("--header=".length);
+    }
+
+    if (raw) {
+      const sep = raw.indexOf(":");
+      if (sep > 0) {
+        const key = raw.slice(0, sep).trim();
+        const value = raw.slice(sep + 1).trim();
+        headers[key] = value;
+      }
+    }
+  }
+
+  return headers;
+}
+
 // Returns the raw --format value, or `undefined` when the flag is absent.
 // An explicit empty value (`--format=`) is returned as "" so the caller can warn
 // rather than silently falling back.
@@ -116,6 +143,7 @@ export function parserArgs(): {
   debug: boolean;
   noRule: boolean;
   proxy: string;
+  headers: Record<string, string>;
   format: string | undefined;
 } {
   const token = parseToken();
@@ -124,6 +152,7 @@ export function parserArgs(): {
   const debug = parseDebug();
   const noRule = parseNoRule();
   const proxy = parseProxy();
+  const headers = parseHeaders();
   const format = parseFormat();
 
   return {
@@ -134,7 +163,8 @@ export function parserArgs(): {
     noRule,
     proxy,
     format,
+    headers,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseFormat, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseFormat, parseHeaders, getArgs };

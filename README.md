@@ -73,7 +73,7 @@ Restore design, save as HTML file: https://{domain}/goto/{shortLink}
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header=Key: Value] [--debug] [--no-rule]
 ```
 
 #### Parameters:
@@ -82,6 +82,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (optional): API base URL, defaults to http://localhost:3000
 - `--rule=RULE_NAME` (optional): Add design rules to apply, can be used multiple times
 - `--proxy=PROXY_URL` (optional): HTTP/HTTPS proxy URL (e.g., `http://127.0.0.1:7890`), also supports `HTTPS_PROXY` / `HTTP_PROXY` environment variables
+- `--header=Key: Value` (optional): HTTP Request Header, can be used multiple times
 - `--format=FORMAT` (optional): Default output format for design-data tools — one of `json` (default), `yaml`, `tree`. An explicit per-call `format` tool parameter overrides this. Also settable via the `DEFAULT_FORMAT` environment variable.
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules

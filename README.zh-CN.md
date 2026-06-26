@@ -73,7 +73,7 @@ MCP 服务连接成功后，可以在 AI 对话中使用以下提示词：
 ### 命令行选项
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header=Key: Value] [--debug] [--no-rule]
 ```
 
 #### 参数:
@@ -82,6 +82,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--url=API_URL` (可选): API 基础 URL，默认为 http://localhost:3000
 - `--rule=RULE_NAME` (可选): 添加要应用的设计规则，可多次使用
 - `--proxy=PROXY_URL` (可选): HTTP/HTTPS 代理地址（如 `http://127.0.0.1:7890`），也支持 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量
+- `--header` (可选): 添加自定义HTTP请求头，可多次使用
 - `--format=FORMAT` (可选): 设计数据工具的默认输出格式 —— 取值 `json`（默认）、`yaml`、`tree`。工具调用时显式传入的 `format` 参数优先级更高。也可通过 `DEFAULT_FORMAT` 环境变量设置。
 - `--debug` (可选): 启用调试模式，提供详细错误信息
 - `--no-rule` (可选): 禁用默认规则
