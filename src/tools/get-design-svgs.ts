@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DESIGN_SVGS_TOOL_NAME = "mcp__getDesignSvgs";
 const DESIGN_SVGS_TOOL_DESCRIPTION = `
@@ -44,6 +45,7 @@ export class GetDesignSvgsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    format: formatField(),
   });
 
   async execute({
@@ -51,6 +53,7 @@ export class GetDesignSvgsTool extends BaseTool {
     layerId,
     sourceLayerId,
     shortLink,
+    format,
   }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
@@ -85,7 +88,7 @@ export class GetDesignSvgsTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result),
+            text: formatOutput(result, format),
           },
         ],
       };

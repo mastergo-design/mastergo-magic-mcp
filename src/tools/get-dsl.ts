@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
@@ -10,7 +11,7 @@ Prefer mcp__getDesignSections as the primary tool for all designs.
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
+This tool returns the raw DSL data that you can then parse and analyze. Use the optional 'format' parameter (json/yaml/tree, defaults to json) to control the serialization.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
 `;
@@ -46,9 +47,10 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    format: formatField(),
   });
 
-  async execute({ fileId, layerId, sourceLayerId, shortLink }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, shortLink, format }: z.infer<typeof this.schema>) {
     try {
       if (!shortLink && (!fileId || !layerId)) {
         throw new Error(
@@ -78,7 +80,7 @@ export class GetDslTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: formatOutput(dsl, format),
           },
         ],
       };

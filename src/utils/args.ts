@@ -119,6 +119,23 @@ function parseHeaders(): Record<string, string> {
   return headers;
 }
 
+// Returns the raw --format value, or `undefined` when the flag is absent.
+// An explicit empty value (`--format=`) is returned as "" so the caller can warn
+// rather than silently falling back.
+function parseFormat(): string | undefined {
+  const args = getArgs();
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--format" && i + 1 < args.length) {
+      return args[i + 1];
+    } else if (args[i].startsWith("--format=")) {
+      return args[i].split("=")[1];
+    }
+  }
+
+  return undefined;
+}
+
 export function parserArgs(): {
   token: string;
   baseUrl: string;
@@ -127,6 +144,7 @@ export function parserArgs(): {
   noRule: boolean;
   proxy: string;
   headers: Record<string, string>;
+  format: string | undefined;
 } {
   const token = parseToken();
   const baseUrl = parseUrl();
@@ -135,6 +153,7 @@ export function parserArgs(): {
   const noRule = parseNoRule();
   const proxy = parseProxy();
   const headers = parseHeaders();
+  const format = parseFormat();
 
   return {
     token,
@@ -143,8 +162,9 @@ export function parserArgs(): {
     debug,
     noRule,
     proxy,
+    format,
     headers,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseHeaders, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseFormat, parseHeaders, getArgs };
