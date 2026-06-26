@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mastergo-design-mastergo-magic-mcp-badge.png)](https://mseep.ai/app/mastergo-design-mastergo-magic-mcp)
+
 # MasterGo Magic MCP
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mastergo-design/mastergo-magic-mcp)
