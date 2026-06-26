@@ -13,7 +13,7 @@ import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
-import { parserArgs } from "./utils/args";
+import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
 
 const SERVER_INSTRUCTIONS = `
@@ -83,7 +83,7 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule, proxy, format, headers } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, proxy, format } = parserArgs();
 
   // `--format` (json|yaml|tree) sets the default output format for design-data tools.
   // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
@@ -108,7 +108,8 @@ function main() {
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
     console.log(`Proxy: ${proxy || "none"}`);
-    console.log(`Custom Headers: ${Object.keys(headers).length > 0 ? JSON.stringify(headers) : "none"}`);
+    const effectiveHeaders = getEffectiveHeaders();
+    console.log(`Custom Headers: ${Object.keys(effectiveHeaders).length > 0 ? JSON.stringify(maskSensitiveHeaders(effectiveHeaders)) : "none"}`);
     console.log(`Format: ${process.env.DEFAULT_FORMAT || "json (default)"}`);
     console.log(`Debug mode: enabled`);
   }
