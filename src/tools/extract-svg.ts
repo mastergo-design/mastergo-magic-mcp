@@ -33,6 +33,12 @@ export class ExtractSvgTool extends BaseTool {
       .describe(
         "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId>). Required if shortLink is not provided."
       ),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
     shortLink: z
       .string()
       .optional()
@@ -48,30 +54,33 @@ export class ExtractSvgTool extends BaseTool {
 
   async execute(params: z.infer<typeof this.schema>) {
     try {
-      const { fileId, layerId, shortLink, backgroundColor, format } = params;
+      const { fileId, layerId, sourceLayerId, shortLink, backgroundColor, format } = params;
 
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a shortLink"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
         );
       }
 
       let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
+      let finalSourceLayerId = sourceLayerId;
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
+        finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
       }
 
       const result = await httpUtilInstance.extractSvg(
         finalFileId,
-        finalLayerId,
+        effectiveLayerId,
         backgroundColor
       );
 
