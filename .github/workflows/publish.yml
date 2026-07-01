@@ -115,3 +115,26 @@ jobs:
           git tag v${{ steps.get-version.outputs.version }}
           git push
           git push --tags
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          ARGS=(--generate-notes --verify-tag --title "v$VERSION")
+          # beta / alpha 预发布版本标记为 prerelease
+          if [[ "$VERSION" == *beta* || "$VERSION" == *alpha* ]]; then
+            ARGS+=(--prerelease)
+          fi
+          gh release create "v$VERSION" "${ARGS[@]}"
+
+      - name: Update CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/generate-changelog.sh
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): update for v${{ steps.get-version.outputs.version }}" || echo "no changelog changes"
+          git push
