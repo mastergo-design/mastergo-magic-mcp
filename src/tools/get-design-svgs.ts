@@ -56,9 +56,9 @@ export class GetDesignSvgsTool extends BaseTool {
     format,
   }: z.infer<typeof this.schema>) {
     try {
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a shortLink"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
         );
       }
 
@@ -73,11 +73,10 @@ export class GetDesignSvgsTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
-      }
-
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
+      }
 
       const result = await httpUtilInstance.getDesignSvgs(
         finalFileId,

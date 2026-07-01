@@ -52,9 +52,9 @@ export class GetDslTool extends BaseTool {
 
   async execute({ fileId, layerId, sourceLayerId, shortLink, format }: z.infer<typeof this.schema>) {
     try {
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a MasterGo URL"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a MasterGo URL"
         );
       }
 
@@ -69,11 +69,12 @@ export class GetDslTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
       }
 
-      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
+      const dsl = await httpUtilInstance.getDsl(finalFileId, effectiveLayerId, {
         sourceLayerId: finalSourceLayerId,
       });
       return {
