@@ -6,6 +6,7 @@ pnpm-lock.yaml
 dist/
 build/
 out/
+.test/
 
 .cursorrules
 

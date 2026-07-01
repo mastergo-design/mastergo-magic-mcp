@@ -13,7 +13,8 @@ import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
-import { parserArgs } from "./utils/args";
+import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
+import { normalizeFormat } from "./utils/format";
 
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
@@ -64,6 +65,9 @@ After ALL N sections have been fetched and SVG data retrieved:
 - NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which includes \`getDesignSvgs\` for SVG data).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
+### Output Format:
+- The design-data tools (\`getDesignSections\`, \`getDsl\`, \`getDesignSvgs\`, \`getDesignTexts\`, \`extractSvg\`, \`getMeta\`) accept an optional \`format\` parameter: \`json\` (default), \`yaml\`, or \`tree\`. \`yaml\`/\`tree\` use fewer tokens for large designs; all three round-trip without data loss. Set a session-wide default with the \`--format\` CLI flag or \`DEFAULT_FORMAT\` env var.
+
 ### Text Fidelity Rules:
 - TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
 - Do NOT duplicate text from one node to another — each TEXT node has unique content.
@@ -94,7 +98,22 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule, proxy } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, proxy, format } = parserArgs();
+
+  // `--format` (json|yaml|tree) sets the default output format for design-data tools.
+  // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
+  // `format` is `undefined` only when the flag is absent; any explicit-but-invalid value
+  // (including `--format=`) is warned about and falls back to json.
+  if (format !== undefined) {
+    const normalized = normalizeFormat(format);
+    if (normalized) {
+      process.env.DEFAULT_FORMAT = normalized;
+    } else {
+      console.warn(
+        `Invalid --format value: "${format}". Must be one of: json, yaml, tree. Falling back to json.`
+      );
+    }
+  }
 
   if (debug) {
     process.env.DEBUG = "true";
@@ -104,6 +123,9 @@ function main() {
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
     console.log(`Proxy: ${proxy || "none"}`);
+    const effectiveHeaders = getEffectiveHeaders();
+    console.log(`Custom Headers: ${Object.keys(effectiveHeaders).length > 0 ? JSON.stringify(maskSensitiveHeaders(effectiveHeaders)) : "none"}`);
+    console.log(`Format: ${process.env.DEFAULT_FORMAT || "json (default)"}`);
     console.log(`Debug mode: enabled`);
   }
 

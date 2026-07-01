@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy } from "./args";
+import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy, getEffectiveHeaders } from "./args";
 import https from "https";
 import { HttpsProxyAgent } from "https-proxy-agent";
 
@@ -40,14 +40,29 @@ export interface CodeResponse {
   [key: string]: any;
 }
 
-const getCommonHeader = () => ({
-  "Content-Type": "application/json",
-  Accept: "application/json",
-  "X-MG-UserAccessToken":
-    process.env.MG_MCP_TOKEN || process.env.MASTERGO_API_TOKEN || parseToken(),
-});
+// Memoized: the header set is fixed at process boot (token env/argv + MG_EXTRA_HEADERS),
+// and this is called on every HTTP request. Callers spread the result into a new object,
+// so returning the shared cached reference is safe from mutation.
+let _commonHeaderCache: Record<string, string> | null = null;
+const getCommonHeader = (): Record<string, string> => {
+  if (_commonHeaderCache) return _commonHeaderCache;
+  _commonHeaderCache = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-MG-UserAccessToken":
+      process.env.MG_MCP_TOKEN || process.env.MASTERGO_API_TOKEN || parseToken(),
+    ...getEffectiveHeaders(),
+  };
+  return _commonHeaderCache;
+};
 
-const getBaseUrl = () => {
+// Memoized: the base URL is fixed at process boot (API_BASE_URL env / --url argv)
+// and this is called on every HTTP request. A parse failure is NOT cached, so the
+// next call re-evaluates (and re-throws) — caching an error would make a bad state
+// permanent.
+let _baseUrlCache: string | null = null;
+const getBaseUrl = (): string => {
+  if (_baseUrlCache !== null) return _baseUrlCache;
   const url = process.env.API_BASE_URL || parseUrl();
   try {
     // 解析URL
@@ -64,11 +79,25 @@ const getBaseUrl = () => {
       baseUrl += `:${port}`;
     }
 
-    return baseUrl;
+    _baseUrlCache = baseUrl;
+    return _baseUrlCache;
   } catch {
     throw new Error(
       `无效的URL格式: ${url}。请提供正确的URL格式，例如: https://mastergo.com`
     );
+  }
+};
+
+// Compare only the host (hostname + port) of two URLs, ignoring protocol/path.
+// Returns false on any parse error rather than throwing. Exported for unit tests.
+// SECURITY: this gates whether a user/LLM-supplied shortLink may receive our
+// credentials — a wrong `true` here leaks X-MG-UserAccessToken (and custom gateway
+// auth) to an attacker-controlled host.
+export const isSameHost = (a: string, b: string): boolean => {
+  try {
+    return new URL(a).host === new URL(b).host;
+  } catch {
+    return false;
   }
 };
 
@@ -270,9 +299,20 @@ const createHttpUtil = () => {
 
       // Handle short links
       if (url.includes("/goto/")) {
+        // The shortLink is user/LLM-controlled and only `url.includes("/goto/")`
+        // is checked — it may NOT be a MasterGo host (e.g. a prompt-injected
+        // `https://evil.com/goto/x`). Send credentials (X-MG-UserAccessToken +
+        // custom gateway headers) ONLY when the short link's host matches the
+        // configured API host. Same-host links (the normal private-deploy case,
+        // where the short-link domain == the API domain) still get headers so
+        // they pass the internal gateway (issue #64); anything else gets a bare
+        // request and the missing credentials surface as a clear failure instead
+        // of a silent leak.
+        const sendCredentials = isSameHost(url, getBaseUrl());
         const response = await axios.get(url, {
           maxRedirects: 0,
           validateStatus: (status) => status >= 300 && status < 400,
+          ...(sendCredentials ? { headers: getCommonHeader() } : {}),
         });
 
         const redirectUrl = response.headers.location;

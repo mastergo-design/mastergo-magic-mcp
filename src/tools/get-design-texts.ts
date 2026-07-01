@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DESIGN_TEXTS_TOOL_NAME = "mcp__getDesignTexts";
 const DESIGN_TEXTS_TOOL_DESCRIPTION = `
@@ -44,6 +45,7 @@ export class GetDesignTextsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    format: formatField(),
   });
 
   async execute({
@@ -51,11 +53,12 @@ export class GetDesignTextsTool extends BaseTool {
     layerId,
     sourceLayerId,
     shortLink,
+    format,
   }: z.infer<typeof this.schema>) {
     try {
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a shortLink"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
         );
       }
 
@@ -70,11 +73,10 @@ export class GetDesignTextsTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
-      }
-
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
+      }
 
       const result = await httpUtilInstance.getDesignTexts(
         finalFileId,
@@ -85,7 +87,7 @@ export class GetDesignTextsTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result),
+            text: formatOutput(result, format),
           },
         ],
       };

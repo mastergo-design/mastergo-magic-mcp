@@ -27,6 +27,9 @@
   "scripts": {
     "build": "node build.js",
     "build:watch": "node build.js --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "test": "esbuild test/format.test.ts test/headers.test.ts test/url-safety.test.ts --bundle --platform=node --format=cjs --outdir=.test --out-extension:.js=.cjs && node --test .test/format.test.cjs .test/headers.test.cjs .test/url-safety.test.cjs",
     "start": "node dist/index.js --token=test --url=http://localhost:3000 --debug",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
@@ -41,20 +44,28 @@
   "private": false,
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
-    "axios": "1.6.0",
+    "axios": "1.18.1",
     "https-proxy-agent": "^9.0.0",
+    "js-yaml": "^4.2.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.8.10",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
     "esbuild": "^0.25.1",
     "esbuild-plugin-tsc": "^0.5.0",
-    "eslint": "^8.52.0",
-    "pkg": "^5.8.1",
+    "eslint": "^8.57.1",
     "prettier": "^3.0.3",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
+  },
+  "overrides": {
+    "hono": "^4.12.27",
+    "form-data": "^4.0.6",
+    "fast-uri": "^3.1.2",
+    "ip-address": "^10.2.0",
+    "qs": "^6.15.3"
   }
 }

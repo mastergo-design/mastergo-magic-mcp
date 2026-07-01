@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DESIGN_SECTIONS_TOOL_NAME = "mcp__getDesignSections";
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
@@ -70,13 +71,14 @@ export class GetDesignSectionsTool extends BaseTool {
       .describe(
         "0-based section index. If omitted, returns the section list only. If provided, returns full DSL for that specific section."
       ),
+    format: formatField(),
   });
 
-  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format }: z.infer<typeof this.schema>) {
     try {
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a shortLink"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
         );
       }
 
@@ -91,11 +93,10 @@ export class GetDesignSectionsTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
-      }
-
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
+      }
 
       const result = await httpUtilInstance.getDesignSections(
         finalFileId,
@@ -107,7 +108,7 @@ export class GetDesignSectionsTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result),
+            text: formatOutput(result, format),
           },
         ],
       };

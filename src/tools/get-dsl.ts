@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { formatField, formatOutput } from "../utils/format";
 
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
@@ -10,7 +11,7 @@ Prefer mcp__getDesignSections as the primary tool for all designs.
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-This tool returns the raw DSL data in JSON format that you can then parse and analyze.
+This tool returns the raw DSL data that you can then parse and analyze. Use the optional 'format' parameter (json/yaml/tree, defaults to json) to control the serialization.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
 `;
@@ -46,13 +47,14 @@ export class GetDslTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    format: formatField(),
   });
 
-  async execute({ fileId, layerId, sourceLayerId, shortLink }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, sourceLayerId, shortLink, format }: z.infer<typeof this.schema>) {
     try {
-      if (!shortLink && (!fileId || !layerId)) {
+      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
-          "Either provide both fileId and layerId, or provide a MasterGo URL"
+          "Either provide fileId with layerId (or sourceLayerId), or provide a MasterGo URL"
         );
       }
 
@@ -67,18 +69,19 @@ export class GetDslTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      if (!finalFileId || !finalLayerId) {
-        throw new Error("Could not determine fileId or layerId");
+      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      if (!finalFileId || !effectiveLayerId) {
+        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
       }
 
-      const dsl = await httpUtilInstance.getDsl(finalFileId, finalLayerId, {
+      const dsl = await httpUtilInstance.getDsl(finalFileId, effectiveLayerId, {
         sourceLayerId: finalSourceLayerId,
       });
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(dsl),
+            text: formatOutput(dsl, format),
           },
         ],
       };
