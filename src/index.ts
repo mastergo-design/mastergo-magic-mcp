@@ -8,6 +8,7 @@ import { GetC2dTool } from "./tools/get-c2d";
 import { GetComponentLinkTool } from "./tools/get-component-link";
 import { GetMetaTool } from "./tools/get-meta";
 import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
+import { GetFlutterWorkflowTool } from "./tools/get-flutter-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
@@ -147,6 +148,7 @@ function main() {
   new GetComponentLinkTool().register(server);
   new GetMetaTool().register(server);
   new GetComponentWorkflowTool().register(server);
+  new GetFlutterWorkflowTool().register(server);
   new ExtractSvgTool().register(server);
 
   server.connect(new StdioServerTransport());
