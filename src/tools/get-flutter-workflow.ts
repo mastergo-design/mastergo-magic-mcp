@@ -67,22 +67,26 @@ interface DiscoveredAsset {
 const DOWNLOAD_TIMEOUT = 15_000;
 const MAX_RETRIES = 2;
 const DOWNLOAD_CONCURRENCY = 6;
+/** 最大下载文件大小 (50MB)，防止磁盘/内存耗尽 */
+const MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg", "gif", "bmp"];
 
-/** Relaxed HTTPS agent — handles self-signed / misconfigured TLS */
+/** 宽松 TLS agent — 兼容自签证书/私有化部署，与 api.ts 保持一致 */
 const relaxedAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ---------------------------------------------------------------------------
 // String / path helpers
 // ---------------------------------------------------------------------------
 
-/** Sanitise a string for use as a file/directory name */
+/** Sanitise a string for use as a file/directory name. Never returns empty string. */
 function safeName(raw: string): string {
-  return String(raw ?? "")
+  const sanitized = String(raw ?? "")
     .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/\.{2,}/g, "_")    // 防止连续点号
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
+  return sanitized || "unnamed";
 }
 
 /** Short, stable hash for URL → filename deduping */
@@ -118,6 +122,19 @@ function extFromContentType(ct: string | undefined): string {
 
 function ensureDir(dir: string): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+// ---------------------------------------------------------------------------
+// URL 安全性检查
+// ---------------------------------------------------------------------------
+
+/**
+ * 检查下载 URL 协议安全性。
+ * 仅允许 http/https，拦截 javascript:/file:/data: 等危险协议。
+ * URL 全部来自 MasterGo DSL 内部，已有 looksLikeImageUrl() 做内容筛选。
+ */
+function isSafeDownloadUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url);
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +194,11 @@ function looksLikeImageUrl(url: string): boolean {
 // ---------------------------------------------------------------------------
 
 async function downloadFile(url: string, destPath: string): Promise<void> {
+  // SSRF 前置检查
+  if (!isSafeDownloadUrl(url)) {
+    throw new Error(`Blocked unsafe URL: ${url}`);
+  }
+
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -186,29 +208,20 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
         timeout: DOWNLOAD_TIMEOUT,
         httpsAgent: relaxedAgent,
         maxRedirects: 5,
+        maxContentLength: MAX_DOWNLOAD_SIZE,
       });
-      await fs.promises.writeFile(destPath, Buffer.from(resp.data));
+      // 原子写入：先写 .tmp 再 rename，避免部分写入的文件被当作有效缓存
+      const tmpPath = `${destPath}.tmp`;
+      await fs.promises.writeFile(tmpPath, Buffer.from(resp.data));
+      await fs.promises.rename(tmpPath, destPath);
       return;
     } catch (err: any) {
       lastError = err;
 
-      // TLS fallback: https → http (some CDNs are misconfigured)
-      const isWrongSsl =
-        err?.code === "EPROTO" ||
-        String(err?.message ?? "").includes("wrong version number");
-      if (isWrongSsl && url.startsWith("https://")) {
-        try {
-          const httpUrl = url.replace(/^https:\/\//, "http://");
-          const resp = await axios.get(httpUrl, {
-            responseType: "arraybuffer",
-            timeout: DOWNLOAD_TIMEOUT,
-            maxRedirects: 5,
-          });
-          await fs.promises.writeFile(destPath, Buffer.from(resp.data));
-          return;
-        } catch (httpErr) {
-          lastError = httpErr;
-        }
+      // 非临时性错误不重试
+      const status = err?.response?.status;
+      if (status && status >= 400 && status < 500) {
+        throw lastError;
       }
 
       if (attempt < MAX_RETRIES) {
@@ -224,6 +237,12 @@ async function persistDataUrl(dataUrl: string, destPath: string): Promise<string
   if (!match) throw new Error("Unsupported data URL format");
   const mime = match[1];
   const payload = match[2];
+
+  // 大小限制：base64 编码后的长度约为原始数据的 4/3 倍
+  if (payload.length > MAX_DOWNLOAD_SIZE * 1.37) {
+    throw new Error(`Data URL too large: ${(payload.length / 1024 / 1024).toFixed(1)}MB (max ${MAX_DOWNLOAD_SIZE / 1024 / 1024}MB)`);
+  }
+
   const ext = extFromContentType(mime);
   const finalDest = destPath.endsWith(`.${ext}`) ? destPath : `${destPath}.${ext}`;
   await fs.promises.writeFile(finalDest, Buffer.from(payload, "base64"));
@@ -243,9 +262,9 @@ async function runWithConcurrency<T, R>(
   let cursor = 0;
 
   const pool = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
+    for (;;) {
       const idx = cursor++;
-      if (idx >= items.length) return;
+      if (idx >= items.length) break;
       results[idx] = await worker(items[idx], idx);
     }
   });
@@ -280,7 +299,8 @@ function ensurePubspecAsset(rootPath: string, assetDirRelative: string): "added"
   let next = content;
 
   // Prefer inserting into an existing `flutter:` → `assets:` block
-  const flutterBlock = /^(flutter:[\s\S]*?)(?=^\S|\Z)/m.exec(content);
+  // Match the `flutter:` block until the next top-level key (`^\S`) or end-of-string (`$`).
+  const flutterBlock = /^(flutter:[\s\S]*?)(?=^\S|$)/m.exec(content);
   if (flutterBlock) {
     const block = flutterBlock[0];
     const assetsMatch = /^(\s{2,})assets:\s*\n/m.exec(block);
@@ -407,10 +427,11 @@ function parsePaintOrder(key: string): number {
 async function collectDslStyleFallbackAssets(
   fileId: string,
   layerId: string,
+  sourceLayerId: string | undefined,
   warnings: string[]
 ): Promise<DiscoveredAsset[]> {
   try {
-    const dslResp = await httpUtilInstance.getDsl(fileId, layerId);
+    const dslResp = await httpUtilInstance.getDsl(fileId, layerId, sourceLayerId ? { sourceLayerId } : undefined);
     const dsl = dslResp?.dsl ?? {};
     const styles = (dsl as any)?.styles ?? {};
     const keys = Object.keys(styles)
@@ -459,7 +480,7 @@ function fillLostCssPlaceholders(node: any, replacementPaths: string[]): number 
     for (const [key, value] of Object.entries(n)) {
       if (typeof value === "string" && key === "cssCode" && value.includes("[object Object]")) {
         n[key] = value.replace(
-          /url\(\s*\[object Object\]\s*\)/g,
+          /url\(\s*\[object Object\]\s*\)/gi,
           (match: string) => {
             if (cursor >= replacementPaths.length) return match;
             const next = replacementPaths[cursor++];
@@ -632,6 +653,12 @@ export class GetFlutterWorkflowTool extends BaseTool {
       .describe(
         "Layer ID of the specific component or element to retrieve (format: ?layer_id=<layerId> / file=<fileId> in MasterGo URL)"
       ),
+    sourceLayerId: z
+      .string()
+      .optional()
+      .describe(
+        "Source layer ID from URL parameter source_layer_id. When provided, use this instead of layerId for all queries."
+      ),
     featureName: z
       .string()
       .optional()
@@ -644,11 +671,27 @@ export class GetFlutterWorkflowTool extends BaseTool {
     rootPath,
     fileId,
     layerId,
+    sourceLayerId,
     featureName,
   }: z.infer<typeof this.schema>) {
     const warnings: string[] = [];
     const failedAssets: FailedAsset[] = [];
     const lostImageRefs: LostImageRef[] = [];
+
+    // rootPath 安全验证：必须是绝对路径，拒绝相对路径防止路径遍历
+    if (!path.isAbsolute(rootPath)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              error: `rootPath must be an absolute path, got: "${rootPath}". Please provide an absolute path to the Flutter project root.`,
+            }),
+          },
+        ],
+      };
+    }
 
     // -----------------------------------------------------------------------
     // 1. Set up output directories
@@ -661,9 +704,24 @@ export class GetFlutterWorkflowTool extends BaseTool {
     // -----------------------------------------------------------------------
     // 2. Fetch DSL data from MasterGo
     // -----------------------------------------------------------------------
-    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId);
+    const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
     const rootNode = jsonData?.[0] ?? {};
     const componentName = rootNode.name ?? "component";
+
+    // 空数据校验
+    if (!jsonData || jsonData.length === 0 || !rootNode.name) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              error: `No component data returned from MasterGo API for fileId=${fileId} layerId=${layerId}. Please verify the fileId and layerId are correct.`,
+            }),
+          },
+        ],
+      };
+    }
 
     const explicitFeature = featureName ? safeName(featureName) : "";
     const componentDirName =
@@ -692,6 +750,7 @@ export class GetFlutterWorkflowTool extends BaseTool {
       const dslFallbackAssets = await collectDslStyleFallbackAssets(
         fileId,
         layerId,
+        sourceLayerId,
         warnings
       );
       for (const item of dslFallbackAssets) {
@@ -746,7 +805,11 @@ export class GetFlutterWorkflowTool extends BaseTool {
           };
         }
 
-        // Remote URL — resolve extension (HEAD fallback) then download
+        // Remote URL — 安全检查 + 扩展名回退
+        if (!isSafeDownloadUrl(asset.url)) {
+          throw new Error(`Blocked unsafe URL: ${asset.url}`);
+        }
+
         if (!ext) {
           try {
             const head = await axios.head(asset.url, {
@@ -754,7 +817,7 @@ export class GetFlutterWorkflowTool extends BaseTool {
               httpsAgent: relaxedAgent,
               maxRedirects: 5,
             });
-            ext = extFromContentType(head.headers["content-type"]);
+            ext = extFromContentType(String(head.headers["content-type"] ?? ""));
           } catch {
             ext = "png";
           }
