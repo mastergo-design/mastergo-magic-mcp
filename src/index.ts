@@ -42,6 +42,7 @@ This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}
 - Match each SVG to its section by the \`S{sectionIndex}\` prefix.
 - Insert the svgHtml string directly where the icon/PATH should appear.
 - Do NOT construct your own SVG — use the exact svgHtml from the response.
+- NEVER compute viewBox, path data, or fill colors from DSL layout properties — the svgHtml from getDesignSvgs IS the authoritative SVG. Use it verbatim. Any manually constructed SVG will have rounded coordinates, wrong viewBox offsets, and missing path precision.
 
 **Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
 This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
@@ -58,9 +59,11 @@ After ALL N sections have been fetched and SVG data retrieved:
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 
 ### Tool Selection Rules:
-- \`mcp__getDesignSections\` is the PRIMARY tool. Always start here.
+- \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
+- \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` or \`getDesignSvgs\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
-- NEVER call both \`getDesignSections\` AND \`getDsl\` / \`extractSvg\` for the same design.
+- NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
+- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which includes \`getDesignSvgs\` for SVG data).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:
@@ -80,6 +83,18 @@ After ALL N sections have been fetched and SVG data retrieved:
 ### Anti-Hallucination Rules:
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
+
+### Data Completeness Rules:
+- You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
+- Some sections may have nodeCount=3 and no visible TEXT nodes (text is in component property overrides). Do NOT skip them — the TEXT is resolved during DSL transfer. These sections contribute real content.
+- Keep a checklist: track which section indices have been requested. Do not stop until every index 0..N-1 has been fetched.
+- If you accidentally skipped a section, go back and request the missing indices. An incomplete section set WILL cause missing content in the final HTML.
+
+### Data Interpretation Rules:
+- Pagination/table-footer labels (e.g. "共 10 项", "X rows/page", "items per page") reflect UI control state — NOT data to replicate.
+- "共 X 项" is the pagination widget showing "total X items". The actual data rows come from the table body sections (preceding the pagination section).
+- Do NOT fabricate data rows based on pagination "total" values. Render ONLY the actual data rows present in the DSL.
+- If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
 `;
 
 function main() {

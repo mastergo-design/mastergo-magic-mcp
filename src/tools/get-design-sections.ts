@@ -15,15 +15,16 @@ Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
 Returns the full DSL for ONE specific section.
-- PATH nodes have their svgHtml stripped. After fetching ALL sections, call mcp__getDesignSvgs to retrieve them.
+- Most PATH nodes carry an inline svg field with the complete SVG string — use it directly. Large sections strip SVGs to a cache; for those, call mcp__getDesignSvgs after fetching ALL sections.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list with node counts.
 2. Then call WITH sectionIndex=0, sectionIndex=1, ... up to totalSections-1.
-3. You MUST fetch ALL sections. Do NOT skip any section index.
+3. You MUST fetch ALL sections. Do NOT skip any section index. Some sections may have nodeCount=3 and no visible TEXT — their text is in component overrides resolved during DSL transfer. Do NOT skip them; every section contributes real content.
 4. CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 5. After fetching all sections, call mcp__getDesignSvgs to get SVG icons.
-6. Generate the complete HTML with all SVG data.
+6. Count your requests. If totalSections=48, you must make exactly 48 sectionIndex calls. Keep a checklist and do NOT stop early.
+7. Generate the complete HTML with all SVG data.
 
 DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
 If this tool returns an error (e.g. old server), fall back to mcp__getDsl.
