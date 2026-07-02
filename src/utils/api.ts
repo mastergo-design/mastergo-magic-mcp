@@ -175,10 +175,14 @@ const createHttpUtil = () => {
     async extractSvg(
       fileId: string,
       layerId: string,
-      backgroundColor?: string
+      backgroundColor?: string,
+      page?: number,
+      pageSize?: number
     ): Promise<any> {
       const params: Record<string, any> = { fileId, layerId };
       if (backgroundColor) params.backgroundColor = backgroundColor;
+      if (page !== undefined) params.page = page;
+      if (pageSize !== undefined) params.pageSize = pageSize;
 
       const response = await axios.get(`${getBaseUrl()}/mcp/extract-svg`, {
         timeout: 30000,
