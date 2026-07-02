@@ -15,7 +15,7 @@ Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
 Returns the full DSL for ONE specific section.
-- PATH nodes have their svgHtml stripped. After fetching ALL sections, call mcp__getDesignSvgs to retrieve them.
+- Most PATH nodes carry an inline svg field with the complete SVG string — use it directly. Large sections strip SVGs to a cache; for those, call mcp__getDesignSvgs after fetching ALL sections.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list with node counts.
