@@ -15,15 +15,17 @@ Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
 Returns the full DSL for ONE specific section.
-- Most PATH nodes carry an inline svg field with the complete SVG string — use it directly. Large sections strip SVGs to a cache; for those, call mcp__getDesignSvgs after fetching ALL sections.
+- Most PATH nodes carry an inline svg field with the complete SVG string — use it directly. Large sections (header/logo/pagination) strip SVGs to a cache and the PATH node carries a svgKey field instead — look it up in the svgs map from mcp__getDesignSvgs.
+
+CRITICAL — sectionIndex is SINGULAR: the parameter is sectionIndex (a SINGLE integer per call). There is NO plural sectionIndices parameter — passing an array will be rejected with an error. To fetch multiple sections you MUST make multiple calls, each with one sectionIndex.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list with node counts.
-2. Then call WITH sectionIndex=0, sectionIndex=1, ... up to totalSections-1.
-3. You MUST fetch ALL sections. Do NOT skip any section index. Some sections may have nodeCount=3 and no visible TEXT — their text is in component overrides resolved during DSL transfer. Do NOT skip them; every section contributes real content.
-4. CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
-5. After fetching all sections, call mcp__getDesignSvgs to get SVG icons.
-6. Count your requests. If totalSections=48, you must make exactly 48 sectionIndex calls. Keep a checklist and do NOT stop early.
+2. Then call WITH sectionIndex=0, then sectionIndex=1, ... up to totalSections-1 — ONE sectionIndex per call.
+3. You MUST fetch ALL sections. Do NOT skip any section index. Some sections have nodeCount=3 and an empty name but a non-empty textPreview — these are individual menu items (e.g. '系统信息', '权限设置') with DIFFERENT text content; they are NOT duplicates. Fetch every one of them.
+4. Fetch sections in batches of 3-5 CONCURRENT calls (3-5 separate single-sectionIndex calls in parallel), wait for all results, then send the next batch. Each call has exactly one sectionIndex.
+5. After fetching all sections, call mcp__getDesignSvgs to get SVG icons (only needed for stripped PATH nodes with svgKey; inlined svg fields are used directly).
+6. Count your requests. If totalSections=48, you must make exactly 48 sectionIndex calls (each with a SINGLE integer). Keep a checklist and do NOT stop early.
 7. Generate the complete HTML with all SVG data.
 
 DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
@@ -67,15 +69,34 @@ export class GetDesignSectionsTool extends BaseTool {
       ),
     sectionIndex: z
       .number()
+      .int()
+      .min(0)
       .optional()
       .describe(
-        "0-based section index. If omitted, returns the section list only. If provided, returns full DSL for that specific section."
+        "0-based section index (SINGULAR — a single integer per call). If omitted, returns the section list only. If provided, returns full DSL for that ONE specific section. To fetch multiple sections, make MULTIPLE separate calls each with a single sectionIndex. Do NOT pass an array."
       ),
     format: formatField(),
-  });
+  }).passthrough();
 
-  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format, ...rest }: z.infer<typeof this.schema>) {
     try {
+      // 拦截 LLM 误用的复数参数 sectionIndices（schema 不声明它，但 passthrough 保留未知字段）。
+      // 引导 LLM 改用单数 sectionIndex（每次一个，多次调用）。
+      const sectionIndices = (rest as Record<string, unknown>).sectionIndices;
+      if (sectionIndices !== undefined) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                error: "Parameter 'sectionIndices' (plural) is NOT supported. Use 'sectionIndex' (SINGULAR — a single integer) instead. Make MULTIPLE separate calls, each with one sectionIndex (e.g. sectionIndex=15, then sectionIndex=16, ...). Passing an array will always return this error.",
+              }),
+            },
+          ],
+        };
+      }
+
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
           "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
