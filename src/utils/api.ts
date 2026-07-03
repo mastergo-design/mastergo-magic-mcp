@@ -117,21 +117,23 @@ const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
 
 const buildDslRules = (): string[] => {
   return [
+    "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",
+    "CRITICAL — Sidebar columns: render ALL sidebar levels as persistent columns at splitContainers positions. Do NOT hide or toggle them.",
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+    "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
+    "PATH nodes come in TWO forms. (1) INLINED: PATH nodes carry an `svg` field with the complete `<svg>...</svg>` string — copy it VERBATIM into the HTML, no transformation. (2) STRIPPED: large sections strip the svg to a cache; these PATH nodes carry a `svgKey` field AND a `path` array with empty data. Call mcp__getDesignSvgs to get the svgHtml. ALWAYS check `svg` first; if absent, use `svgKey` to fetch.",
+    "CRITICAL — SVG VERBATIM fidelity (3 forbidden modifications): whether from the `svg` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATIVE — copy it character-for-character. Three violations that corrupt icons: (1) NEVER round coordinate precision — 17.522848 must stay 17.522848, not 17.523 (rounding shifts shapes visibly); (2) NEVER drop M-subpaths — a compound path may contain 2-6 subpaths (e.g. a magnifier = outer circle + inner circle + handle + pointer + ticks), dropping ANY subpath breaks the icon (a magnifier with only the ring loses its handle); (3) NEVER 'simplify' or 'optimize' path commands or viewBox. The path d is formatted with one subpath per line (split at each M) to help you see them — preserve EVERY line. After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy. The only allowed change is the fill attribute for active/hover state.",
+    "CRITICAL — Do NOT hand-draw icons: when a PATH node has an `svg` field OR a matching getDesignSvgs key, you MUST insert the real SVG. NEVER substitute with simplified placeholder shapes (e.g. `<circle>`, `<rect>`, rough `<path>` sketches). Hand-drawn icons lose fidelity and are forbidden when the authoritative SVG is available.",
+    "TEXT nodes contain the actual text in node.text array. You MUST read each TEXT node's content and use it EXACTLY. Do NOT duplicate text from one node to another — each node has unique content.",
+    "Do NOT skip or omit any child nodes. Render ALL nodes present in the DSL, including every tab item, every grid button, every text element.",
+    "DO NOT call mcp__getDsl or mcp__extractSvg after completing this section workflow. The data from all sections + getDesignSvgs is COMPLETE.",
     "Background colors come from the node's fillStyleId — look it up in the DSL styles map. Do NOT invent background gradients or colors. If a node has no fill style, leave its background transparent.",
-    `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
-When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
-For example:
-  \`\`\`js
-    const componentDocumentLinks = [
-      'https://example.com/ant/button.mdx',
-      'https://example.com/ant/button.mdx'
-    ]
-    for (const url of componentDocumentLinks) {
-      const componentLink = await mcp__getComponentLink(url);
-      console.log(componentLink);
-    }
-  \`\`\``,
+    "CRITICAL: The section's root node layoutStyle.width is the section width. Some child elements (like border lines) may have a larger width than the root — this is normal (they overflow). ALWAYS use the root node's width as the section container width. Do NOT widen the section based on child element widths.",
+    "INSTANCE nodes are reusable components. They have children (TEXT, PATH, GROUP, etc.) just like FRAME nodes. You MUST render all children inside INSTANCE nodes — especially TEXT children which contain button labels, prices, and other critical content. Treat INSTANCE the same as FRAME: render its children with correct positioning from their layoutStyle.",
+    "Do NOT fabricate table rows based on pagination values like '共 X 项'. Render only the actual data rows found in the section DSL. If the DSL has 1 data row, output exactly 1 row.",
+    "Pagination component labels (e.g. '共 10 项', '20 行') are UI control labels — not data to replicate. Do NOT guess or fabricate data based on these numbers.",
+    "CRITICAL — SVG icons, NOT text: table action columns (操作列) use SVG icon buttons (edit/delete), NOT plain text. Match each SVG key from getDesignSvgs to its section — keys like '通用_编辑' and '通用_删除' are the authoritative icons. Insert the exact svgHtml. NEVER render action buttons as `<p>编辑</p>` or `<p>删除</p>` plain text. Sidebar menu icons also use SVG — do NOT draw simplified placeholder shapes when the real SVG data is available from getDesignSvgs.",
+    "CRITICAL — Persistent sidebars: render all sidebar levels as static visible columns positioned via splitContainers coordinates.",
     ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
     ...parseRules(),
   ];

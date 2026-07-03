@@ -35,14 +35,25 @@ You MUST call this tool N times. Do NOT skip any section.
 CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 
 ### Step 2: Fetch SVG and Text Data (MANDATORY)
-After ALL N sections have been fetched, call BOTH tools below:
+After ALL N sections have been fetched, handle PATH nodes according to their form:
 
-**SVG Data** — Call \`mcp__getDesignSvgs\` with the same fileId/layerId.
-This returns all cached SVG HTML strings. Each key uses format \`S{sectionIndex}:{namedAncestor}|{ancestorId}\`.
+**PATH Nodes — TWO forms:**
+1. **INLINED**: Most PATH nodes carry an \`svg\` field with the complete \`<svg>...</svg>\` string — copy this value VERBATIM into the HTML. No transformation needed. ALWAYS check for the \`svg\` field first.
+2. **STRIPPED**: Large sections strip the svg to a separate cache; these PATH nodes have only a \`path\` array with empty \`data\`. For stripped PATH nodes, call \`mcp__getDesignSvgs\` with the same fileId/layerId to get the SVG HTML strings.
+
+**SVG Data** — Call \`mcp__getDesignSvgs\` ONLY for stripped PATH nodes (those without \`svg\` field).
+Each key uses format \`S{sectionIndex}:{namedAncestor}|{ancestorId}\`.
 - Match each SVG to its section by the \`S{sectionIndex}\` prefix.
 - Insert the svgHtml string directly where the icon/PATH should appear.
-- Do NOT construct your own SVG — use the exact svgHtml from the response.
-- NEVER compute viewBox, path data, or fill colors from DSL layout properties — the svgHtml from getDesignSvgs IS the authoritative SVG. Use it verbatim. Any manually constructed SVG will have rounded coordinates, wrong viewBox offsets, and missing path precision.
+
+**CRITICAL — SVG VERBATIM fidelity (3 forbidden modifications):**
+Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATIVE — copy it character-for-character.
+1. NEVER round coordinate precision — 17.522848 must stay 17.522848, not 17.523 (rounding shifts shapes visibly).
+2. NEVER drop M-subpaths — a compound path may contain 2-6 subpaths, dropping ANY subpath breaks the icon.
+3. NEVER 'simplify' or 'optimize' path commands or viewBox.
+After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy.
+
+**CRITICAL — Do NOT hand-draw icons:** when a PATH node has an \`svg\` field OR a matching getDesignSvgs key, you MUST insert the real SVG. NEVER substitute with simplified placeholder shapes (\`<circle>\`, \`<rect>\`, rough \`<path>\` sketches).
 
 **Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
 This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
@@ -81,12 +92,17 @@ After ALL N sections have been fetched and SVG data retrieved:
 - Status bar, title bar, and other container backgrounds MUST match the DSL fill data exactly.
 
 ### Anti-Hallucination Rules:
-- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from mcp__getDesignSvgs.
+- You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
+- If a section has empty or missing text data, render it as an empty placeholder — do NOT fabricate text.
+- NEVER generate placeholder values, generic tags, fabricated amounts, or invented statistics.
+- Every piece of text, every number, every label in your output MUST come directly from the DSL data.
+- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from the \`svg\` field or mcp__getDesignSvgs.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
 
 ### Data Completeness Rules:
 - You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
 - Some sections may have nodeCount=3 and no visible TEXT nodes (text is in component property overrides). Do NOT skip them — the TEXT is resolved during DSL transfer. These sections contribute real content.
+- **textPreview**: each section list entry carries a \`textPreview\` field (first TEXT node found, truncated to 20 chars). If two sections both have nodeCount=3 and empty name, use \`textPreview\` to tell them apart — they are different menu items (e.g. "系统信息" / "权限设置"), NOT duplicates.
 - Keep a checklist: track which section indices have been requested. Do not stop until every index 0..N-1 has been fetched.
 - If you accidentally skipped a section, go back and request the missing indices. An incomplete section set WILL cause missing content in the final HTML.
 
@@ -95,6 +111,8 @@ After ALL N sections have been fetched and SVG data retrieved:
 - "共 X 项" is the pagination widget showing "total X items". The actual data rows come from the table body sections (preceding the pagination section).
 - Do NOT fabricate data rows based on pagination "total" values. Render ONLY the actual data rows present in the DSL.
 - If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
+- **CRITICAL — SVG icons for table actions**: table action columns (操作列) use SVG icon buttons (edit/delete), NOT plain text. Match each SVG key from getDesignSvgs to its section — keys like '通用_编辑' and '通用_删除' are the authoritative icons. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text. Sidebar menu icons also use SVG — do NOT draw simplified placeholder shapes.
+- **CRITICAL — Persistent sidebars**: render all sidebar levels as static visible columns positioned via splitContainers coordinates. Do NOT hide or toggle sidebar levels.
 `;
 
 function main() {

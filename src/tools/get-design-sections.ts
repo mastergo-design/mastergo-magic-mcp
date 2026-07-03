@@ -8,25 +8,26 @@ const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 [PRIMARY] This is the main tool for all designs. Operates in TWO modes:
 
 Mode 1 — Get layout overview (sectionIndex NOT provided):
-Returns the list of all sections with id, name, type, nodeCount, and a page-absolute bounding box (x, y, width, height) for each section, plus totalSections and totalNodes.
-Also returns rootMetadata (root layer width/height/name/type/fill) when available.
+Returns the list of all sections with id, name, type, nodeCount, textPreview (first TEXT node, 20 chars max), and a page-absolute bounding box (x, y, width, height) for each section, plus totalSections and totalNodes.
+Also returns rootMetadata (root layer width/height/name/type/fill) when available. rootContainer CSS properties for the page wrapper. splitContainers for large page regions that were split into child sections.
 Use this FIRST to understand the design scope. The per-section bbox tells you exactly where each section sits inside the root container — use it for absolute positioning when generating code.
 Example: { "fileId": "123", "layerId": "456:789" }
 
 Mode 2 — Get section DSL (sectionIndex provided):
 Returns the full DSL for ONE specific section.
-- Most PATH nodes carry an inline svg field with the complete SVG string — use it directly. Large sections (header/logo/pagination) strip SVGs to a cache and the PATH node carries a svgKey field instead — look it up in the svgs map from mcp__getDesignSvgs.
+- PATH nodes come in TWO forms. (1) INLINED: most PATH nodes carry an \`svg\` field with the complete \`<svg>...</svg>\` string — copy it VERBATIM, no transformation needed. (2) STRIPPED: large sections strip SVGs to a cache; these PATH nodes carry a \`svgKey\` field AND a \`path\` array with empty \`data\`. For stripped nodes, call mcp__getDesignSvgs to get the svgHtml. ALWAYS check \`svg\` first; if absent, use \`svgKey\` to fetch.
 
 CRITICAL — sectionIndex is SINGULAR: the parameter is sectionIndex (a SINGLE integer per call). There is NO plural sectionIndices parameter — passing an array will be rejected with an error. To fetch multiple sections you MUST make multiple calls, each with one sectionIndex.
 
 IMPORTANT workflow:
 1. First call WITHOUT sectionIndex to get the section list with node counts.
 2. Then call WITH sectionIndex=0, then sectionIndex=1, ... up to totalSections-1 — ONE sectionIndex per call.
-3. You MUST fetch ALL sections. Do NOT skip any section index. Some sections have nodeCount=3 and an empty name but a non-empty textPreview — these are individual menu items (e.g. '系统信息', '权限设置') with DIFFERENT text content; they are NOT duplicates. Fetch every one of them.
-4. Fetch sections in batches of 3-5 CONCURRENT calls (3-5 separate single-sectionIndex calls in parallel), wait for all results, then send the next batch. Each call has exactly one sectionIndex.
-5. After fetching all sections, call mcp__getDesignSvgs to get SVG icons (only needed for stripped PATH nodes with svgKey; inlined svg fields are used directly).
-6. Count your requests. If totalSections=48, you must make exactly 48 sectionIndex calls (each with a SINGLE integer). Keep a checklist and do NOT stop early.
-7. Generate the complete HTML with all SVG data.
+3. YOU MUST REQUEST ALL SECTIONS. Do NOT skip any section index — missing sections WILL cause missing content.
+4. textPreview helps distinguish same-looking sections: "系统信息", "权限设置", "基本设置" — all may have nodeCount=3 and empty name but DIFFERENT textPreview. They are individual menu items, NOT duplicates.
+5. Fetch sections in batches of 3-5 CONCURRENT calls (3-5 separate single-sectionIndex calls in parallel), wait for all results, then send the next batch. Each call has exactly one sectionIndex.
+6. After fetching all sections, handle SVGs: inlined PATH nodes use their \`svg\` field directly; for stripped PATH nodes (those with \`svgKey\`), call mcp__getDesignSvgs to get SVG icons.
+7. Count your requests. If totalSections=48, you must make exactly 48 sectionIndex calls (each with a SINGLE integer). Keep a checklist and do NOT stop early.
+8. Generate the complete HTML with all SVG data.
 
 DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
 If this tool returns an error (e.g. old server), fall back to mcp__getDsl.
