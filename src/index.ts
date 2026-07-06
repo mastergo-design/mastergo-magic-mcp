@@ -29,6 +29,12 @@ Use this to understand the design scope before fetching details.
 \`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
 \`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, and layout properties (layoutMode, itemSpacing, padding). Use these to understand how the split sections should be arranged — they share the container's layout direction and spacing.
 
+**Structure grouping** — Each section entry carries two fields to help you avoid redundant work:
+
+1. **\`structureHash\`** — structural fingerprint. Sections with identical hashes have the **exact same node-tree skeleton** (same type tree + layout attributes). Only **leaf values differ** (text, fill colors, icon paths). Fetch the DSL for the **first section in each hash group** and reuse its rendered structure for the rest — just swap in different text/color/icon values. Sections without a structureHash have unique structures and must be rendered individually.
+
+2. **\`containerId\`** — links to a \`splitContainers\` entry. All sections sharing a containerId inherit that container's width, flexDirection, gap, and padding. When wrapping these sections in a parent element, match the container's width and layout properties — don't repeat them on each child.
+
 ### Step 1: Fetch Each Section DSL (MANDATORY - ALL N sections)
 For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
@@ -102,6 +108,14 @@ After ALL N sections have been fetched and SVG data retrieved:
 - Every piece of text, every number, every label in your output MUST come directly from the DSL data.
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from the \`svg\` field or mcp__getDesignSvgs.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
+
+### SVG Icon Anti-Simplification Rules:
+- PATH nodes with an \`svg\` or \`getDesignSvgs\` field carry the DESIGNER'S EXACT vector shape. You MUST copy this svgHtml character-for-character — no transformation, no simplification, no "equivalent" replacement.
+- **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
+- **VERIFY after copying each SVG**: count the number of \`M\` characters in the source path \`d\` attribute. Your copy MUST have exactly the same count. Fewer \`M\` → you corrupted the icon → redo.
+- **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
+- The only acceptable SVG operation is: copy the complete \`<svg>...</svg>\` block from the DSL data and paste it into your HTML. Nothing else.
+- **Common failure pattern**: you saw a complex path and thought "this looks roughly like 4 rectangles" → you drew 4 \`<rect>\`s → the result is visually WRONG. The designer chose a vector path for a reason. Trust the data.
 
 ### Data Completeness Rules:
 - You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
