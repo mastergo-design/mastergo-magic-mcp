@@ -86,10 +86,14 @@ After ALL N sections have been fetched and SVG data retrieved:
 - Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
 
 ### Background & Color Rules:
+- **PREFER the \`_color\` field**: every node with a resolved fill carries a \`_color\` field containing the computed CSS hex/rgb value. Use this value DIRECTLY in CSS — no styles-table lookup needed. Example: \`color: #4E5969\` from \`"_color": "#4E5969"\`.
+- The \`fill\` field (e.g. \`paint_1:7200\`) remains for reference. Use \`_token\` (e.g. \`"Text/Text-4"\`) for CSS variable naming like \`var(--text-text-4, #4E5969)\`.
+- If a node has both \`_color\` and \`fill\`, \`_color\` is authoritative for the visual color value.
 - The DSL \`styles\` map contains fill/stroke style definitions. Use the node's \`fillStyleId\`/\`strokeStyleId\` to look up the actual color from \`styles\`.
 - The root/frame node's background comes from its fill style. Do NOT invent gradient or solid backgrounds — use ONLY the colors from the DSL data.
 - If a node has no fill or the fill style is empty/transparent, do NOT add a background color. Leave it transparent or inherit from parent.
 - Status bar, title bar, and other container backgrounds MUST match the DSL fill data exactly.
+- **NEVER hardcode LLM-default colors** (e.g. \`#1D2129\`, \`#000\`, \`#333\`) when \`_color\` is present. The \`_color\` value is the design truth — copying it requires zero cognitive effort and zero styles-table lookup.
 
 ### Anti-Hallucination Rules:
 - You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
