@@ -27,7 +27,7 @@ Each \`sections[]\` entry ALSO carries a **page-absolute bounding box**: \`x\`, 
 Use this to understand the design scope before fetching details.
 
 \`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
-\`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, and layout properties (layoutMode, itemSpacing, padding). Use these to understand how the split sections should be arranged — they share the container's layout direction and spacing.
+\`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, layout properties (layoutMode, itemSpacing, padding), **and now a \`background\` color** (resolved hex/css value) plus \`fill\` reference. Use these to understand how the split sections should be arranged — they share the container's layout direction and spacing. Apply the container's \`background\` to the parent wrapper that encloses its child sections.
 
 **Structure grouping** — Each section entry carries two fields to help you avoid redundant work:
 
@@ -69,8 +69,8 @@ This returns exact text content for large text nodes (>50 chars). In the section
 
 **Assets** (icons, rowTexts) — Each section DSL may carry two pre-extracted fields for direct use:
 
-1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用_编辑"\`, \`"图标"\`. Use this value directly as the icon's HTML — it is the same SVG that appears somewhere inside the node tree, pre-extracted so you don't need to search nested PATH children.
-2. **\`dsl.rowTexts\`** — A flat array of all leaf TEXT values in this section, in tree order. For table rows this gives you \`["1.1.3.543.4", "ddd", "2.2.344.23", "无", "AES-128"]\` — the exact cell data.
+1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用/编辑"\`, \`"图标"\`, \`"图标_1"\` (suffixed when a section has multiple SVGs with the same ancestor name). Use this value directly as the icon's HTML. If the value starts with \`@svgCache:\`, the SVG was too large to inline — look it up via \`mcp__getDesignSvgs\` using the key format shown after the \`@svgCache:\` marker.
+2. **\`dsl.rowTexts\`** — A flat array of all leaf TEXT values in this section, in tree order. For table rows this gives you \`["1.1.3.543.4", "ddd", "2.2.344.23", "无", "AES-128"]\` — the exact cell data. For menu items it gives \`["态势监控"]\` — the menu label.
 
 When \`icons\` or \`rowTexts\` is present, use them directly. They are authoritative and save you from deep-tree traversal.
 
@@ -81,6 +81,7 @@ After ALL N sections have been fetched and SVG data retrieved:
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
+- When splitContainers is present, sections that were split from the same container must share that container's width and be wrapped together. **Apply the container's \`background\` to the parent wrapper**: splitContainer entries now include \`background\` (resolved CSS color) and \`fill\` (paint reference).
 
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
