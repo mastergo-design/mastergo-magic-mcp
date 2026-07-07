@@ -63,7 +63,7 @@ Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATI
 3. NEVER 'simplify' or 'optimize' path commands or viewBox.
 After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy.
 
-**CRITICAL — Do NOT hand-draw icons:** when a PATH node has an \`svg\` field OR a matching getDesignSvgs key, you MUST insert the real SVG. NEVER substitute with simplified placeholder shapes (\`<circle>\`, \`<rect>\`, rough \`<path>\` sketches).
+**CRITICAL — NEVER hand-draw substitute icons:** when a PATH node has an \`svg\` field, a \`svgKey\` (via mcp__getDesignSvgs), OR a pre-extracted \`dsl.icons[name]\` entry — all three carry the designer's true vector. You MUST use the real SVG. Do NOT approximate an icon with \`<rect>\`/\`<circle>\`/\`<polygon>\` primitives even if they look similar (e.g. drawing bar-chart rects for a dashboard gauge). If missing, fetch it via getDesignSvgs; never rebuild it.
 
 **CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix in getDesignSvgs keys identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always match the full key, not just the icon name.
 
@@ -131,6 +131,7 @@ After ALL N sections have been fetched and SVG data retrieved:
 - **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
 - The only acceptable SVG operation is: copy the complete \`<svg>...</svg>\` block from the DSL data and paste it into your HTML. Nothing else.
 - **Common failure pattern**: you saw a complex path and thought "this looks roughly like 4 rectangles" → you drew 4 \`<rect>\`s → the result is visually WRONG. The designer chose a vector path for a reason. Trust the data.
+- **COMPOSITE ICONS (logos, multi-subpath marks):** when a logo/brand mark is split into multiple sub-paths and stripped to svgCache, the data you get back from \`mcp__getDesignSvgs\` is the complete \`<svg>...</svg>\`. Paste it whole. The node's \`relativeX\`/\`relativeY\` are canvas placement coordinates — they are NOT to be reused as \`transform="translate(x,y) scale(...)"\` inside a hand-assembled \`<svg>\`. Doing so warps the glyph out of its viewBox.
 
 ### INSTANCE Variant State Rules:
 - INSTANCE nodes may carry a **\`_variantProps\`** object with semantic state labels extracted from component variant properties (e.g. \`{"状态": "选中", "分类": "幽灵按钮", "尺寸": "24"}\`).
@@ -138,6 +139,17 @@ After ALL N sections have been fetched and SVG data retrieved:
 - **Sidebar menu items**: each menu item (e.g. 22 submenu entries) is a separate section containing an INSTANCE with \`_variantProps\`. The item with \`"状态": "选中"\` in its \`_variantProps\` is the currently active page — the corresponding section's \`rowTexts[0]\` (or TEXT child) is its label. Render this item with \`class="submenu-item active"\`.
 - **Button states**: \`"分类": "幽灵按钮"\` vs \`"分类": "主要按钮"\` determines the button's visual style (outline vs filled). Multiple buttons in the same toolbar may have different variant props — respect each one individually.
 - If \`_variantProps\` is absent from all siblings, assume all are in \`default\` state — do NOT invent active states.
+
+### Repeat / Row-Count Rules:
+- Each section entry carries \`structureSiblingCount\` = the exact number of times this structure appears in the design.
+- For data/table sections: the number of rendered rows MUST equal \`structureSiblingCount\`. A count of 1 means ONE row total — do not pad with fabricated rows "for visual density" or "to fill the table". The single row in the DSL IS the complete dataset.
+- For \`structureSiblingCount >= 2\`: reuse the \`structureHash\` template, render exactly that many instances, swap per-instance text/colors from each section's own data.
+- Pagination controls, "load more" buttons, and empty-state rows are CONTROLS, not data rows — never counted toward the dataset.
+
+### Placeholder Text Rules:
+- TEXT nodes may carry \`_placeholder: true\`. This flag marks text whose node name equals its content — the universal signature of component-library placeholder text (the slot name WAS the placeholder string, e.g. \`{name: "Hillstone Design", text: "Hillstone Design"}\`). This works across ALL component libraries without brand-specific tokens.
+- \`_placeholder: true\` is a HINT, not a deletion. Read the surrounding context: if the flagged text does not map to a real column header, label, or content slot in this specific design, treat it as boilerplate and omit it. If it does map to real content, render it normally.
+- Never blanket-render every \`_placeholder\` text as visible headers/columns.
 
 ### Data Completeness Rules:
 - You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
