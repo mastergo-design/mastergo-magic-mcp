@@ -67,6 +67,13 @@ This returns exact text content for large text nodes (>50 chars). In the section
 - Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
 - This is the ONLY source of truth for large text content. The DSL key is a reference, not the actual text.
 
+**Assets** (icons, rowTexts) — Each section DSL may carry two pre-extracted fields for direct use:
+
+1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用_编辑"\`, \`"图标"\`. Use this value directly as the icon's HTML — it is the same SVG that appears somewhere inside the node tree, pre-extracted so you don't need to search nested PATH children.
+2. **\`dsl.rowTexts\`** — A flat array of all leaf TEXT values in this section, in tree order. For table rows this gives you \`["1.1.3.543.4", "ddd", "2.2.344.23", "无", "AES-128"]\` — the exact cell data.
+
+When \`icons\` or \`rowTexts\` is present, use them directly. They are authoritative and save you from deep-tree traversal.
+
 ### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
 - MANDATORY: Use \`rootContainer\` from the section list response to create the root container div. Apply ALL its CSS properties (width, minHeight, background, overflow, position:relative) to a wrapping div. ALL sections MUST be placed inside this root container.
