@@ -16,6 +16,8 @@ Example: { "fileId": "123", "layerId": "456:789" }
 Mode 2 — Get section DSL (sectionIndex provided):
 Returns the full DSL for ONE specific section.
 - PATH nodes come in TWO forms. (1) INLINED: most PATH nodes carry an \`svg\` field with the complete \`<svg>...</svg>\` string — copy it VERBATIM, no transformation needed. (2) STRIPPED: large sections strip SVGs to a cache; these PATH nodes carry a \`svgKey\` field AND a \`path\` array with empty \`data\`. For stripped nodes, call mcp__getDesignSvgs to get the svgHtml. ALWAYS check \`svg\` first; if absent, use \`svgKey\` to fetch.
+- CRITICAL: When a section response has \`hasStrippedSvgs: true\`, its PATH \`data\` is empty and \`dsl.icons\` values use \`@svgCache:\` prefixes. You MUST call \`mcp__getDesignSvgs\` with the same fileId/layerId to retrieve the actual SVG HTML. Skipping this step WILL cause missing icons (logos, pagination arrows, table action buttons, etc.).
+- INSTANCE nodes with a \`_variantProps\` object carry semantic state labels. Compare these across sibling instances to determine active/selected/hovered states — do NOT default to the first item.
 
 CRITICAL — sectionIndex is SINGULAR: the parameter is sectionIndex (a SINGLE integer per call). There is NO plural sectionIndices parameter — passing an array will be rejected with an error. To fetch multiple sections you MUST make multiple calls, each with one sectionIndex.
 

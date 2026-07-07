@@ -41,7 +41,11 @@ You MUST call this tool N times. Do NOT skip any section.
 CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 
 ### Step 2: Fetch SVG and Text Data (MANDATORY)
-After ALL N sections have been fetched, handle PATH nodes according to their form:
+After ALL N sections have been fetched, handle stripped/cached data:
+
+**Check section responses for caching flags:**
+- If ANY section has \`hasStrippedSvgs: true\` → you MUST call \`mcp__getDesignSvgs\` (icons/paths were stripped to cache). Skipping this WILL cause missing icons.
+- If few/no sections have \`textNodeCount > 0\` or \`dsl.rowTexts\` contains no \`"T{sectionIndex}|..."\` keys → \`getDesignTexts\` is unnecessary (all text is already inline in the DSL).
 
 **PATH Nodes — TWO forms:**
 1. **INLINED**: Most PATH nodes carry an \`svg\` field with the complete \`<svg>...</svg>\` string — copy this value VERBATIM into the HTML. No transformation needed. ALWAYS check for the \`svg\` field first.
@@ -60,6 +64,8 @@ Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATI
 After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy.
 
 **CRITICAL — Do NOT hand-draw icons:** when a PATH node has an \`svg\` field OR a matching getDesignSvgs key, you MUST insert the real SVG. NEVER substitute with simplified placeholder shapes (\`<circle>\`, \`<rect>\`, rough \`<path>\` sketches).
+
+**CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix in getDesignSvgs keys identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always match the full key, not just the icon name.
 
 **Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
 This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
@@ -119,11 +125,19 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 ### SVG Icon Anti-Simplification Rules:
 - PATH nodes with an \`svg\` or \`getDesignSvgs\` field carry the DESIGNER'S EXACT vector shape. You MUST copy this svgHtml character-for-character — no transformation, no simplification, no "equivalent" replacement.
+- **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs with different viewBox/path data). NEVER reuse a section's SVG in another section. Always match by exact section prefix (S{n}:) in getDesignSvgs keys.
 - **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
 - **VERIFY after copying each SVG**: count the number of \`M\` characters in the source path \`d\` attribute. Your copy MUST have exactly the same count. Fewer \`M\` → you corrupted the icon → redo.
 - **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
 - The only acceptable SVG operation is: copy the complete \`<svg>...</svg>\` block from the DSL data and paste it into your HTML. Nothing else.
 - **Common failure pattern**: you saw a complex path and thought "this looks roughly like 4 rectangles" → you drew 4 \`<rect>\`s → the result is visually WRONG. The designer chose a vector path for a reason. Trust the data.
+
+### INSTANCE Variant State Rules:
+- INSTANCE nodes may carry a **\`_variantProps\`** object with semantic state labels extracted from component variant properties (e.g. \`{"状态": "选中", "分类": "幽灵按钮", "尺寸": "24"}\`).
+- **Active/selected state**: compare \`_variantProps\` across sibling INSTANCE nodes to find which one has \`"状态": "选中"\` or similar active-state values. Apply the \`.active\` CSS class ONLY to that node — NEVER default to the first item in a list.
+- **Sidebar menu items**: each menu item (e.g. 22 submenu entries) is a separate section containing an INSTANCE with \`_variantProps\`. The item with \`"状态": "选中"\` in its \`_variantProps\` is the currently active page — the corresponding section's \`rowTexts[0]\` (or TEXT child) is its label. Render this item with \`class="submenu-item active"\`.
+- **Button states**: \`"分类": "幽灵按钮"\` vs \`"分类": "主要按钮"\` determines the button's visual style (outline vs filled). Multiple buttons in the same toolbar may have different variant props — respect each one individually.
+- If \`_variantProps\` is absent from all siblings, assume all are in \`default\` state — do NOT invent active states.
 
 ### Data Completeness Rules:
 - You MUST fetch ALL sections (0..totalSections-1). If totalSections=48, you must call sectionIndex=0 through 47 — no exceptions.
