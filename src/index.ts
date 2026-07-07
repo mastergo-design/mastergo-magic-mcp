@@ -52,9 +52,13 @@ After ALL N sections have been fetched, handle stripped/cached data:
 2. **STRIPPED**: Large sections strip the svg to a separate cache; these PATH nodes have only a \`path\` array with empty \`data\`. For stripped PATH nodes, call \`mcp__getDesignSvgs\` with the same fileId/layerId to get the SVG HTML strings.
 
 **SVG Data** — Call \`mcp__getDesignSvgs\` ONLY for stripped PATH nodes (those without \`svg\` field).
-Each key uses format \`S{sectionIndex}:{namedAncestor}|{ancestorId}\`.
-- Match each SVG to its section by the \`S{sectionIndex}\` prefix.
-- Insert the svgHtml string directly where the icon/PATH should appear.
+The response contains TWO structures:
+1. \`svgs\` — SVG HTML keyed by \`"S{sectionIndex}:{name}|{nodePath}"\`.
+2. \`resolvedIcons\` — A two-level index \`{sectionIndex: {iconName: svgKey}}\` for DIRECT dictionary lookup.
+   - **Usage**: \`resolvedIcons["{sectionIndex}"]["{iconName}"]\` → svgKey → \`svgs[svgKey]\` = svgHtml.
+   - **Example**: \`resolvedIcons["1"]["White"]\` → \`"S1:White|1:5449/1:5041"\` → \`svgs["S1:White|1:5449/1:5041"]\`.
+   - **This is ZERO string matching — no prefix search, no substring extraction.**
+   - Match each section's \`dsl.icons\` keys to \`resolvedIcons["{sectionIndex}"]\` for icon lookup.
 
 **CRITICAL — SVG VERBATIM fidelity (3 forbidden modifications):**
 Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATIVE — copy it character-for-character.
@@ -75,8 +79,8 @@ This returns exact text content for large text nodes (>50 chars). In the section
 
 **Assets** (icons, rowTexts) — Each section DSL may carry two pre-extracted fields for direct use:
 
-1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用/编辑"\`, \`"图标"\`, \`"图标_1"\` (suffixed when a section has multiple SVGs with the same ancestor name). Use this value directly as the icon's HTML. If the value starts with \`@svgCache:\`, the SVG was too large to inline — look it up via \`mcp__getDesignSvgs\` using the key format shown after the \`@svgCache:\` marker.
-2. **\`dsl.rowTexts\`** — A flat array of all leaf TEXT values in this section, in tree order. For table rows this gives you \`["1.1.3.543.4", "ddd", "2.2.344.23", "无", "AES-128"]\` — the exact cell data. For menu items it gives \`["态势监控"]\` — the menu label.
+1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用/编辑"\`, \`"图标"\`, \`"图标_1"\` (suffixed when a section has multiple SVGs with the same ancestor name). Use this value directly as the icon's HTML. If the value starts with \`@svgCache:\`, the SVG was too large to inline — look it up via \`mcp__getDesignSvgs\` using \`resolvedIcons[{sectionIndex}][{iconName}]\` → \`svgs[key]\` (direct dictionary lookup, no string matching).
+2. **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
 
 When \`icons\` or \`rowTexts\` is present, use them directly. They are authoritative and save you from deep-tree traversal.
 
