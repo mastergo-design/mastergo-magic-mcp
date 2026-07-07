@@ -114,6 +114,8 @@ After ALL N sections have been fetched and SVG data retrieved:
 - If a node has no fill or the fill style is empty/transparent, do NOT add a background color. Leave it transparent or inherit from parent.
 - Status bar, title bar, and other container backgrounds MUST match the DSL fill data exactly.
 - **NEVER hardcode LLM-default colors** (e.g. \`#1D2129\`, \`#000\`, \`#333\`) when \`_color\` is present. The \`_color\` value is the design truth — copying it requires zero cognitive effort and zero styles-table lookup.
+- **CRITICAL — splitContainers[].background IS the exact CSS background-color.** Copy it verbatim: \`background-color: <value>;\`. MUST NOT add gradients, MUST NOT change the color. The designer chose this color deliberately.
+- **CRITICAL — OPACITY ON FRAME**: a FRAME's \`opacity\` field applies ONLY to its own background, NOT children. Use \`background-color: rgba(R, G, B, <opacity>)\` — NEVER use CSS \`opacity: X\` on the parent, which makes child text/icons translucent.
 
 ### Anti-Hallucination Rules:
 - You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
