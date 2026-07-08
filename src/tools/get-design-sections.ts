@@ -51,19 +51,22 @@ const DSL_RULES: string[] = [
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
     "",
-    "CRITICAL — SVG ICONS FROM dsl.icons (MUST FOLLOW): EVERY section that has PATH icons exposes them in \`dsl.icons\` — a flat map where each key is the icon's semantic name and the value IS the designer's exact \`<svg>...</svg>\` string (inline) or an \`@svgCache:\` reference (stripped). For EVERY icon in your HTML, look up \`dsl.icons[name]\` first. If the value starts with \`@svgCache:\`, call mcp__getDesignSvgs and use resolvedIcons[{sectionIndex}][{iconName}] -> svgs[key] to get the svgHtml. If the value is a full \`<svg>\` string, copy it VERBATIM into your HTML. Do NOT hand-draw or simplify any icon.",
+    "CRITICAL — SVG ICONS FROM dsl.icons (MUST FOLLOW): EVERY section that has PATH icons exposes them in `dsl.icons` — a flat map where each key is the icon's semantic name and the value IS the designer's exact `<svg>...</svg>` string (inline) or an `@svgCache:` reference (stripped). For EVERY icon in your HTML, look up `dsl.icons[name]` first. If the value starts with `@svgCache:`, call mcp__getDesignSvgs and use resolvedIcons[{sectionIndex}][{iconName}] -> svgs[key] to get the svgHtml. If the value is a full `<svg>` string, copy it VERBATIM into your HTML. Do NOT hand-draw or simplify any icon.",
     "CRITICAL — RENDER EVERY dsl.icons ENTRY: do NOT skip any icon listed in dsl.icons. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. Each dsl.icons[name] must appear in its section's HTML. A header cell with icons showing only plain text is a fidelity defect.",
     "",
-    "CRITICAL — OMIT _placeholder TEXT: any TEXT node with \`_placeholder: true\` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with \`_placeholder: true\` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
-    "CRITICAL — CLOSED-SET TEXT: the section LIST response carries \`rootMetadata.allTexts\` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
+    "CRITICAL — OMIT _placeholder TEXT: any TEXT node with `_placeholder: true` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with `_placeholder: true` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
+    "CRITICAL — CLOSED-SET TEXT: the section LIST response carries `rootMetadata.allTexts` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
     "",
-    "CRITICAL — INSTANCE fill color: when an INSTANCE has both \`fill\` and \`_color\`, use \`_color\` directly as the CSS value. Do NOT guess colors from _variantProps semantics.",
+    "CRITICAL — INSTANCE fill color: when an INSTANCE has both `fill` and `_color`, use `_color` directly as the CSS value. Do NOT guess colors from _variantProps semantics.",
     "CRITICAL — INSTANCE _variantProps: compare across siblings for selected/hovered/disabled. Active class MUST match DSL variant state, NOT a default index.",
     "CRITICAL — Render count = structureSiblingCount: if ssc=1, that single instance IS complete — do NOT fabricate extra rows/items.",
     "CRITICAL — BACKGROUND FROM splitContainers: splitContainers[].background IS the exact CSS background-color. Copy verbatim, no changes.",
     "CRITICAL — FRAME/GROUP opacity: translate to rgba() on background only, NOT CSS opacity (would make children translucent).",
-    "CRITICAL — rowTexts: each entry has parentType/parentName for context and \`_placeholder: true\` if boilerplate. Use parentName to place text correctly; skip _placeholder entries.",
+    "CRITICAL — rowTexts: each entry has parentType/parentName for context and `_placeholder: true` if boilerplate. Use parentName to place text correctly; skip _placeholder entries.",
     "Render ALL nodes recursively. Section root layoutStyle.width = section width. Do not call mcp__getDsl after completing section workflow.",
+    "CRITICAL — ICON-TO-NODE BINDING: dsl.icons keys are SEMANTIC — they reflect the icon's UI position (e.g. vertical-menu-item/1st-level = sidebar menu icon, 通用/刷新 = refresh button, 通用/编辑 = edit action, 箭头 = arrow). Match each icon to its UI node by the KEY NAME. The icon at key vertical-menu-item/1st-level belongs in the menu icon slot; 通用/刷新 belongs in the refresh button. NEVER reuse one section's icon for a different position, and NEVER substitute a memorized icon — copy svgHtml from dsl.icons[key] or getDesignSvgs VERBATIM.",
+    "CRITICAL — TEXT PROVENANCE SELF-CHECK: before finalizing output, verify every visible text string exists in allTexts. If you emit MORE distinct strings than allTexts.length, you are hallucinating. Typical hallucinations: fabricated table headers, invented data, brand tokens, generic labels not in the design.",
+    "CRITICAL — DO NOT SKIP SECTION DSL FETCH: the section LIST response is ONLY a directory (id/name/nodeCount/textPreview). It does NOT contain DSL nodes, dsl.icons, rowTexts, or any rendering data. You CANNOT generate correct HTML from the list alone. You MUST call mcp__getDesignSections with sectionIndex=0, then 1, ... up to totalSections-1 to get each section's DSL. Generating HTML without fetching ALL section DSLs will produce missing content (menus, table data, icons) and incorrect SVGs — this is the #1 cause of broken output.",
   ];
 
 
@@ -166,6 +169,20 @@ export class GetDesignSectionsTool extends BaseTool {
         (!result.rules || !Array.isArray(result.rules) || result.rules.length === 0)
       ) {
         result.rules = DSL_RULES;
+      }
+
+      // section list 模式：在响应里注入 nextAction 显式指令，防止 LLM 跳过 section DSL 拉取。
+      // 实测发现 LLM 拿到 section list 后可能直接生成 HTML（跳过所有 section DSL 请求），
+      // 导致图标/菜单/表格数据全部缺失。nextAction 在数据层面强制提醒下一步操作。
+      if (
+        sectionIndex === undefined &&
+        result &&
+        typeof result === "object" &&
+        typeof result.totalSections === "number" &&
+        result.totalSections > 0
+      ) {
+        const n = result.totalSections;
+        result.nextAction = `STOP. This section LIST is only a directory — it has NO DSL nodes, NO dsl.icons, NO rowTexts. You CANNOT generate HTML from this list alone. Your NEXT ACTION: call mcp__getDesignSections with sectionIndex=0, then sectionIndex=1, ... up to sectionIndex=${n - 1} (total ${n} calls). Fetch ALL ${n} sections in batches of 3-5 before writing ANY HTML. Sections with nodeCount=3 and empty name are NOT empty — they contain real menu items and content (resolved from INSTANCE overrides during DSL transfer). Skipping section DSL fetch is the #1 cause of missing menus, broken icons, and wrong data.`;
       }
 
       return {
