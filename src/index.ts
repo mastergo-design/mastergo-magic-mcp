@@ -27,7 +27,7 @@ Each \`sections[]\` entry ALSO carries a **page-absolute bounding box**: \`x\`, 
 Use this to understand the design scope before fetching details.
 
 \`rootMetadata\` (if present) provides the root layer's dimensions (width, height), name, type, and optional fill/styles. Use these as the page frame size and background.
-\`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, layout properties (layoutMode, itemSpacing, padding), **and now a \`background\` color** (resolved hex/css value) plus \`fill\` reference. Use these to understand how the split sections should be arranged — they share the container's layout direction and spacing. Apply the container's \`background\` to the parent wrapper that encloses its child sections.
+\`splitContainers\` (if present) lists containers that were too large and split into child sections. Each entry provides the container's name, type, id, x, y, width, height, layout properties (layoutMode, itemSpacing, padding), **and now a \`background\` color** (resolved hex/css value, e.g. \`"#055DDC"\`) plus \`fill\` reference (e.g. \`"paint_1:4829"\`). Use these to understand how the split sections should be arranged — they share the container's width, layout direction and spacing. IMPORTANT: sections from the same split container MUST share the container's width. Apply the container's \`background\` to the parent wrapper that encloses its child sections — this gives the container its correct visual background without each section needing to carry it.
 
 **Structure grouping** — Each section entry carries two fields to help you avoid redundant work:
 
@@ -93,6 +93,18 @@ After ALL N sections have been fetched and SVG data retrieved:
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 - When splitContainers is present, sections that were split from the same container must share that container's width and be wrapped together. **Apply the container's \`background\` to the parent wrapper**: splitContainer entries now include \`background\` (resolved CSS color) and \`fill\` (paint reference).
 
+### Text Provenance Self-Check (MANDATORY before finalizing output):
+- Before writing the final HTML, enumerate every visible text string you plan to emit.
+- For EACH string, verify it exists in \`rootMetadata.allTexts\` (the section LIST response carries this closed-set whitelist of all text in the design) OR in some section's \`dsl.rowTexts\` / \`node.text\`.
+- Any string with NO provenance (typical offenders: fabricated column headers like "用户名称/所属组/远程IP", invented cell data like "1.1.3.543.4" or "AES-128", brand-watermark tokens like "Hillstone Design", generic menu labels not in the design) MUST be deleted or replaced with an empty placeholder.
+- If you find yourself generating MORE distinct text strings than \`allTexts.length\`, STOP and re-check — you are hallucinating.
+
+### Row Count Self-Check (MANDATORY for tables/lists):
+- For every table, list, or repeated-row section in your output, look up its \`structureSiblingCount\`. This field appears in BOTH the section list entry AND each section DSL response (top-level \`structureSiblingCount\`).
+- The number of data rows you render MUST equal \`structureSiblingCount\`. This is a hard constraint, not a suggestion.
+- \`structureSiblingCount: 1\` means render EXACTLY 1 data row. Do NOT add rows "for visual density", "to look complete", or "because a pagination label says 共10项". Pagination labels reflect a UI control state, NOT a data-row count — they must never inflate the row count.
+- Before outputting any table, verify: count your \`<tr>\` (data rows, excluding header) → it MUST equal \`structureSiblingCount\`. If you rendered more, delete the extras now.
+
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` or \`getDesignSvgs\` before it.
@@ -129,6 +141,15 @@ After ALL N sections have been fetched and SVG data retrieved:
 - NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from the \`svg\` field or mcp__getDesignSvgs.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
 
+### Empty Design Tolerance Rules (CLOSED-SET TEXT):
+- Many designs are UNFINISHED wireframes or component-library showcases with sparse text. This is NORMAL, not missing data.
+- The ONLY allowed text strings in your output are those present in \`dsl.rowTexts\`, \`node.text\`, or \`dsl.icons\` keys of SOME fetched section. The section list response carries \`rootMetadata.allTexts\` — the complete closed set of text strings in this design. Treat it as a whitelist: any string NOT in allTexts is a hallucination and MUST be removed.
+- Sparse text is especially common when the design reuses a component library: the design itself may have only ~10 distinct text strings total, even though the rendered page looks dense. Do NOT infer more content from visual density or the page's apparent purpose.
+- If a section has \`textTotal=0\` or empty \`rowTexts\`, render its STRUCTURE with EMPTY placeholders (\`<td></td>\`, blank labels, empty menu items) — do NOT invent column headers, menu item labels, IP addresses, algorithm names, or any data values to fill it.
+- A table with 1 data row in the DSL renders as 1 data row in HTML. Do NOT pad with fabricated rows. Pagination labels like "共 10 项" reflect a UI control state, NOT a data-row count — never synthesize rows to match them.
+- Brand-name leakage is forbidden: do NOT generate library/watermark tokens (e.g. "Hillstone Design", "Ant Design", "Material UI") even if they appear in component node names or you recognize the brand from training data. Only render text that appears in the design's own TEXT nodes.
+- When in doubt about whether a text string is real: it is NOT real unless you can cite the sectionIndex it came from.
+
 ### SVG Icon Anti-Simplification Rules:
 - PATH nodes with an \`svg\` or \`getDesignSvgs\` field carry the DESIGNER'S EXACT vector shape. You MUST copy this svgHtml character-for-character — no transformation, no simplification, no "equivalent" replacement.
 - **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs with different viewBox/path data). NEVER reuse a section's SVG in another section. Always match by exact section prefix (S{n}:) in getDesignSvgs keys.
@@ -163,6 +184,25 @@ After ALL N sections have been fetched and SVG data retrieved:
 - **textPreview**: each section list entry carries a \`textPreview\` field (first TEXT node found, truncated to 20 chars). If two sections both have nodeCount=3 and empty name, use \`textPreview\` to tell them apart — they are different menu items (e.g. "系统信息" / "权限设置"), NOT duplicates.
 - Keep a checklist: track which section indices have been requested. Do not stop until every index 0..N-1 has been fetched.
 - If you accidentally skipped a section, go back and request the missing indices. An incomplete section set WILL cause missing content in the final HTML.
+
+
+
+### Critical Rendering Checklist (MANDATORY — verify each item before finalizing):
+Before declaring the HTML complete, enumerate every structural element below and confirm it is rendered. Missing ANY item is a fidelity defect.
+
+1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from \`dsl.icons\` or \`PATH.svg\`. A colored rectangle is NOT an acceptable icon.
+
+2. **Table header column icons** (sort/filter/search): each table header cell section may carry sort-arrow, filter-funnel, and search-lens icons via \`dsl.icons\` or stripped SVGs. Did you render them? If a header cell is plain text only, you SKIPPED its icons. Go back and render them.
+
+3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE icons. Did you call \`mcp__getDesignSvgs\` after fetching ALL sections? Did you render EVERY returned icon to its correct position? Flat pagination text is incomplete.
+
+4. **Brand/logo area text**: the brand section has a TEXT node with the actual brand name (present in \`allTexts\`). Did you render it as visible text? SVG brand marks alone are not enough — the name must also appear.
+
+5. **SVG completeness for ALL sections**: For EVERY section with \`hasStrippedSvgs: true\`, you MUST have called \`mcp__getDesignSvgs\` and rendered the returned SVGs. Verify: count the distinct SVG \`<svg>\` elements in your output — they should match the design's icon count, not fewer.
+
+6. **Text provenance**: every text string in your output MUST be traceable to \`rootMetadata.allTexts\` or a section's \`dsl.rowTexts\`/\`node.text\`. If you cannot cite the exact source, the text is a hallucination — delete it.
+
+If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputting.
 
 ### Data Interpretation Rules:
 - Pagination/table-footer labels (e.g. "共 10 项", "X rows/page", "items per page") reflect UI control state — NOT data to replicate.

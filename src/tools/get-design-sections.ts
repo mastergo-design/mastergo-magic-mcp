@@ -39,6 +39,34 @@ You can provide either:
 2. a short link (like https://{domain}/goto/LhGgBAK)
 `;
 
+/**
+ * DSL 还原规则。HTTP 后端 (frontend-mcp-server) 在 section list 响应里会下发一份完整的；
+ * 但部分旧版后端或 HTTP route 路径不下发 rules。当后端响应缺 rules 时，由 magic-mcp 在此补全，
+ * 保证 LLM 无论连哪个后端版本，都能拿到完整的还原规则（SVG/文本/行数/定位等）。
+ * 必须与 frontend-mcp-server/src/mcp-sse/tools/get-design-sections.ts 的 DSL_RULES 保持同步。
+ */
+const DSL_RULES: string[] = [
+    "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",
+    "CRITICAL — Sidebar columns: render ALL sidebar levels as persistent columns at splitContainers positions. Do NOT hide or toggle them.",
+    "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+    "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
+    "",
+    "CRITICAL — SVG ICONS FROM dsl.icons (MUST FOLLOW): EVERY section that has PATH icons exposes them in \`dsl.icons\` — a flat map where each key is the icon's semantic name and the value IS the designer's exact \`<svg>...</svg>\` string (inline) or an \`@svgCache:\` reference (stripped). For EVERY icon in your HTML, look up \`dsl.icons[name]\` first. If the value starts with \`@svgCache:\`, call mcp__getDesignSvgs and use resolvedIcons[{sectionIndex}][{iconName}] -> svgs[key] to get the svgHtml. If the value is a full \`<svg>\` string, copy it VERBATIM into your HTML. Do NOT hand-draw or simplify any icon.",
+    "CRITICAL — RENDER EVERY dsl.icons ENTRY: do NOT skip any icon listed in dsl.icons. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. Each dsl.icons[name] must appear in its section's HTML. A header cell with icons showing only plain text is a fidelity defect.",
+    "",
+    "CRITICAL — OMIT _placeholder TEXT: any TEXT node with \`_placeholder: true\` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with \`_placeholder: true\` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
+    "CRITICAL — CLOSED-SET TEXT: the section LIST response carries \`rootMetadata.allTexts\` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
+    "",
+    "CRITICAL — INSTANCE fill color: when an INSTANCE has both \`fill\` and \`_color\`, use \`_color\` directly as the CSS value. Do NOT guess colors from _variantProps semantics.",
+    "CRITICAL — INSTANCE _variantProps: compare across siblings for selected/hovered/disabled. Active class MUST match DSL variant state, NOT a default index.",
+    "CRITICAL — Render count = structureSiblingCount: if ssc=1, that single instance IS complete — do NOT fabricate extra rows/items.",
+    "CRITICAL — BACKGROUND FROM splitContainers: splitContainers[].background IS the exact CSS background-color. Copy verbatim, no changes.",
+    "CRITICAL — FRAME/GROUP opacity: translate to rgba() on background only, NOT CSS opacity (would make children translucent).",
+    "CRITICAL — rowTexts: each entry has parentType/parentName for context and \`_placeholder: true\` if boilerplate. Use parentName to place text correctly; skip _placeholder entries.",
+    "Render ALL nodes recursively. Section root layoutStyle.width = section width. Do not call mcp__getDsl after completing section workflow.",
+  ];
+
+
 export class GetDesignSectionsTool extends BaseTool {
   name = DESIGN_SECTIONS_TOOL_NAME;
   description = DESIGN_SECTIONS_TOOL_DESCRIPTION;
@@ -127,6 +155,18 @@ export class GetDesignSectionsTool extends BaseTool {
         effectiveLayerId,
         sectionIndex
       );
+
+      // 部分后端（如旧版 HTTP route）在 section list 响应里不下发 rules。
+      // 这里兜底补全：仅 section list 模式（无 sectionIndex）且响应缺 rules 时注入。
+      // section DSL 模式（有 sectionIndex）的逐次规则强化由后端 BRIEF_RULES / 本工具主指令承担。
+      if (
+        sectionIndex === undefined &&
+        result &&
+        typeof result === "object" &&
+        (!result.rules || !Array.isArray(result.rules) || result.rules.length === 0)
+      ) {
+        result.rules = DSL_RULES;
+      }
 
       return {
         content: [

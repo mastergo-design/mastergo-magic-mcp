@@ -6,8 +6,23 @@ import { formatField, formatOutput } from "../utils/format";
 const DESIGN_SVGS_TOOL_NAME = "mcp__getDesignSvgs";
 const DESIGN_SVGS_TOOL_DESCRIPTION = `
 After fetching ALL sections via mcp__getDesignSections, call this tool to retrieve all cached SVG HTML strings.
-Each PATH node in the DSL has an id. Look up that id in the returned svgs map to get the complete SVG string.
-Insert the svgHtml string directly into HTML where icons should appear.
+
+This tool returns the SVG HTML for ALL sections that had stripped SVGs during the section fetch.
+
+WHEN to call: AFTER you have fetched every section (0..totalSections-1) via mcp__getDesignSections.
+The SVG cache is populated during section fetching — call getDesignSvgs after ALL sections are done.
+
+WHAT you get: two structures in the response:
+1. \`svgs\` — a flat map of svgKey -> complete \`<svg>...</svg>\` HTML string
+2. \`resolvedIcons\` — a two-level index {sectionIndex: {iconName: svgKey}} for DIRECT lookup
+
+HOW to use: for section N with an icon named "X", do:
+  resolvedIcons["N"]["X"] -> svgKey -> svgs[svgKey] -> svgHtml
+This is zero string matching — just dictionary lookups.
+
+CRITICAL — DO NOT skip this step if any section has hasStrippedSvgs: true.
+Missing SVGs include: logo/brand marks, pagination arrows (prev/next), table action icons (edit/delete), refresh buttons, filter/search icons, sidebar menu icons, and more.
+CRITICAL — DO NOT render stripped SVGs by hand or with placeholder shapes. The designer's original vector data is in this cache — use it.
 
 You can provide either:
 1. fileId and layerId directly, or
@@ -45,6 +60,12 @@ export class GetDesignSvgsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
+    forceRefresh: z
+      .boolean()
+      .optional()
+      .describe(
+        "If true, re-fetches all sections to repopulate the SVG cache before returning. Use this when getDesignSvgs returns empty or incomplete data, which can happen if sections were fetched in an earlier session or the cache was cleared."
+      ),
     format: formatField(),
   });
 
