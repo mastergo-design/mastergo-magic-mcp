@@ -122,7 +122,7 @@ const buildDslRules = (): string[] => {
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
     "",
-    "CRITICAL — SVG FROM PATH NODES: Every PATH node has either a \`svg\` field (inline, complete <svg> string, copy VERBATIM) or a \`svgKey\` field (cache, call getDesignSvgs). For stripped sections (hasStrippedSvgs=true), ALL PATH nodes use svgKey — you MUST call mcp__getDesignSvgs to retrieve them.",
+    "CRITICAL — SVG FROM PATH NODES: Every PATH node has either a `svg` field (inline, complete <svg> string, copy VERBATIM) or a `svgKey` field (cache, call getDesignSvgs). For stripped sections (hasStrippedSvgs=true), ALL PATH nodes use svgKey — you MUST call mcp__getDesignSvgs to retrieve them.",
     "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node's svg or svgKey must produce a rendered <svg> in your HTML. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect.",
     "",
     "CRITICAL — OMIT _placeholder TEXT: any TEXT node with `_placeholder: true` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with `_placeholder: true` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",

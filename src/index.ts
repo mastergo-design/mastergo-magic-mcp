@@ -202,7 +202,7 @@ Every node in a section's DSL has TWO pieces of layout data:
 ### Critical Rendering Checklist (MANDATORY — verify each item before finalizing):
 Before declaring the HTML complete, enumerate every structural element below and confirm it is rendered. Missing ANY item is a fidelity defect.
 
-1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from PATH node\'s \`svg\` field or via getDesignSvgs. A colored rectangle is NOT an acceptable icon.
+1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from PATH node's \`svg\` field or via getDesignSvgs. A colored rectangle is NOT an acceptable icon.
 
 2. **Table header column icons** (sort/filter/search): each table header cell section may carry sort-arrow, filter-funnel, and search-lens icons via PATH node \`svg\` fields or getDesignSvgs. Did you render them? If a header cell is plain text only, you SKIPPED its icons. Go back and render them.
 
