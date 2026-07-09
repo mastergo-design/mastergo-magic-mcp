@@ -58,7 +58,7 @@ The response contains TWO structures:
    - **Usage**: \`resolvedIcons["{sectionIndex}"]["{iconName}"]\` → svgKey → \`svgs[svgKey]\` = svgHtml.
    - **Example**: \`resolvedIcons["1"]["White"]\` → \`"S1:White|1:5449/1:5041"\` → \`svgs["S1:White|1:5449/1:5041"]\`.
    - **This is ZERO string matching — no prefix search, no substring extraction.**
-   - Match each section's \`dsl.icons\` keys to \`resolvedIcons["{sectionIndex}"]\` for icon lookup.
+   - Match each section's PATH node icon names to \`resolvedIcons["{sectionIndex}"]\` for icon lookup.
 
 **CRITICAL — SVG VERBATIM fidelity (3 forbidden modifications):**
 Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATIVE — copy it character-for-character.
@@ -67,7 +67,7 @@ Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATI
 3. NEVER 'simplify' or 'optimize' path commands or viewBox.
 After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy.
 
-**CRITICAL — NEVER hand-draw substitute icons:** when a PATH node has an \`svg\` field, a \`svgKey\` (via mcp__getDesignSvgs), OR a pre-extracted \`dsl.icons[name]\` entry — all three carry the designer's true vector. You MUST use the real SVG. Do NOT approximate an icon with \`<rect>\`/\`<circle>\`/\`<polygon>\` primitives even if they look similar (e.g. drawing bar-chart rects for a dashboard gauge). If missing, fetch it via getDesignSvgs; never rebuild it.
+**CRITICAL — NEVER hand-draw substitute icons:** when a PATH node has an \`svg\` field, a \`svgKey\` (via mcp__getDesignSvgs), or from mcp__getDesignSvgs — all three carry the designer's true vector. You MUST use the real SVG. Do NOT approximate an icon with \`<rect>\`/\`<circle>\`/\`<polygon>\` primitives even if they look similar (e.g. drawing bar-chart rects for a dashboard gauge). If missing, fetch it via getDesignSvgs; never rebuild it.
 
 **CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix in getDesignSvgs keys identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always match the full key, not just the icon name.
 
@@ -79,15 +79,27 @@ This returns exact text content for large text nodes (>50 chars). In the section
 
 **Assets** (icons, rowTexts) — Each section DSL may carry two pre-extracted fields for direct use:
 
-1. **\`dsl.icons\`** — A flat map of icon name → complete \`<svg>...</svg>\` string. Keys like \`"通用/编辑"\`, \`"图标"\`, \`"图标_1"\` (suffixed when a section has multiple SVGs with the same ancestor name). Use this value directly as the icon's HTML. If the value starts with \`@svgCache:\`, the SVG was too large to inline — look it up via \`mcp__getDesignSvgs\` using \`resolvedIcons[{sectionIndex}][{iconName}]\` → \`svgs[key]\` (direct dictionary lookup, no string matching).
-2. **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
+PATH nodes with a \`svg\` field carry the complete \`<svg>...</svg>\` string — copy VERBATIM. PATH nodes with a \`svgKey\` field reference cached SVGs — look them up via \`mcp__getDesignSvgs\` using \`resolvedIcons[{sectionIndex}][{iconName}]\` → \`svgs[key]\`. For stripped sections (hasStrippedSvgs=true), ALL icons go through getDesignSvgs — fetch them all.2. **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
 
 When \`icons\` or \`rowTexts\` is present, use them directly. They are authoritative and save you from deep-tree traversal.
 
 ### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
 - MANDATORY: Use \`rootContainer\` from the section list response to create the root container div. Apply ALL its CSS properties (width, minHeight, background, overflow, position:relative) to a wrapping div. ALL sections MUST be placed inside this root container.
-- CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning. Intra-section layout still uses each node's \`layoutStyle.relativeX/relativeY\` as before.
+- CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning.
+
+### Intra-Section Layout Rules (node-level positioning):
+Every node in a section's DSL has TWO pieces of layout data:
+
+1. **\`flexContainerInfo\`** — If a node HAS this field, it is a flex container. Its direct children are laid out by flex rules, NOT by absolute positioning. Generate CSS: \`display: flex; flex-direction: {flexDirection}; justify-content: {justifyContent}; align-items: {alignItems}; gap: {gap}; padding: {padding};\`. Do NOT add \`position: absolute\` or \`left/top\` to flex container nodes or their direct children.
+
+2. **\`layoutStyle.relativeX/relativeY\`** — Use these ONLY for leaf/free nodes that are NOT inside a flex container. For those nodes, apply \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
+
+3. **Nested flex containers** — A flex container can contain a child that is ALSO a flex container (e.g. a horizontal toolbar with a vertical menu inside). Each level independently uses its own \`flexContainerInfo\`.
+
+4. **When a child has \`flexGrow\` / \`flexShrink\`** — These are flex item properties. Apply \`flex: {flexGrow} 1 0\` on the child element. Do NOT position it absolutely.
+
+5. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
@@ -143,7 +155,7 @@ After ALL N sections have been fetched and SVG data retrieved:
 
 ### Empty Design Tolerance Rules (CLOSED-SET TEXT):
 - Many designs are UNFINISHED wireframes or component-library showcases with sparse text. This is NORMAL, not missing data.
-- The ONLY allowed text strings in your output are those present in \`dsl.rowTexts\`, \`node.text\`, or \`dsl.icons\` keys of SOME fetched section. The section list response carries \`rootMetadata.allTexts\` — the complete closed set of text strings in this design. Treat it as a whitelist: any string NOT in allTexts is a hallucination and MUST be removed.
+- The ONLY allowed text strings in your output are those present in \`dsl.rowTexts\` or \`node.text\` of some fetched section. The section list response carries \`rootMetadata.allTexts\` — the complete closed set of text strings in this design. Treat it as a whitelist: any string NOT in allTexts is a hallucination and MUST be removed.
 - Sparse text is especially common when the design reuses a component library: the design itself may have only ~10 distinct text strings total, even though the rendered page looks dense. Do NOT infer more content from visual density or the page's apparent purpose.
 - If a section has \`textTotal=0\` or empty \`rowTexts\`, render its STRUCTURE with EMPTY placeholders (\`<td></td>\`, blank labels, empty menu items) — do NOT invent column headers, menu item labels, IP addresses, algorithm names, or any data values to fill it.
 - A table with 1 data row in the DSL renders as 1 data row in HTML. Do NOT pad with fabricated rows. Pagination labels like "共 10 项" reflect a UI control state, NOT a data-row count — never synthesize rows to match them.
@@ -190,9 +202,9 @@ After ALL N sections have been fetched and SVG data retrieved:
 ### Critical Rendering Checklist (MANDATORY — verify each item before finalizing):
 Before declaring the HTML complete, enumerate every structural element below and confirm it is rendered. Missing ANY item is a fidelity defect.
 
-1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from \`dsl.icons\` or \`PATH.svg\`. A colored rectangle is NOT an acceptable icon.
+1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from PATH node\'s \`svg\` field or via getDesignSvgs. A colored rectangle is NOT an acceptable icon.
 
-2. **Table header column icons** (sort/filter/search): each table header cell section may carry sort-arrow, filter-funnel, and search-lens icons via \`dsl.icons\` or stripped SVGs. Did you render them? If a header cell is plain text only, you SKIPPED its icons. Go back and render them.
+2. **Table header column icons** (sort/filter/search): each table header cell section may carry sort-arrow, filter-funnel, and search-lens icons via PATH node \`svg\` fields or getDesignSvgs. Did you render them? If a header cell is plain text only, you SKIPPED its icons. Go back and render them.
 
 3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE icons. Did you call \`mcp__getDesignSvgs\` after fetching ALL sections? Did you render EVERY returned icon to its correct position? Flat pagination text is incomplete.
 
