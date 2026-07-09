@@ -280,6 +280,40 @@ const createHttpUtil = () => {
       return response.data;
     },
 
+    /**
+     * SVG 占位符后处理 — 把代码里的 @@SVG:{svgKey}@@ 占位符替换为真实高精度 SVG。
+     *
+     * 解决根因：LLM 生成代码时会自主改写 path data 的精度（17.522848 → 17.523），
+     * 纯 prompt 约束压不住。本方法让 path data 从不经过 LLM——LLM 只放短占位符，
+     * 由服务端用 svgCache 里的真实 SVG 做确定性字符串替换（与目标语言无关）。
+     *
+     * 必须在 getDesignSvgs 之后调用（svgCache 由 section 工作流填充）。
+     */
+    async inlineSvgs(
+      code: string,
+      fileId: string,
+      layerId: string
+    ): Promise<any> {
+      try {
+        const response = await axios.post(
+          `${getBaseUrl()}/mcp/inline-svgs`,
+          { code, fileId, layerId },
+          {
+            timeout: 60000,
+            headers: getCommonHeader(),
+          }
+        );
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `inline-svgs API not available on this server. Please update frontend-mcp-server to the latest version to enable SVG placeholder post-processing.`
+          );
+        }
+        throw err;
+      }
+    },
+
     async getComponentStyleJson(fileId: string, layerId: string, sourceLayerId?: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,

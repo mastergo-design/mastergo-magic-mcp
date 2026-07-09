@@ -14,6 +14,7 @@ import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
+import { InlineSvgsTool } from "./tools/inline-svgs";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
 
@@ -87,6 +88,27 @@ When \`icons\` or \`rowTexts\` is present, use them directly. They are authorita
 After ALL N sections have been fetched and SVG data retrieved:
 - MANDATORY: Use \`rootContainer\` from the section list response to create the root container div. Apply ALL its CSS properties (width, minHeight, background, overflow, position:relative) to a wrapping div. ALL sections MUST be placed inside this root container.
 - CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning.
+
+### Step 4: SVG Placeholder Workflow (FINAL step — MANDATORY for icon fidelity)
+Generating SVG path data character-for-character is unreliable: coordinate precision gets rounded (17.522848 → 17.523), separators change, M-subpaths drop. Instead of copying SVG markup into your code, use placeholders and let the server inject the exact vector data.
+
+**During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgKey}@@\` instead of the actual \`<svg>...</svg>\` markup:
+- Each PATH node in the DSL carries a \`svgKey\` field (format: \`S{sectionIndex}:{name}|{nodePath}\`, e.g. \`S47:通用/刷新|1:10058/...\`).
+- Place \`@@SVG:\` + that svgKey + \`@@\` where the icon goes.
+- The placeholder works in ANY target language:
+  - **HTML/Vue**: \`<span class="icon">@@SVG:{svgKey}@@</span>\`
+  - **JSX/React**: \`{/*@@SVG:{svgKey}@@*/}\`
+  - **Flutter**: \`SvgPicture.string('@@SVG:{svgKey}@@')\` (the placeholder sits inside a string literal)
+
+**After generating the COMPLETE code** — call \`mcp__inlineSvgs\` with the full code string. It substitutes every \`@@SVG:...@@\` with the real high-precision \`<svg>\` markup from the cache (character-for-character exact, no rounding). The returned \`patchedCode\` is your final deliverable — output it as-is.
+
+**Why this is mandatory**: the server's replacement is deterministic string substitution. The path data never passes through your generation, so it cannot be corrupted. Hand-copying even one icon risks precision loss.
+
+**ABSOLUTE RULE — NEVER write \`<path d="...">\` yourself**: Every single icon in the design has a \`svgKey\`. You MUST use \`@@SVG:{svgKey}@@\` for ALL of them — no exceptions, no "this one is simple so I'll draw it". Writing your own path data (even for "easy" icons like a gear, arrow, or grid) ALWAYS produces a wrong icon. If a PATH node exists in the DSL, it has a svgKey — use it. The \`mcp__inlineSvgs\` tool will report any self-authored paths it detects as errors you must fix.
+
+**When to use placeholders vs direct copy**:
+- **Placeholders (MANDATORY)**: for ALL icons, no exceptions. Place \`@@SVG:{svgKey}@@\`, then call \`mcp__inlineSvgs\` once at the end. Zero precision risk. This is the ONLY acceptable path.
+- **Direct copy (legacy fallback)**: only if \`mcp__inlineSvgs\` is unavailable (tool error/404). Then copy each \`svg\` field verbatim and follow the SVG VERBATIM fidelity rules below.
 
 ### Intra-Section Layout Rules (node-level positioning):
 Every node in a section's DSL has TWO pieces of layout data:
@@ -214,6 +236,8 @@ Before declaring the HTML complete, enumerate every structural element below and
 
 6. **Text provenance**: every text string in your output MUST be traceable to \`rootMetadata.allTexts\` or a section's \`dsl.rowTexts\`/\`node.text\`. If you cannot cite the exact source, the text is a hallucination — delete it.
 
+7. **SVG placeholder replacement**: did you call \`mcp__inlineSvgs\` as the FINAL step, passing your complete code? If your code still contains ANY \`@@SVG:...@@\` placeholders, the replacement is INCOMPLETE — call \`mcp__inlineSvgs\` and use the returned \`patchedCode\`. Verify: zero \`@@SVG:\` occurrences remain in the final output.
+
 If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputting.
 
 ### Data Interpretation Rules:
@@ -278,6 +302,7 @@ function main() {
   new GetComponentWorkflowTool().register(server);
   new GetFlutterWorkflowTool().register(server);
   new ExtractSvgTool().register(server);
+  new InlineSvgsTool().register(server);
 
   server.connect(new StdioServerTransport());
 }
