@@ -45,11 +45,11 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 After ALL N sections have been fetched, understand how icons work:
 
 **PATH Nodes — ALL carry a \`svgKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID like \`#0\`, \`#1\`, \`#25\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID like \`#0\`, \`#1\`, \`#25\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
-1. When you encounter a PATH node, note its \`svgKey\`.
-2. In your generated code, place a placeholder \`@@SVG:{svgKey}@@\` where the icon goes.
+1. When you encounter a PATH node, note its \`svgKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
+2. In your generated code, place a placeholder \`@@SVG:{svgKey}@@\` where the icon goes. Use \`svgName\` to match each icon to its correct UI position — e.g. an icon with \`svgName: "通用/向左"\` belongs in a collapse/fold button, not a "add" button.
 3. After the complete code is generated, call \`mcp__applyDesign\` — it replaces all placeholders with real high-precision SVG.
 
 **Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.

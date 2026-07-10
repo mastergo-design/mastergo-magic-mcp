@@ -34,6 +34,80 @@ export interface DslResponse {
   [key: string]: any;
 }
 
+// ---- Section / SVG / Text / applyDesign response types ----
+// 服务端返回的结构化响应。字段较多且部分由 LLM 工具动态注入(rules/nextAction/fetchProgress),
+// 故统一用宽松基类(允许任意扩展),再在已确定结构的字段上标注类型。
+
+/** section 列表/单片 DSL 响应(消费方会动态加 rules/nextAction/fetchProgress) */
+export interface DesignSectionsResponse {
+  sections?: any[];
+  totalSections?: number;
+  rootMetadata?: { allTexts?: string[]; width?: number; height?: number; [k: string]: any };
+  rootContainer?: { minHeight?: string; width?: string; [k: string]: any };
+  splitContainers?: any[];
+  allTexts?: string[];
+  nextAction?: string;
+  fetchProgress?: string;
+  sectionIndex?: number;
+  dsl?: any;
+  nodeCount?: number;
+  svgNodeCount?: number;
+  hasStrippedSvgs?: boolean;
+  structureSiblingCount?: number;
+  /** 允许动态注入 rules 等字段 */
+  [k: string]: any;
+}
+
+/** SVG 缓存响应 */
+export interface DesignSvgsResponse {
+  svgs: Record<string, string>;
+  resolvedIcons?: Record<string, Record<string, string>>;
+  nodeCount: number;
+  message?: string;
+  [k: string]: any;
+}
+
+/** 大文本缓存响应 */
+export interface DesignTextsResponse {
+  texts: Record<string, string>;
+  textCount: number;
+  message?: string;
+  [k: string]: any;
+}
+
+/** extractSvg 响应(分页) */
+export interface ExtractSvgResponse {
+  totalCount: number;
+  count: number;
+  svgs: Array<{ name: string; id: string; svg: string }>;
+  page?: number;
+  pageSize?: number;
+  hasMore?: boolean;
+  [k: string]: any;
+}
+
+/** applyDesign 替换报告 */
+export interface ApplyDesignReport {
+  svgTotal?: number;
+  svgReplaced?: number;
+  svgUnresolved?: string[];
+  textTotal?: number;
+  textReplaced?: number;
+  textUnresolved?: string[];
+  fabricatedPaths?: string[];
+  [k: string]: any;
+}
+
+/** applyDesign 响应 */
+export interface ApplyDesignResponse {
+  patchedCode: string;
+  report?: ApplyDesignReport;
+  note?: string;
+  warning?: string;
+  error?: string;
+  [k: string]: any;
+}
+
 // Code generation response interface
 export interface CodeResponse {
   code: string;
@@ -181,7 +255,7 @@ const createHttpUtil = () => {
       backgroundColor?: string,
       page?: number,
       pageSize?: number
-    ): Promise<any> {
+    ): Promise<ExtractSvgResponse> {
       const params: Record<string, any> = { fileId, layerId };
       if (backgroundColor) params.backgroundColor = backgroundColor;
       if (page !== undefined) params.page = page;
@@ -195,7 +269,7 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<any> {
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<DesignSectionsResponse> {
       const params: Record<string, any> = { fileId, layerId };
       if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
 
@@ -217,7 +291,7 @@ const createHttpUtil = () => {
       }
     },
 
-    async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
+    async getDesignSvgs(fileId: string, layerId: string): Promise<DesignSvgsResponse> {
       try {
         const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
           timeout: 120000,
@@ -235,7 +309,7 @@ const createHttpUtil = () => {
       }
     },
 
-    async getDesignTexts(fileId: string, layerId: string): Promise<any> {
+    async getDesignTexts(fileId: string, layerId: string): Promise<DesignTextsResponse> {
       try {
         const response = await axios.get(`${getBaseUrl()}/mcp/design-texts`, {
           timeout: 120000,
@@ -295,7 +369,7 @@ const createHttpUtil = () => {
       fileId: string,
       layerId: string,
       sourceLayerId?: string
-    ): Promise<any> {
+    ): Promise<ApplyDesignResponse> {
       try {
         const response = await axios.post(
           `${getBaseUrl()}/mcp/apply-design`,
