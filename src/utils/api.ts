@@ -122,8 +122,8 @@ const buildDslRules = (): string[] => {
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
     "",
-    "CRITICAL — SVG FROM PATH NODES: Every PATH node has either a `svg` field (inline, complete <svg> string, copy VERBATIM) or a `svgKey` field (cache, call getDesignSvgs). For stripped sections (hasStrippedSvgs=true), ALL PATH nodes use svgKey — you MUST call mcp__getDesignSvgs to retrieve them.",
-    "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node's svg or svgKey must produce a rendered <svg> in your HTML. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect.",
+    "CRITICAL — SVG FROM PATH NODES: Every PATH node has a `svgKey` field. The SVG markup is NOT in the DSL. Place `@@SVG:{svgKey}@@` where each icon goes, then call `mcp__applyDesign` to inject real SVG. NEVER hand-write `<path d=\"...\">`.",
+    "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node must have a `@@SVG:{svgKey}@@` placeholder in your code. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect. After all placeholders are placed, call `mcp__applyDesign`.",
     "",
     "CRITICAL — OMIT _placeholder TEXT: any TEXT node with `_placeholder: true` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with `_placeholder: true` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
     "CRITICAL — CLOSED-SET TEXT: the section LIST response carries `rootMetadata.allTexts` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
@@ -286,17 +286,18 @@ const createHttpUtil = () => {
      * 解决根因：LLM 生成代码时会自主改写 path data 的精度（17.522848 → 17.523），
      * 纯 prompt 约束压不住。本方法让 path data 从不经过 LLM——LLM 只放短占位符，
      * 由服务端用 svgCache 里的真实 SVG 做确定性字符串替换（与目标语言无关）。
+     * 同时替换长文本占位符（T{si}|{nodeId}），确保所有占位符都由服务端确定性注入。
      *
-     * 必须在 getDesignSvgs 之后调用（svgCache 由 section 工作流填充）。
+     * 必须在 getDesignSections 拉取所有 section 之后调用（svgCache/textCache 由 section 工作流填充）。
      */
-    async inlineSvgs(
+    async applyDesign(
       code: string,
       fileId: string,
       layerId: string
     ): Promise<any> {
       try {
         const response = await axios.post(
-          `${getBaseUrl()}/mcp/inline-svgs`,
+          `${getBaseUrl()}/mcp/apply-design`,
           { code, fileId, layerId },
           {
             timeout: 60000,
@@ -307,7 +308,7 @@ const createHttpUtil = () => {
       } catch (err: any) {
         if (err.response?.status === 404) {
           throw new Error(
-            `inline-svgs API not available on this server. Please update frontend-mcp-server to the latest version to enable SVG placeholder post-processing.`
+            `apply-design API not available on this server. Please update frontend-mcp-server to the latest version to enable placeholder post-processing.`
           );
         }
         throw err;

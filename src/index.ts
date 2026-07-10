@@ -14,7 +14,7 @@ import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetDesignSvgsTool } from "./tools/get-design-svgs";
 import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
-import { InlineSvgsTool } from "./tools/inline-svgs";
+import { ApplyDesignTool } from "./tools/apply-design";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
 
@@ -41,48 +41,27 @@ For i = 0 to N-1, call \`mcp__getDesignSections\` with \`sectionIndex=i\`.
 You MUST call this tool N times. Do NOT skip any section.
 CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all sections simultaneously — too many concurrent requests will cause timeouts. Send 3-5 sectionIndex calls, wait for all results, then send the next batch.
 
-### Step 2: Fetch SVG and Text Data (MANDATORY)
-After ALL N sections have been fetched, handle stripped/cached data:
+### Step 2: Understand SVG Data Model (MANDATORY)
+After ALL N sections have been fetched, understand how icons work:
 
-**Check section responses for caching flags:**
-- If ANY section has \`hasStrippedSvgs: true\` → you MUST call \`mcp__getDesignSvgs\` (icons/paths were stripped to cache). Skipping this WILL cause missing icons.
-- If few/no sections have \`textNodeCount > 0\` or \`dsl.rowTexts\` contains no \`"T{sectionIndex}|..."\` keys → \`getDesignTexts\` is unnecessary (all text is already inline in the DSL).
+**PATH Nodes — ALL carry a \`svgKey\` field:**
+Every PATH node (icon) in the DSL has a \`svgKey\` field (format: \`S{sectionIndex}:{name}|{nodePath}\`, e.g. \`S47:通用/刷新|1:10058/...\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
-**PATH Nodes — TWO forms:**
-1. **INLINED**: Most PATH nodes carry an \`svg\` field with the complete \`<svg>...</svg>\` string — copy this value VERBATIM into the HTML. No transformation needed. ALWAYS check for the \`svg\` field first.
-2. **STRIPPED**: Large sections strip the svg to a separate cache; these PATH nodes have only a \`path\` array with empty \`data\`. For stripped PATH nodes, call \`mcp__getDesignSvgs\` with the same fileId/layerId to get the SVG HTML strings.
+**You do NOT copy SVG markup during code generation.** Instead:
+1. When you encounter a PATH node, note its \`svgKey\`.
+2. In your generated code, place a placeholder \`@@SVG:{svgKey}@@\` where the icon goes.
+3. After the complete code is generated, call \`mcp__applyDesign\` — it replaces all placeholders with real high-precision SVG.
 
-**SVG Data** — Call \`mcp__getDesignSvgs\` ONLY for stripped PATH nodes (those without \`svg\` field).
-The response contains TWO structures:
-1. \`svgs\` — SVG HTML keyed by \`"S{sectionIndex}:{name}|{nodePath}"\`.
-2. \`resolvedIcons\` — A two-level index \`{sectionIndex: {iconName: svgKey}}\` for DIRECT dictionary lookup.
-   - **Usage**: \`resolvedIcons["{sectionIndex}"]["{iconName}"]\` → svgKey → \`svgs[svgKey]\` = svgHtml.
-   - **Example**: \`resolvedIcons["1"]["White"]\` → \`"S1:White|1:5449/1:5041"\` → \`svgs["S1:White|1:5449/1:5041"]\`.
-   - **This is ZERO string matching — no prefix search, no substring extraction.**
-   - Match each section's PATH node icon names to \`resolvedIcons["{sectionIndex}"]\` for icon lookup.
+**Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.
 
-**CRITICAL — SVG VERBATIM fidelity (3 forbidden modifications):**
-Whether from the \`svg\` field or mcp__getDesignSvgs, the svgHtml is AUTHORITATIVE — copy it character-for-character.
-1. NEVER round coordinate precision — 17.522848 must stay 17.522848, not 17.523 (rounding shifts shapes visibly).
-2. NEVER drop M-subpaths — a compound path may contain 2-6 subpaths, dropping ANY subpath breaks the icon.
-3. NEVER 'simplify' or 'optimize' path commands or viewBox.
-After copying, VERIFY: count the M commands in your output's path d — it MUST equal the source's M count, and the d string length MUST match. If you shortened it or reduced M count, you corrupted the icon — redo the copy.
+**CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always use the exact \`svgKey\` from the PATH node in its own section.
 
-**CRITICAL — NEVER hand-draw substitute icons:** when a PATH node has an \`svg\` field, a \`svgKey\` (via mcp__getDesignSvgs), or from mcp__getDesignSvgs — all three carry the designer's true vector. You MUST use the real SVG. Do NOT approximate an icon with \`<rect>\`/\`<circle>\`/\`<polygon>\` primitives even if they look similar (e.g. drawing bar-chart rects for a dashboard gauge). If missing, fetch it via getDesignSvgs; never rebuild it.
-
-**CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix in getDesignSvgs keys identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always match the full key, not just the icon name.
-
-**Text Data** — Call \`mcp__getDesignTexts\` with the same fileId/layerId.
-This returns exact text content for large text nodes (>50 chars). In the section DSL, these TEXT nodes have their \`text\` field replaced with a key like \`T{sectionIndex}|{nodeId}\`.
+**Text Data** — If any section has large text (>50 chars), call \`mcp__getDesignTexts\` with the same fileId/layerId.
+This returns exact text content for text nodes whose \`text\` field was replaced with a key like \`T{sectionIndex}|{nodeId}\`.
 - Look up the key in the returned texts map to get the exact text string.
 - Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
-- This is the ONLY source of truth for large text content. The DSL key is a reference, not the actual text.
 
-**Assets** (icons, rowTexts) — Each section DSL may carry two pre-extracted fields for direct use:
-
-PATH nodes with a \`svg\` field carry the complete \`<svg>...</svg>\` string — copy VERBATIM. PATH nodes with a \`svgKey\` field reference cached SVGs — look them up via \`mcp__getDesignSvgs\` using \`resolvedIcons[{sectionIndex}][{iconName}]\` → \`svgs[key]\`. For stripped sections (hasStrippedSvgs=true), ALL icons go through getDesignSvgs — fetch them all.2. **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
-
-When \`icons\` or \`rowTexts\` is present, use them directly. They are authoritative and save you from deep-tree traversal.
+**\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
 
 ### Step 3: Generate Complete Code
 After ALL N sections have been fetched and SVG data retrieved:
@@ -90,26 +69,18 @@ After ALL N sections have been fetched and SVG data retrieved:
 - CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning.
 - CRITICAL — Overflow clipping: some design elements (brand logos, decorative shapes) are LARGER than their visible area — the design deliberately clips them via \`overflow: hidden\` on the parent. When a node's \`layoutStyle.width/height\` is smaller than its SVG content, you MUST preserve this clipping: set the parent container to the node's \`layoutStyle\` dimensions AND add \`overflow: hidden\`, then let the SVG render at its natural size inside. Do NOT shrink the SVG to fit the container (that distorts the logo) and do NOT enlarge the container (that breaks the layout).
 
-### Step 4: SVG Placeholder Workflow (FINAL step — MANDATORY for icon fidelity)
-Generating SVG path data character-for-character is unreliable: coordinate precision gets rounded (17.522848 → 17.523), separators change, M-subpaths drop. Instead of copying SVG markup into your code, use placeholders and let the server inject the exact vector data.
+### Step 4: SVG Placeholder Workflow (FINAL step — MANDATORY)
+Every icon in the design is a PATH node with a \`svgKey\`. The SVG markup is NOT in the DSL — you cannot copy it even if you wanted to. You MUST use placeholders.
 
-**During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgKey}@@\` instead of the actual \`<svg>...</svg>\` markup:
-- Each PATH node in the DSL carries a \`svgKey\` field (format: \`S{sectionIndex}:{name}|{nodePath}\`, e.g. \`S47:通用/刷新|1:10058/...\`).
-- Place \`@@SVG:\` + that svgKey + \`@@\` where the icon goes.
+**During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgKey}@@\`:
+- Read the \`svgKey\` from the PATH node in the section DSL.
+- Place \`@@SVG:\` + that exact svgKey + \`@@\` where the icon goes.
 - The placeholder works in ANY target language:
   - **HTML/Vue**: \`<span class="icon">@@SVG:{svgKey}@@</span>\`
   - **JSX/React**: \`{/*@@SVG:{svgKey}@@*/}\`
-  - **Flutter**: \`SvgPicture.string('@@SVG:{svgKey}@@')\` (the placeholder sits inside a string literal)
+  - **Flutter**: \`SvgPicture.string('@@SVG:{svgKey}@@')\`
 
-**After generating the COMPLETE code** — call \`mcp__inlineSvgs\` with the full code string. It substitutes every \`@@SVG:...@@\` with the real high-precision \`<svg>\` markup from the cache (character-for-character exact, no rounding). The returned \`patchedCode\` is your final deliverable — output it as-is.
-
-**Why this is mandatory**: the server's replacement is deterministic string substitution. The path data never passes through your generation, so it cannot be corrupted. Hand-copying even one icon risks precision loss.
-
-**ABSOLUTE RULE — NEVER write \`<path d="...">\` yourself**: Every single icon in the design has a \`svgKey\`. You MUST use \`@@SVG:{svgKey}@@\` for ALL of them — no exceptions, no "this one is simple so I'll draw it". Writing your own path data (even for "easy" icons like a gear, arrow, or grid) ALWAYS produces a wrong icon. If a PATH node exists in the DSL, it has a svgKey — use it. The \`mcp__inlineSvgs\` tool will report any self-authored paths it detects as errors you must fix.
-
-**When to use placeholders vs direct copy**:
-- **Placeholders (MANDATORY)**: for ALL icons, no exceptions. Place \`@@SVG:{svgKey}@@\`, then call \`mcp__inlineSvgs\` once at the end. Zero precision risk. This is the ONLY acceptable path.
-- **Direct copy (legacy fallback)**: only if \`mcp__inlineSvgs\` is unavailable (tool error/404). Then copy each \`svg\` field verbatim and follow the SVG VERBATIM fidelity rules below.
+**After generating the COMPLETE code** — call \`mcp__applyDesign\` with the full code string AND an \`outDir\` parameter. The tool substitutes every \`@@SVG:...@@\` with the real high-precision \`<svg>\` markup from the cache (character-for-character exact, no rounding) AND writes the final file directly to disk. **You MUST provide \`outDir\`** — this writes the patched code to a file WITHOUT it passing back through your generation, preventing any re-processing or precision loss. After the tool writes the file, you are DONE — do NOT output, copy, or edit the code further.
 
 ### Intra-Section Layout Rules (node-level positioning):
 Every node in a section's DSL has TWO pieces of layout data:
@@ -118,7 +89,7 @@ Every node in a section's DSL has TWO pieces of layout data:
 
 2. **\`layoutStyle.relativeX/relativeY\`** — Use these ONLY for leaf/free nodes that are NOT inside a flex container. For those nodes, apply \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 
-3. **Nested flex containers** — A flex container can contain a child that is ALSO a flex container (e.g. a horizontal toolbar with a vertical menu inside). Each level independently uses its own \`flexContainerInfo\`.
+3. **Nested flex containers** — A flex container can contain a child that is ALSO a flex container (e.g. a horizontal toolbar with a vertical menu inside). Each level independently uses its own \`flexContainerInfo\`. **You MUST preserve ALL nesting levels** — do NOT flatten a two-level flex structure into one. For example, a table header cell where "label + sort-icon" form an inner group and "action-icon" sits at the outer level MUST be rendered as TWO nested flex containers, not one flat flex with all three items side by side. Flattening loses the visual grouping (label+sort tightly paired, action-icon separated) and causes layout breakage.
 
 4. **When a child has \`flexGrow\` / \`flexShrink\`** — These are flex item properties. Apply \`flex: {flexGrow} 1 0\` on the child element. Do NOT position it absolutely.
 
@@ -127,6 +98,7 @@ Every node in a section's DSL has TWO pieces of layout data:
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
 - When splitContainers is present, sections that were split from the same container must share that container's width and be wrapped together. **Apply the container's \`background\` to the parent wrapper**: splitContainer entries now include \`background\` (resolved CSS color) and \`fill\` (paint reference).
+- CRITICAL — Table container boundary: when a design has a table (header + data rows), wrap the ENTIRE table area (header row + all data rows + any empty space below the last row down to the pagination) in a single container with the design's background color (usually white) and the table's border. The table may have only 1 data row but the container must extend to fill the design's allocated height — do NOT leave the area below the last row as page background showing through. The pagination bar sits BELOW this container as a sibling, not inside it.
 
 ### Text Provenance Self-Check (MANDATORY before finalizing output):
 - Before writing the final HTML, enumerate every visible text string you plan to emit.
@@ -173,7 +145,7 @@ Every node in a section's DSL has TWO pieces of layout data:
 - If a section has empty or missing text data, render it as an empty placeholder — do NOT fabricate text.
 - NEVER generate placeholder values, generic tags, fabricated amounts, or invented statistics.
 - Every piece of text, every number, every label in your output MUST come directly from the DSL data.
-- NEVER fabricate SVG path data for icons or vector shapes — use the svgHtml from the \`svg\` field or mcp__getDesignSvgs.
+- NEVER fabricate SVG path data for icons or vector shapes — use \`@@SVG:{svgKey}@@\` placeholders for ALL icons, then call \`mcp__applyDesign\`.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
 
 ### Empty Design Tolerance Rules (CLOSED-SET TEXT):
@@ -186,8 +158,8 @@ Every node in a section's DSL has TWO pieces of layout data:
 - When in doubt about whether a text string is real: it is NOT real unless you can cite the sectionIndex it came from.
 
 ### SVG Icon Anti-Simplification Rules:
-- PATH nodes with an \`svg\` or \`getDesignSvgs\` field carry the DESIGNER'S EXACT vector shape. You MUST copy this svgHtml character-for-character — no transformation, no simplification, no "equivalent" replacement.
-- **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs with different viewBox/path data). NEVER reuse a section's SVG in another section. Always match by exact section prefix (S{n}:) in getDesignSvgs keys.
+- PATH nodes carry a \`svgKey\` — the SVG markup is injected by \`mcp__applyDesign\` at the end. You MUST use \`@@SVG:{svgKey}@@\` placeholders — never hand-write \`<path d="...">\`.
+- **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs). NEVER reuse a \`svgKey\` from one section in another. Always use the exact \`svgKey\` from the PATH node in its own section.
 - **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
 - **VERIFY after copying each SVG**: count the number of \`M\` characters in the source path \`d\` attribute. Your copy MUST have exactly the same count. Fewer \`M\` → you corrupted the icon → redo.
 - **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
@@ -225,19 +197,19 @@ Every node in a section's DSL has TWO pieces of layout data:
 ### Critical Rendering Checklist (MANDATORY — verify each item before finalizing):
 Before declaring the HTML complete, enumerate every structural element below and confirm it is rendered. Missing ANY item is a fidelity defect.
 
-1. **Sidebar menu item icons** (16x16 PATH SVG): each sidebar menu section carries a PATH icon. Did you render it as inline \`<svg>\` from the DSL data? If you used a \`<rect>\` or \`<circle>\` placeholder, DELETE it and render the real SVG from PATH node's \`svg\` field or via getDesignSvgs. A colored rectangle is NOT an acceptable icon.
+1. **Sidebar menu item icons**: each sidebar menu section carries a PATH icon with a \`svgKey\`. Did you place \`@@SVG:{svgKey}@@\` for each? If you used a \`<rect>\` or \`<circle>\` or hand-wrote \`<path d="...">\`, DELETE it — the DSL does NOT contain path data. Use the placeholder.
 
-2. **Table header column icons** (sort/filter/search): each table header cell section may carry sort-arrow, filter-funnel, and search-lens icons via PATH node \`svg\` fields or getDesignSvgs. Did you render them? If a header cell is plain text only, you SKIPPED its icons. Go back and render them.
+2. **Table header column icons** (sort/filter/search): each table header cell may carry sort-arrow, filter-funnel, and search-lens PATH icons. Did you place \`@@SVG:{svgKey}@@\` for each? If a header cell has no icons, you may have skipped them.
 
-3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE icons. Did you call \`mcp__getDesignSvgs\` after fetching ALL sections? Did you render EVERY returned icon to its correct position? Flat pagination text is incomplete.
+3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE PATH icons. Did you place \`@@SVG:{svgKey}@@\` for EACH one?
 
-4. **Brand/logo area text**: the brand section has a TEXT node with the actual brand name (present in \`allTexts\`). Did you render it as visible text? SVG brand marks alone are not enough — the name must also appear.
+4. **Brand/logo area text**: the brand section has a TEXT node with the actual brand name (present in \`allTexts\`). Did you render it as visible text?
 
-5. **SVG completeness for ALL sections**: For EVERY section with \`hasStrippedSvgs: true\`, you MUST have called \`mcp__getDesignSvgs\` and rendered the returned SVGs. Verify: count the distinct SVG \`<svg>\` elements in your output — they should match the design's icon count, not fewer.
+5. **Every PATH node has a placeholder**: walk through every section's DSL — every PATH node must have a corresponding \`@@SVG:{svgKey}@@\` in your code. Count: the number of \`@@SVG:\` placeholders in your code MUST equal the total number of PATH nodes across all sections.
 
 6. **Text provenance**: every text string in your output MUST be traceable to \`rootMetadata.allTexts\` or a section's \`dsl.rowTexts\`/\`node.text\`. If you cannot cite the exact source, the text is a hallucination — delete it.
 
-7. **SVG placeholder replacement**: did you call \`mcp__inlineSvgs\` as the FINAL step, passing your complete code? If your code still contains ANY \`@@SVG:...@@\` placeholders, the replacement is INCOMPLETE — call \`mcp__inlineSvgs\` and use the returned \`patchedCode\`. Verify: zero \`@@SVG:\` occurrences remain in the final output.
+7. **SVG placeholder replacement (HARD GATE)**: your HTML is INVALID and must NOT be output until you have called \`mcp__applyDesign\` with the complete code and used the returned \`patchedCode\`. This is not optional — it is the FINAL mandatory step. If you wrote ANY \`<path d="...">\` by hand instead of using \`@@SVG:{svgKey}@@\` placeholders, the \`mcp__applyDesign\` tool will detect it as a FABRICATED path and return an error. You MUST then replace those hand-written paths with placeholders and call \`mcp__applyDesign\` again. The ONLY acceptable output is the \`patchedCode\` returned by \`mcp__applyDesign\` — never your pre-replacement code.
 
 If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputting.
 
@@ -246,8 +218,9 @@ If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputtin
 - "共 X 项" is the pagination widget showing "total X items". The actual data rows come from the table body sections (preceding the pagination section).
 - Do NOT fabricate data rows based on pagination "total" values. Render ONLY the actual data rows present in the DSL.
 - If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
-- **CRITICAL — SVG icons for table actions**: table action columns (操作列) use SVG icon buttons (edit/delete), NOT plain text. Match each SVG key from getDesignSvgs to its section — keys like '通用_编辑' and '通用_删除' are the authoritative icons. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text. Sidebar menu icons also use SVG — do NOT draw simplified placeholder shapes.
+- **CRITICAL — SVG icons for table actions**: table action columns (操作列) use PATH icon nodes with \`svgKey\` fields. Place \`@@SVG:{svgKey}@@\` for each action button. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text or hand-drawn shapes.
 - **CRITICAL — Persistent sidebars**: render all sidebar levels as static visible columns positioned via splitContainers coordinates. Do NOT hide or toggle sidebar levels.
+- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgKey\` in the DSL. A collapse/fold button icon (e.g. \`S13:通用/向左\`) is a DIFFERENT vector from a menu navigation arrow (e.g. \`S3:箭头\`) even if both look like arrows. You MUST use the exact \`svgKey\` from the section where the icon appears — never copy a path from a different section. When in doubt, check: the section index in the svgKey prefix (\`S{sectionIndex}:\`) MUST match the section where you're placing the icon.
 `;
 
 function main() {
@@ -303,7 +276,7 @@ function main() {
   new GetComponentWorkflowTool().register(server);
   new GetFlutterWorkflowTool().register(server);
   new ExtractSvgTool().register(server);
-  new InlineSvgsTool().register(server);
+  new ApplyDesignTool().register(server);
 
   server.connect(new StdioServerTransport());
 }
