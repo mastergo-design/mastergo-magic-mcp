@@ -175,6 +175,20 @@ export const isSameHost = (a: string, b: string): boolean => {
   }
 };
 
+// shortLink → 解析结果 LRU 缓存：避免 section 工作流里同一短链重复 redirect。
+// stdio 长驻进程，缓存条目极少（一次会话只涉及少数设计稿），设 32 条上限防无限增长。
+const SHORT_LINK_CACHE_MAX = 32;
+const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string }>();
+/** LRU 写入：已有 key 先 delete 再 set 移到末尾；超容量淘汰最久未访问的 key。 */
+function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string }): void {
+  if (shortLinkCache.has(key)) shortLinkCache.delete(key);
+  else if (shortLinkCache.size >= SHORT_LINK_CACHE_MAX) {
+    const oldest = shortLinkCache.keys().next().value;
+    if (oldest !== undefined) shortLinkCache.delete(oldest);
+  }
+  shortLinkCache.set(key, value);
+}
+
 const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
 
@@ -407,11 +421,20 @@ const createHttpUtil = () => {
       return response.data;
     },
     /**
-     * Extract fileId and layerId from a MasterGo URL
+     * Extract fileId and layerId from a MasterGo URL.
+     *
+     * /goto/ 短链需一次 redirect 请求解析目标 URL。LLM 在 section 工作流里会对同一
+     * 设计稿反复传 shortLink（如调 48 次 getDesignSections），无缓存就是 48 次 redirect。
+     * 这里用进程级 LRU Map 缓存 shortLink → 解析结果，同一短链只请求一次。
+     * 非 shortLink 的普通 URL 是纯本地解析（无网络），无需缓存。
      */
     async extractIdsFromUrl(
       url: string
     ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
+      // shortLink 缓存命中：直接返回，跳过 redirect
+      if (url.includes("/goto/") && shortLinkCache.has(url)) {
+        return { ...shortLinkCache.get(url)! };
+      }
       let targetUrl = url;
 
       // Handle short links
@@ -453,7 +476,12 @@ const createHttpUtil = () => {
 
       const sourceLayerId = searchParams.get("source_layer_id") || undefined;
 
-      return { fileId, layerId, sourceLayerId };
+      const result = { fileId, layerId, sourceLayerId };
+      // shortLink 解析结果写入缓存（非 shortLink 不写：纯本地解析无网络开销）
+      if (url.includes("/goto/")) {
+        cacheShortLink(url, result);
+      }
+      return result;
     },
   };
 };
