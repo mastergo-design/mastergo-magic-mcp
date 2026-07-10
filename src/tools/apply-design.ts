@@ -19,7 +19,7 @@ CRITICAL — outDir is MANDATORY: Always provide outDir so the finalized code is
 
 PLACEHOLDER FORMATS:
 - SVG icons: \`@@SVG:{svgKey}@@\` — svgKey comes from the PATH node's svgKey field in the section DSL.
-  Example: <span class="icon">@@SVG:S47:通用/刷新|1:10058/1:09668/1:6273/1:5280@@</span>
+  Example: <span class="icon">@@SVG:#0@@</span>
 - Long text: \`T{sectionIndex}|{nodeId}\` — appears in TEXT nodes whose text was too long for inline DSL.
   Example: <p>T3|1:1234:5678</p>
 

@@ -45,7 +45,7 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 After ALL N sections have been fetched, understand how icons work:
 
 **PATH Nodes — ALL carry a \`svgKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgKey\` field (format: \`S{sectionIndex}:{name}|{nodePath}\`, e.g. \`S47:通用/刷新|1:10058/...\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID like \`#0\`, \`#1\`, \`#25\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
 1. When you encounter a PATH node, note its \`svgKey\`.
@@ -54,9 +54,9 @@ Every PATH node (icon) in the DSL has a \`svgKey\` field (format: \`S{sectionInd
 
 **Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.
 
-**CRITICAL — SVG UNIQUENESS:** Each SVG key is unique to its section. The \`S{sectionIndex}:\` prefix identifies the source section. NEVER reuse an SVG from one section in another — a filter icon in section 39 is DIFFERENT from a filter icon in section 40. Always use the exact \`svgKey\` from the PATH node in its own section.
+**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`#0\`, \`#13\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
 
-**Text Data** — If any section has large text (>50 chars), call \`mcp__getDesignTexts\` with the same fileId/layerId.
+**Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` — you do NOT need to call \`getDesignTexts\` manually. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
 This returns exact text content for text nodes whose \`text\` field was replaced with a key like \`T{sectionIndex}|{nodeId}\`.
 - Look up the key in the returned texts map to get the exact text string.
 - Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
@@ -220,7 +220,7 @@ If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputtin
 - If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
 - **CRITICAL — SVG icons for table actions**: table action columns (操作列) use PATH icon nodes with \`svgKey\` fields. Place \`@@SVG:{svgKey}@@\` for each action button. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text or hand-drawn shapes.
 - **CRITICAL — Persistent sidebars**: render all sidebar levels as static visible columns positioned via splitContainers coordinates. Do NOT hide or toggle sidebar levels.
-- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgKey\` in the DSL. A collapse/fold button icon (e.g. \`S13:通用/向左\`) is a DIFFERENT vector from a menu navigation arrow (e.g. \`S3:箭头\`) even if both look like arrows. You MUST use the exact \`svgKey\` from the section where the icon appears — never copy a path from a different section. When in doubt, check: the section index in the svgKey prefix (\`S{sectionIndex}:\`) MUST match the section where you're placing the icon.
+- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgKey\` (e.g. \`#5\`) in the DSL. A collapse/fold button icon is a DIFFERENT vector from a menu navigation arrow even if both look like arrows. You MUST use the exact \`svgKey\` from the PATH node where the icon appears — never use a svgKey from a different PATH node.
 `;
 
 function main() {
