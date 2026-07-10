@@ -60,12 +60,6 @@ export class GetDesignSvgsTool extends BaseTool {
       .string()
       .optional()
       .describe("Short link (like https://{domain}/goto/LhGgBAK)."),
-    forceRefresh: z
-      .boolean()
-      .optional()
-      .describe(
-        "If true, re-fetches all sections to repopulate the SVG cache before returning. Use this when getDesignSvgs returns empty or incomplete data, which can happen if sections were fetched in an earlier session or the cache was cleared."
-      ),
     format: formatField(),
   });
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { clearSectionWorkflow } from "./get-dsl";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
@@ -118,13 +119,19 @@ export class ApplyDesignTool extends BaseTool {
       const result = await httpUtilInstance.applyDesign(
         code,
         finalFileId,
-        effectiveLayerId
+        effectiveLayerId,
+        finalSourceLayerId
       );
 
-      // 拿到服务端返回的 finalizedCode，直接写入磁盘
-      // 这是关键：finalizedCode 从不回到 LLM 对话里，LLM 没有二次编辑的机会
+      // 服务端必须返回 patchedCode；缺失时给出清晰错误而非误导性的栈异常。
       const finalizedCode = result.patchedCode;
-      const fileName = outputFileName?.trim() || "index.html";
+      if (typeof finalizedCode !== "string" || !finalizedCode) {
+        throw new Error("Server did not return patchedCode. Check that frontend-mcp-server is up to date.");
+      }
+
+      // 路径安全：outputFileName 由 LLM 控制，剥掉目录分量防路径穿越
+      // （MCP 工具输入本质来自用户消息，可被 prompt-injection 利用写任意路径）。
+      const fileName = path.basename(outputFileName?.trim() || "index.html");
       const targetDir = path.isAbsolute(outDir)
         ? path.join(outDir)
         : path.join(process.cwd(), outDir);
@@ -133,6 +140,9 @@ export class ApplyDesignTool extends BaseTool {
       }
       const filePath = path.join(targetDir, fileName);
       await writeFile(filePath, finalizedCode, "utf8");
+
+      // 工作流完成：清理该设计的 section 跟踪数据，释放内存（stdio 长驻进程防泄漏）。
+      clearSectionWorkflow(finalFileId, effectiveLayerId);
 
       // 返回简要报告（不返回 finalizedCode 全文——防止 LLM 拿到后又编辑）
       const report = result.report || {};

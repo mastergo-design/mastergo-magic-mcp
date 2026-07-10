@@ -293,12 +293,13 @@ const createHttpUtil = () => {
     async applyDesign(
       code: string,
       fileId: string,
-      layerId: string
+      layerId: string,
+      sourceLayerId?: string
     ): Promise<any> {
       try {
         const response = await axios.post(
           `${getBaseUrl()}/mcp/apply-design`,
-          { code, fileId, layerId },
+          { code, fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
           {
             timeout: 60000,
             headers: getCommonHeader(),

@@ -41,6 +41,19 @@ export function trackSectionFetched(fileId: string, layerId: string, sectionInde
   return { fetched: fetched.size, total, remaining: missingIndices.length, missingIndices };
 }
 
+/**
+ * 清理指定设计的 section 工作流跟踪数据。
+ * 在 applyDesign 成功完成后调用 —— 工作流结束，跟踪数据已无用，释放内存避免泄漏。
+ * （stdio 长驻进程：不清理则每个设计稿的 key 永久残留，sectionWorkflowActive /
+ *  fetchedSections / totalSectionsMap 三个全局容器单调增长。）
+ */
+export function clearSectionWorkflow(fileId: string, layerId: string): void {
+  const key = `${fileId}:${layerId}`;
+  sectionWorkflowActive.delete(key);
+  fetchedSections.delete(key);
+  totalSectionsMap.delete(key);
+}
+
 const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
 [FALLBACK] Use only when mcp__getDesignSections is unavailable or returns an error.
