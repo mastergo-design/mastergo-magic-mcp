@@ -75,10 +75,11 @@ Every icon in the design is a PATH node with a \`svgKey\`. The SVG markup is NOT
 **During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgKey}@@\`:
 - Read the \`svgKey\` from the PATH node in the section DSL.
 - Place \`@@SVG:\` + that exact svgKey + \`@@\` where the icon goes.
-- The placeholder works in ANY target language:
-  - **HTML/Vue**: \`<span class="icon">@@SVG:{svgKey}@@</span>\`
-  - **JSX/React**: \`{/*@@SVG:{svgKey}@@*/}\`
-  - **Flutter**: \`SvgPicture.string('@@SVG:{svgKey}@@')\`
+- **CRITICAL — Icon container sizing**: the placeholder MUST be placed inside a container whose width and height match the PATH node's \`layoutStyle.width\` and \`layoutStyle.height\`. The injected SVG uses \`width="100%" height="100%"\`, so it fills its direct parent. If you place it directly inside a large button container (e.g. 32×32px) instead of the icon's own size (e.g. 16×16px), the icon will render too large. Always wrap the placeholder in an element sized to the PATH node's dimensions:
+  - **HTML/Vue**: \`<span style="width:{layoutStyle.width}px;height:{layoutStyle.height}px;display:flex;align-items:center;justify-content:center">@@SVG:{svgKey}@@</span>\`
+  - **JSX/React**: \`<span style={{width:'{w}px',height:'{h}px'}}>{/*@@SVG:{svgKey}@@*/}</span>\`
+  - **Flutter**: \`SizedBox(width:{w},height:{h},child: SvgPicture.string('@@SVG:{svgKey}@@'))\`
+- Use \`svgName\` to match each icon to its correct UI position — e.g. an icon with \`svgName: "通用/向左"\` belongs in a collapse/fold button, not a "add" button.
 
 **After generating the COMPLETE code** — call \`mcp__applyDesign\` with the full code string AND an \`outDir\` parameter. The tool substitutes every \`@@SVG:...@@\` with the real high-precision \`<svg>\` markup from the cache (character-for-character exact, no rounding) AND writes the final file directly to disk. **You MUST provide \`outDir\`** — this writes the patched code to a file WITHOUT it passing back through your generation, preventing any re-processing or precision loss. After the tool writes the file, you are DONE — do NOT output, copy, or edit the code further.
 
