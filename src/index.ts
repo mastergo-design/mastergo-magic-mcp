@@ -94,7 +94,9 @@ Every node in a section's DSL has TWO pieces of layout data:
 
 4. **When a child has \`flexGrow\` / \`flexShrink\`** — These are flex item properties. Apply \`flex: {flexGrow} 1 0\` on the child element. Do NOT position it absolutely.
 
-5. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
+5. **CRITICAL — Flex column with fixed-height children**: When a container uses \`flex-direction: column\` with a FIXED height and \`overflow: hidden\`, ALL children with fixed heights (tabs, headers, pagination bars, footers, scrollbars) MUST have \`flex-shrink: 0\`. Only ONE child — the flexible content area (table body, scrollable region) — should use \`flex: 1\`. If you forget \`flex-shrink: 0\` on fixed-height children, flex layout will squeeze them out of the visible area and they get clipped by \`overflow: hidden\` (e.g. pagination bar becomes invisible).
+
+6. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
