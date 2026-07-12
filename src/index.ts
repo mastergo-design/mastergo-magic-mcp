@@ -142,6 +142,11 @@ Every node in a section's DSL has TWO pieces of layout data:
 - **NEVER hardcode LLM-default colors** (e.g. \`#1D2129\`, \`#000\`, \`#333\`) when \`_color\` is present. The \`_color\` value is the design truth — copying it requires zero cognitive effort and zero styles-table lookup.
 - **CRITICAL — splitContainers[].background IS the exact CSS background-color.** Copy it verbatim: \`background-color: <value>;\`. MUST NOT add gradients, MUST NOT change the color. The designer chose this color deliberately.
 - **CRITICAL — OPACITY ON FRAME**: a FRAME's \`opacity\` field applies ONLY to its own background, NOT children. Use \`background-color: rgba(R, G, B, <opacity>)\` — NEVER use CSS \`opacity: X\` on the parent, which makes child text/icons translucent.
+- **CRITICAL — NEVER promote a child node's gradient/fill onto its parent container.** A gradient \`linear-gradient(...)\` in the DSL is computed against THAT node's own bounding box — its stop offsets (e.g. \`#0063BA 83%\`) are percentages of that specific node's height, NOT the parent's height. If you copy such a gradient onto a differently-sized parent (e.g. a 88px navbar that contains a 195px-tall decorative oval), the stops map to the WRONG size and the visible color shifts or disappears entirely (blue appears only in the bottom 15px, leaving the top transparent). Rules:
+  - The background/fill of a node applies to THAT node's element only, at THAT node's size. Render each node at its own \`layoutStyle.width/height\`.
+  - A FRAME/GROUP/INSTANCE with NO \`_color\`/\`fill\` (empty) has NO background — leave it transparent. Do NOT borrow a child's fill to fill the parent.
+  - Decorative layers with \`filter: blur(...)\` (e.g. \`filter: blur(81.6px)\`) or very low alpha (\`rgba(..., 0.0x)\`) are visual overlay accents (glow, bloom), NOT the container's base background. Keep them as positioned overlays inside the container — never extract their gradient as the container background.
+  - If a container (navbar, card, header) needs a solid base background that the DSL doesn't directly provide on the FRAME node, derive it from the dominant opaque color among its children (e.g. the most common solid \`_color\`), not from a decorative gradient overlay.
 
 ### Anti-Hallucination Rules:
 - You MUST use EXACT text content from the DSL data. NEVER invent, translate, or paraphrase text.
