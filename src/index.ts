@@ -96,7 +96,11 @@ Every node in a section's DSL has TWO pieces of layout data:
 
 5. **CRITICAL — Flex column with fixed-height children**: When a container uses \`flex-direction: column\` with a FIXED height and \`overflow: hidden\`, ALL children with fixed heights (tabs, headers, pagination bars, footers, scrollbars) MUST have \`flex-shrink: 0\`. Only ONE child — the flexible content area (table body, scrollable region) — should use \`flex: 1\`. If you forget \`flex-shrink: 0\` on fixed-height children, flex layout will squeeze them out of the visible area and they get clipped by \`overflow: hidden\` (e.g. pagination bar becomes invisible).
 
-6. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
+6. **CRITICAL — Nested FRAME dimensions and spacing**: When a FRAME contains child FRAMEs (e.g. a card panel with an inner content container), the outer element's width/height MUST come from the OUTER node's \`layoutStyle.width/height\` — NOT from the inner content container. A common error is using the inner container's width (e.g. 285px) for the card itself (which should be 317px). Always trace to the correct node: if the DSL shows \`容器A (317×107) > 容器B (285×75, relativeX:16, relativeY:16)\`, the rendered card is 317×107 with 16px padding, and the content inside is 285×75.
+
+7. **CRITICAL — Precise vertical positioning inside cards**: Inside small fixed-height containers (stat cards, info panels, badge boxes), do NOT invent \`gap\` values. Use each child's \`layoutStyle.relativeY\` to position elements precisely. For example, if a card's DSL shows child A at \`relativeY:0\` and child B at \`relativeY:32\`, the vertical gap is 32px (minus child A's height) — NOT a guessed \`gap:16px\` or \`gap:20px\`. Inventing large gaps in small cards pushes content apart and breaks the compact layout. When \`flexContainerInfo.gap\` is present, use that exact value; when it is absent, use \`relativeY\` differences to calculate spacing.
+
+8. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
