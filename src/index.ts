@@ -100,7 +100,16 @@ Every node in a section's DSL has TWO pieces of layout data:
 
 7. **CRITICAL — Precise vertical positioning inside cards**: Inside small fixed-height containers (stat cards, info panels, badge boxes), do NOT invent \`gap\` values. Use each child's \`layoutStyle.relativeY\` to position elements precisely. For example, if a card's DSL shows child A at \`relativeY:0\` and child B at \`relativeY:32\`, the vertical gap is 32px (minus child A's height) — NOT a guessed \`gap:16px\` or \`gap:20px\`. Inventing large gaps in small cards pushes content apart and breaks the compact layout. When \`flexContainerInfo.gap\` is present, use that exact value; when it is absent, use \`relativeY\` differences to calculate spacing.
 
-8. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
+8. **CRITICAL — Overlapping elements in the same container (Switch toggle, icon badges, layered decorations)**: When a container holds multiple sibling elements that visually OVERLAP (one on top of another), the container MUST use \`position: relative\` and each child MUST use \`position: absolute\` with its own \`layoutStyle.relativeX/relativeY\`. Do NOT use \`display: flex\` on the container — flex will place the children SIDE BY SIDE instead of overlapping, shrinking them and destroying the composition. The canonical example is a Switch toggle: the DSL shows a track PATH (\`relativeX:0, relativeY:0, w:40, h:24\`) and a knob circle (\`relativeX:17.5, relativeY:1.5, w:21, h:21\`) as siblings. Generate EXACTLY this structure:
+\`\`\`
+<div style="position:relative; width:40px; height:24px;">
+  <div style="position:absolute; left:0px; top:0px;">@@SVG:{trackSvgKey}@@</div>
+  <div style="position:absolute; left:17.5px; top:1.5px;">@@SVG:{knobSvgKey}@@</div>
+</div>
+\`\`\`
+Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relativeX\` and \`layoutStyle.relativeY\`. Never use a shared \`left:0; top:0\` for all children. Never use flex.
+
+9. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
