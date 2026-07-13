@@ -129,12 +129,24 @@ export class ApplyDesignTool extends BaseTool {
         throw new Error("Server did not return patchedCode. Check that frontend-mcp-server is up to date.");
       }
 
-      // 路径安全：outputFileName 由 LLM 控制，剥掉目录分量防路径穿越
-      // （MCP 工具输入本质来自用户消息，可被 prompt-injection 利用写任意路径）。
+      // 路径安全：outputFileName 与 outDir 均由 LLM 控制，MCP 工具输入本质来自用户消息，
+      // 可被 prompt-injection 利用写任意路径。双重防护：
+      //   1) outputFileName 剥目录分量（basename）防文件名穿越；
+      //   2) outDir 解析后必须落在「允许根」内（默认 cwd，可用可信配置 MG_OUTPUT_ROOT 覆盖），
+      //      防止把 LLM 可控内容写到 ~/.ssh、shell 配置等任意绝对路径（任意文件覆盖）。
       const fileName = path.basename(outputFileName?.trim() || "index.html");
-      const targetDir = path.isAbsolute(outDir)
-        ? path.join(outDir)
-        : path.join(process.cwd(), outDir);
+      const allowedRoot = path.resolve(process.env.MG_OUTPUT_ROOT || process.cwd());
+      const requestedDir = path.isAbsolute(outDir)
+        ? path.resolve(outDir)
+        : path.resolve(allowedRoot, outDir);
+      const rel = path.relative(allowedRoot, requestedDir);
+      if (rel === ".." || rel.startsWith(".." + path.sep) || path.isAbsolute(rel)) {
+        throw new Error(
+          `outDir "${outDir}" resolves outside the allowed output root (${allowedRoot}). ` +
+          `Use a path inside it, or set the MG_OUTPUT_ROOT environment variable to permit a different base.`
+        );
+      }
+      const targetDir = requestedDir;
       if (!existsSync(targetDir)) {
         await mkdir(targetDir, { recursive: true });
       }
