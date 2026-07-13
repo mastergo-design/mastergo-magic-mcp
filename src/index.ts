@@ -58,14 +58,12 @@ Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID 
 **CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`#0\`, \`#13\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
 
 **Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` — you do NOT need to call \`getDesignTexts\` manually. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
-This returns exact text content for text nodes whose \`text\` field was replaced with a key like \`T{sectionIndex}|{nodeId}\`.
-- Look up the key in the returned texts map to get the exact text string.
-- Insert the text string VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
+- Short text already inlined in the DSL (\`node.text\` / \`dsl.rowTexts\`) must be inserted VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
 
 **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
 
 ### Step 3: Generate Complete Code
-After ALL N sections have been fetched and SVG data retrieved:
+After ALL N sections have been fetched:
 - MANDATORY: Use \`rootContainer\` from the section list response to create the root container div. Apply ALL its CSS properties (width, minHeight, background, overflow, position:relative) to a wrapping div. ALL sections MUST be placed inside this root container.
 - CRITICAL — Position each section ABSOLUTELY: every section entry has a page-absolute bbox (x, y, width, height) from Step 0. Wrap each section in a container with \`position:absolute; left:{x}px; top:{y}px; width:{width}px\` inside the root container. Do NOT reconstruct the page by stacking sections in a flex column with guessed \`margin-top\` / \`gap\` values. Many designs are spatially OVERLAID (status bar, title bar, form card, decorative curves, floating text, background layers) and only reconstruct correctly with absolute positioning.
 - CRITICAL — Overflow clipping: some design elements (brand logos, decorative shapes) are LARGER than their visible area — the design deliberately clips them via \`overflow: hidden\` on the parent. When a node's \`layoutStyle.width/height\` is smaller than its SVG content, you MUST preserve this clipping: set the parent container to the node's \`layoutStyle\` dimensions AND add \`overflow: hidden\`, then let the SVG render at its natural size inside. Do NOT shrink the SVG to fit the container (that distorts the logo) and do NOT enlarge the container (that breaks the layout).
@@ -134,7 +132,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` or \`getDesignSvgs\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
-- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which includes \`getDesignSvgs\` for SVG data).
+- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data — no manual \`getDesignSvgs\` call needed).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:
@@ -187,7 +185,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
 - The only acceptable SVG operation is: copy the complete \`<svg>...</svg>\` block from the DSL data and paste it into your HTML. Nothing else.
 - **Common failure pattern**: you saw a complex path and thought "this looks roughly like 4 rectangles" → you drew 4 \`<rect>\`s → the result is visually WRONG. The designer chose a vector path for a reason. Trust the data.
-- **COMPOSITE ICONS (logos, multi-subpath marks):** when a logo/brand mark is split into multiple sub-paths and stripped to svgCache, the data you get back from \`mcp__getDesignSvgs\` is the complete \`<svg>...</svg>\`. Paste it whole. The node's \`relativeX\`/\`relativeY\` are canvas placement coordinates — they are NOT to be reused as \`transform="translate(x,y) scale(...)"\` inside a hand-assembled \`<svg>\`. Doing so warps the glyph out of its viewBox.
+- **COMPOSITE ICONS (logos, multi-subpath marks):** when a logo/brand mark is split into multiple sub-paths and stripped to svgCache, the SVG that \`mcp__applyDesign\` injects for the \`@@SVG:{svgKey}@@\` placeholder is the complete \`<svg>...</svg>\`. Keep it whole. The node's \`relativeX\`/\`relativeY\` are canvas placement coordinates — they are NOT to be reused as \`transform="translate(x,y) scale(...)"\` inside a hand-assembled \`<svg>\`. Doing so warps the glyph out of its viewBox.
 
 ### INSTANCE Variant State Rules:
 - INSTANCE nodes may carry a **\`_variantProps\`** object with semantic state labels extracted from component variant properties (e.g. \`{"状态": "选中", "分类": "幽灵按钮", "尺寸": "24"}\`).
