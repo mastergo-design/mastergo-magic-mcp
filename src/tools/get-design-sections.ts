@@ -115,18 +115,19 @@ export class GetDesignSectionsTool extends BaseTool {
 
   async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format, ...rest }: z.infer<typeof this.schema>) {
     try {
-      // 拦截 LLM 误用的复数参数 sectionIndices（schema 不声明它，但 passthrough 保留未知字段）。
-      // 引导 LLM 改用单数 sectionIndex（每次一个，多次调用）。
-      const sectionIndices = (rest as Record<string, unknown>).sectionIndices;
-      if (sectionIndices !== undefined) {
+      // 阻断所有未知参数：已知参数已解构，rest 即 LLM 传的 schema 未定义参数——静默忽略会让它
+      // 以为参数生效。高频误用是复数 sectionIndices，其它拼错参数同样报错。排除 _ 前缀元字段。
+      const unknownKeys = Object.keys(rest as Record<string, unknown>).filter((k) => !k.startsWith("_"));
+      if (unknownKeys.length > 0) {
+        const errorText = unknownKeys.includes("sectionIndices")
+          ? "Parameter 'sectionIndices' (plural) is NOT supported. Use 'sectionIndex' (SINGULAR — a single integer) instead. Make MULTIPLE separate calls, each with one sectionIndex (e.g. sectionIndex=15, then sectionIndex=16, ...). Passing an array will always return this error."
+          : `Unknown parameter(s): ${unknownKeys.join(", ")}. This tool only accepts: fileId, layerId, sourceLayerId, shortLink, sectionIndex, format. Remove the unknown parameter(s) and retry.`;
         return {
           isError: true,
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({
-                error: "Parameter 'sectionIndices' (plural) is NOT supported. Use 'sectionIndex' (SINGULAR — a single integer) instead. Make MULTIPLE separate calls, each with one sectionIndex (e.g. sectionIndex=15, then sectionIndex=16, ...). Passing an array will always return this error.",
-              }),
+              text: JSON.stringify({ error: errorText }),
             },
           ],
         };
