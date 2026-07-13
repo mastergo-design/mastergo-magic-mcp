@@ -197,11 +197,11 @@ export class GetDesignSectionsTool extends BaseTool {
         if (Array.isArray(scList) && scList.length > 0) {
           // rootContainer.minHeight/width 形如 "900px"，parseInt 可解析；但 "auto"/undefined 会得 NaN，
           // NaN 会让 rootH*0.8 / rootW-totalSidebarW 全部变 NaN，sidebar 布局提示静默失效。故显式兜底。
-          const rootH = parseInt(result.rootContainer?.minHeight, 10) || 900;
+          const rootH = parseInt(result.rootContainer?.minHeight ?? "", 10) || 900;
           const sidebarCols = scList.filter((sc: any) => sc && sc.height && sc.height >= rootH * 0.8 && sc.width && sc.width <= 300);
           if (sidebarCols.length >= 2) {
             const totalSidebarW = sidebarCols.reduce((sum: number, sc: any) => sum + (sc.width || 0), 0);
-            const rootW = parseInt(result.rootContainer?.width, 10) || 1440;
+            const rootW = parseInt(result.rootContainer?.width ?? "", 10) || 1440;
             const mainX = totalSidebarW;
             const mainW = rootW - totalSidebarW;
             const colNames = sidebarCols.map((sc: any) => sc.name || sc.id).join(', ');

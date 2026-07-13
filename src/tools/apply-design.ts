@@ -152,11 +152,21 @@ export class ApplyDesignTool extends BaseTool {
         fileName,
         report,
       };
-      if (report.unresolved?.length > 0) {
-        response.warning = `${report.unresolved.length} placeholder(s) unresolved — check svgKey values.`;
+      // 优先透传服务端已算好的 warning/error（服务端 route 已按 svgUnresolved/textUnresolved 组装）。
+      if (result.warning) response.warning = result.warning;
+      if (result.error) response.error = result.error;
+      // 兜底：服务端未给 warning 时，用正确字段本地补（report 字段是 svgUnresolved/textUnresolved，
+      // 无 report.unresolved 字段——旧代码读它恒 undefined，警告永不触发）。
+      if (!response.warning) {
+        const unresolvedCount =
+          (report.svgUnresolved?.length || 0) + (report.textUnresolved?.length || 0);
+        if (unresolvedCount > 0) {
+          response.warning = `${unresolvedCount} placeholder(s) unresolved — check svgKey/text keys.`;
+        }
       }
-      if (report.fabricatedPaths?.length > 0) {
-        response.error = `${report.fabricatedPaths.length} fabricated path(s) detected — replace them with @@SVG:{svgKey}@@ placeholders and re-run.`;
+      const fabricated = report.fabricatedPaths ?? [];
+      if (!response.error && fabricated.length > 0) {
+        response.error = `${fabricated.length} fabricated path(s) detected — replace them with @@SVG:{svgKey}@@ placeholders and re-run.`;
       }
 
       return {
