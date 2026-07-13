@@ -14,9 +14,47 @@ const sectionWorkflowActive = new Set<string>();
 const fetchedSections: Map<string, Set<number>> = new Map();
 const totalSectionsMap: Map<string, number> = new Map();
 
+// 三容器仅在 applyDesign 成功时经 clearSectionWorkflow 清理；若 LLM 不调 applyDesign
+// （失败/放弃/走旧路径），key 只写不删会单调增长。故加硬上限 + TTL 兜底（stdio 长驻进程防泄漏）。
+// TTL 取 30min：section 工作流（逐个拉 48 section + 生成代码）可能较长，TTL 过短会误清进行中工作流。
+const SECTION_TRACKER_MAX_ENTRIES = parseInt(process.env.SECTION_TRACKER_MAX_ENTRIES || "1000", 10);
+const SECTION_TRACKER_TTL_MS = parseInt(process.env.SECTION_TRACKER_TTL_MS || "1800000", 10);
+const trackerTimestamps: Map<string, number> = new Map();
+
+/** 刷新 tracker key 活跃时间戳，LRU 淘汰超容 key（连带清三容器）。 */
+function touchTrackerKey(key: string): void {
+  if (trackerTimestamps.has(key)) {
+    trackerTimestamps.delete(key);
+  } else if (trackerTimestamps.size >= SECTION_TRACKER_MAX_ENTRIES) {
+    const oldest = trackerTimestamps.keys().next().value;
+    if (oldest !== undefined) {
+      sectionWorkflowActive.delete(oldest);
+      fetchedSections.delete(oldest);
+      totalSectionsMap.delete(oldest);
+      trackerTimestamps.delete(oldest);
+    }
+  }
+  trackerTimestamps.set(key, Date.now());
+}
+
+// TTL 兜底定时清理：周期扫描过期 key（不阻塞进程退出）。
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of trackerTimestamps) {
+    if (now - ts > SECTION_TRACKER_TTL_MS) {
+      sectionWorkflowActive.delete(key);
+      fetchedSections.delete(key);
+      totalSectionsMap.delete(key);
+      trackerTimestamps.delete(key);
+    }
+  }
+}, SECTION_TRACKER_TTL_MS).unref();
+
 /** 标记某个设计已进入 section 工作流（由 get-design-sections 调用）。 */
 export function markSectionWorkflowActive(fileId: string, layerId: string) {
-  sectionWorkflowActive.add(`${fileId}:${layerId}`);
+  const key = `${fileId}:${layerId}`;
+  sectionWorkflowActive.add(key);
+  touchTrackerKey(key);
 }
 
 /** 记录 section list 的总数（由 get-design-sections 在 list 模式调用）。 */
@@ -24,6 +62,7 @@ export function setTotalSections(fileId: string, layerId: string, total: number)
   const key = `${fileId}:${layerId}`;
   totalSectionsMap.set(key, total);
   if (!fetchedSections.has(key)) fetchedSections.set(key, new Set());
+  touchTrackerKey(key);
 }
 
 /** 记录已拉取的 sectionIndex，返回当前进度信息。 */
@@ -34,6 +73,7 @@ export function trackSectionFetched(fileId: string, layerId: string, sectionInde
   const fetched = fetchedSections.get(key) ?? new Set<number>();
   fetched.add(sectionIndex);
   fetchedSections.set(key, fetched);
+  touchTrackerKey(key);
   const missingIndices: number[] = [];
   for (let i = 0; i < total; i++) {
     if (!fetched.has(i)) missingIndices.push(i);
@@ -52,6 +92,7 @@ export function clearSectionWorkflow(fileId: string, layerId: string): void {
   sectionWorkflowActive.delete(key);
   fetchedSections.delete(key);
   totalSectionsMap.delete(key);
+  trackerTimestamps.delete(key);
 }
 
 const DSL_TOOL_NAME = "mcp__getDsl";
