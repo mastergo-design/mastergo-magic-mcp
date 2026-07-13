@@ -2,6 +2,23 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.2 (2026-07-01)
+
+## What's Changed
+* feat: add output format support for design data tools by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/99
+* 支持自定义HTTP header头。fix issue #64 私有化部署后被内部网关拦截无法使用MCP的问题 by @superbear in https://github.com/mastergo-design/mastergo-magic-mcp/pull/100
+* feat: custom HTTP headers (#64) + security hardening + dependency audit (0 vulnerabilities) by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/101
+* feat(changelog): 基于 GitHub Releases 自动生成 CHANGELOG 并集成发版 CI by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/102
+* Add Flutter component workflow support by @U2yyy in https://github.com/mastergo-design/mastergo-magic-mcp/pull/82
+* fix(flutter): Flutter 工作流工具安全加固和正确性修复 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/104
+
+## New Contributors
+* @superbear made their first contribution in https://github.com/mastergo-design/mastergo-magic-mcp/pull/100
+* @U2yyy made their first contribution in https://github.com/mastergo-design/mastergo-magic-mcp/pull/82
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.1...v0.2.2
+
+
 ## v0.2.1 (2026-07-01)
 
 ## What's Changed
