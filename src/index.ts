@@ -16,6 +16,7 @@ import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
+import packageJson from "../package.json";
 
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
@@ -118,7 +119,7 @@ function main() {
   const server = new McpServer(
     {
       name: "MasterGoMcpServer",
-      version: "0.0.1",
+      version: packageJson.version,
     },
     { instructions: SERVER_INSTRUCTIONS }
   );
