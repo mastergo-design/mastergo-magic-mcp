@@ -24,7 +24,10 @@ PLACEHOLDER FORMATS:
 - Long text: \`T{sectionIndex}|{nodeId}\` — appears in TEXT nodes whose text was too long for inline DSL.
   Example: <p>T3|1:1234:5678</p>
 
-The replacement works for ANY target language — it's pure string substitution.
+The server escapes the injected data according to the \`targetLang\` parameter:
+- \`html\` (default, also for Vue templates): place the placeholder in element content (\`<span>@@SVG:#0@@</span>\`, \`<p>T3|1:2</p>\`). SVG is inserted as-is; long text is HTML-escaped (& < >).
+- \`dart\` (Flutter): place the placeholder inside a single-quoted string literal (\`SvgPicture.string('@@SVG:#0@@')\`, \`Text('T3|1:2')\`). SVG/text are escaped for that string (\\ ' newline). Pass \`targetLang: "dart"\`.
+Pick targetLang to match the code you generated, and place placeholders in that language's standard position shown above.
 
 You can provide either:
 1. fileId and layerId directly, or
@@ -80,11 +83,17 @@ export class ApplyDesignTool extends BaseTool {
       .describe(
         "Output file name (default: 'index.html'). Include extension. Example: 'snmp-agent.html'."
       ),
+    targetLang: z
+      .enum(["html", "dart"])
+      .optional()
+      .describe(
+        "Target language of the generated code, decides placeholder escaping. 'html' (default, also for Vue): SVG inserted as-is into element content, long text HTML-escaped. 'dart' (Flutter): SVG/text escaped for single-quoted string literals (SvgPicture.string('...'), Text('...'))."
+      ),
   });
 
   async execute(params: z.infer<typeof this.schema>) {
     try {
-      const { fileId, layerId, sourceLayerId, shortLink, code, outDir, outputFileName } = params;
+      const { fileId, layerId, sourceLayerId, shortLink, code, outDir, outputFileName, targetLang } = params;
 
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
@@ -120,7 +129,8 @@ export class ApplyDesignTool extends BaseTool {
         code,
         finalFileId,
         effectiveLayerId,
-        finalSourceLayerId
+        finalSourceLayerId,
+        targetLang
       );
 
       // 服务端必须返回 patchedCode；缺失时给出清晰错误而非误导性的栈异常。

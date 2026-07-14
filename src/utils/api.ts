@@ -329,12 +329,13 @@ const createHttpUtil = () => {
       code: string,
       fileId: string,
       layerId: string,
-      sourceLayerId?: string
+      sourceLayerId?: string,
+      targetLang?: "html" | "dart"
     ): Promise<ApplyDesignResponse> {
       try {
         const response = await axios.post(
           `${getBaseUrl()}/mcp/apply-design`,
-          { code, fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
+          { code, fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}), ...(targetLang ? { targetLang } : {}) },
           {
             timeout: 60000,
             headers: getCommonHeader(),
