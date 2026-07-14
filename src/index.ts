@@ -11,8 +11,6 @@ import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetFlutterWorkflowTool } from "./tools/get-flutter-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
-import { GetDesignSvgsTool } from "./tools/get-design-svgs";
-import { GetDesignTextsTool } from "./tools/get-design-texts";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
@@ -57,7 +55,7 @@ Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID 
 
 **CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`#0\`, \`#13\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
 
-**Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` — you do NOT need to call \`getDesignTexts\` manually. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
+**Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` server-side. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
 - Short text already inlined in the DSL (\`node.text\` / \`dsl.rowTexts\`) must be inserted VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
 
 **\`dsl.rowTexts\`** — An array of \`{text, parentType?, parentName?}\` objects for all leaf TEXT values in this section, in tree order. Each item carries \`parentType\` and \`parentName\` to indicate which container the text belongs to (e.g. \`{text: "8", parentType: "INSTANCE", parentName: "删除"}\` means "8" is inside a delete button — it's a badge count, NOT an independent notification dot). Use parentType/parentName for context; do NOT reassign text to unrelated UI elements.
@@ -129,14 +127,14 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
-- \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` or \`getDesignSvgs\` before it.
+- \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
-- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data — no manual \`getDesignSvgs\` call needed).
+- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:
-- The design-data tools (\`getDesignSections\`, \`getDsl\`, \`getDesignSvgs\`, \`getDesignTexts\`, \`extractSvg\`, \`getMeta\`) accept an optional \`format\` parameter: \`json\` (default), \`yaml\`, or \`tree\`. \`yaml\`/\`tree\` use fewer tokens for large designs; all three round-trip without data loss. Set a session-wide default with the \`--format\` CLI flag or \`DEFAULT_FORMAT\` env var.
+- The design-data tools (\`getDesignSections\`, \`getDsl\`, \`extractSvg\`, \`getMeta\`) accept an optional \`format\` parameter: \`json\` (default), \`yaml\`, or \`tree\`. \`yaml\`/\`tree\` use fewer tokens for large designs; all three round-trip without data loss. Set a session-wide default with the \`--format\` CLI flag or \`DEFAULT_FORMAT\` env var.
 
 ### Text Fidelity Rules:
 - TEXT nodes contain actual text in node.text array. Read EACH node's text and use it EXACTLY.
@@ -286,8 +284,6 @@ function main() {
 
   new GetVersionTool().register(server);
   new GetDesignSectionsTool().register(server);
-  new GetDesignSvgsTool().register(server);
-  new GetDesignTextsTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);

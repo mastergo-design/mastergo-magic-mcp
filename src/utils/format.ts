@@ -165,7 +165,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  *   - getDsl:              { dsl: { styles, nodes, ... }, componentDocumentLinks, rules }
  *   - Raw DSL:             { styles, nodes, components?, ... }
  *   - Mode 1 section list: { sections, totalSections, rootMetadata, ... }
- *   - getDesignSvgs/Texts: { svgs|texts: { key: value }, nodeCount|textCount }
+ *   - Flat cache maps:      { svgs|texts: { key: value }, nodeCount|textCount }
  * Primitives, arrays, and truly unknown objects fall back to JSON so data is never
  * mis-formatted.
  */
@@ -308,8 +308,8 @@ function svgListToTree(obj: Record<string, unknown>): string {
 }
 
 /**
- * Flat key→value map payloads: getDesignSvgs `{ svgs, nodeCount }` and
- * getDesignTexts `{ texts, textCount }` (including the empty-cache variants).
+ * Flat key→value map payloads such as `{ svgs, nodeCount }` or
+ * `{ texts, textCount }` (including the empty-cache variants).
  * Sibling scalars pass through; the map renders as a `svgs:`/`texts:` block with
  * one entry per line. Single-line values stay inline; multi-line values (SVG with
  * newlines, long text) indent on the following line(s) — value bytes are emitted

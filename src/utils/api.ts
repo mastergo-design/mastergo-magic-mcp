@@ -58,23 +58,6 @@ export interface DesignSectionsResponse {
   [k: string]: any;
 }
 
-/** SVG 缓存响应 */
-export interface DesignSvgsResponse {
-  svgs: Record<string, string>;
-  resolvedIcons?: Record<string, Record<string, string>>;
-  nodeCount: number;
-  message?: string;
-  [k: string]: any;
-}
-
-/** 大文本缓存响应 */
-export interface DesignTextsResponse {
-  texts: Record<string, string>;
-  textCount: number;
-  message?: string;
-  [k: string]: any;
-}
-
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -299,42 +282,6 @@ const createHttpUtil = () => {
           throw new Error(
             `design-sections API not available on this server. ` +
             `Please update frontend-mcp-server to the latest version.`
-          );
-        }
-        throw err;
-      }
-    },
-
-    async getDesignSvgs(fileId: string, layerId: string): Promise<DesignSvgsResponse> {
-      try {
-        const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
-          timeout: 120000,
-          params: { fileId, layerId },
-          headers: getCommonHeader(),
-        });
-        return response.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error(
-            `design-svgs API not available on this server. Please update frontend-mcp-server to the latest version.`
-          );
-        }
-        throw err;
-      }
-    },
-
-    async getDesignTexts(fileId: string, layerId: string): Promise<DesignTextsResponse> {
-      try {
-        const response = await axios.get(`${getBaseUrl()}/mcp/design-texts`, {
-          timeout: 120000,
-          params: { fileId, layerId },
-          headers: getCommonHeader(),
-        });
-        return response.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error(
-            `design-texts API not available on this server. Please update frontend-mcp-server to the latest version.`
           );
         }
         throw err;
