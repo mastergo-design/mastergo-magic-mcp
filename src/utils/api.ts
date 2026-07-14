@@ -34,6 +34,63 @@ export interface DslResponse {
   [key: string]: any;
 }
 
+// ---- Section / SVG / Text / applyDesign response types ----
+// 服务端返回的结构化响应。字段较多且部分由 LLM 工具动态注入(rules/nextAction/fetchProgress),
+// 故统一用宽松基类(允许任意扩展),再在已确定结构的字段上标注类型。
+
+/** section 列表/单片 DSL 响应(消费方会动态加 rules/nextAction/fetchProgress) */
+export interface DesignSectionsResponse {
+  sections?: any[];
+  totalSections?: number;
+  rootMetadata?: { allTexts?: string[]; width?: number; height?: number; [k: string]: any };
+  rootContainer?: { minHeight?: string; width?: string; [k: string]: any };
+  splitContainers?: any[];
+  allTexts?: string[];
+  nextAction?: string;
+  fetchProgress?: string;
+  sectionIndex?: number;
+  dsl?: any;
+  nodeCount?: number;
+  svgNodeCount?: number;
+  hasStrippedSvgs?: boolean;
+  structureSiblingCount?: number;
+  /** 允许动态注入 rules 等字段 */
+  [k: string]: any;
+}
+
+/** extractSvg 响应(分页) */
+export interface ExtractSvgResponse {
+  totalCount: number;
+  count: number;
+  svgs: Array<{ name: string; id: string; svg: string }>;
+  page?: number;
+  pageSize?: number;
+  hasMore?: boolean;
+  [k: string]: any;
+}
+
+/** applyDesign 替换报告 */
+export interface ApplyDesignReport {
+  svgTotal?: number;
+  svgReplaced?: number;
+  svgUnresolved?: string[];
+  textTotal?: number;
+  textReplaced?: number;
+  textUnresolved?: string[];
+  fabricatedPaths?: string[];
+  [k: string]: any;
+}
+
+/** applyDesign 响应 */
+export interface ApplyDesignResponse {
+  patchedCode: string;
+  report?: ApplyDesignReport;
+  note?: string;
+  warning?: string;
+  error?: string;
+  [k: string]: any;
+}
+
 // Code generation response interface
 export interface CodeResponse {
   code: string;
@@ -101,6 +158,20 @@ export const isSameHost = (a: string, b: string): boolean => {
   }
 };
 
+// shortLink → 解析结果 LRU 缓存：避免 section 工作流里同一短链重复 redirect。
+// stdio 长驻进程，缓存条目极少（一次会话只涉及少数设计稿），设 32 条上限防无限增长。
+const SHORT_LINK_CACHE_MAX = 32;
+const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string }>();
+/** LRU 写入：已有 key 先 delete 再 set 移到末尾；超容量淘汰最久未访问的 key。 */
+function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string }): void {
+  if (shortLinkCache.has(key)) shortLinkCache.delete(key);
+  else if (shortLinkCache.size >= SHORT_LINK_CACHE_MAX) {
+    const oldest = shortLinkCache.keys().next().value;
+    if (oldest !== undefined) shortLinkCache.delete(oldest);
+  }
+  shortLinkCache.set(key, value);
+}
+
 const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
 
@@ -117,21 +188,24 @@ const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
 
 const buildDslRules = (): string[] => {
   return [
+    "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",
+    "CRITICAL — Sidebar columns: render ALL sidebar levels as persistent columns at splitContainers positions. Do NOT hide or toggle them.",
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
-    "Background colors come from the node's fillStyleId — look it up in the DSL styles map. Do NOT invent background gradients or colors. If a node has no fill style, leave its background transparent.",
-    `componentDocumentLinks is a list of frontend component documentation links used in the DSL layer, designed to help you understand how to use the components.
-When it exists and is not empty, you need to use mcp__getComponentLink in a for loop to get the URL content of all components in the list, understand how to use the components, and generate code using the components.
-For example:
-  \`\`\`js
-    const componentDocumentLinks = [
-      'https://example.com/ant/button.mdx',
-      'https://example.com/ant/button.mdx'
-    ]
-    for (const url of componentDocumentLinks) {
-      const componentLink = await mcp__getComponentLink(url);
-      console.log(componentLink);
-    }
-  \`\`\``,
+    "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
+    "",
+    "CRITICAL — SVG FROM PATH NODES: Every PATH node has a `svgKey` field. The SVG markup is NOT in the DSL. Place `@@SVG:{svgKey}@@` where each icon goes, then call `mcp__applyDesign` to inject real SVG. NEVER hand-write `<path d=\"...\">`.",
+    "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node must have a `@@SVG:{svgKey}@@` placeholder in your code. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect. After all placeholders are placed, call `mcp__applyDesign`.",
+    "",
+    "CRITICAL — OMIT _placeholder TEXT: any TEXT node with `_placeholder: true` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with `_placeholder: true` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
+    "CRITICAL — CLOSED-SET TEXT: the section LIST response carries `rootMetadata.allTexts` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
+    "",
+    "CRITICAL — INSTANCE fill color: when an INSTANCE has both `fill` and `_color`, use `_color` directly as the CSS value. Do NOT guess colors from _variantProps semantics.",
+    "CRITICAL — INSTANCE _variantProps: compare across siblings for selected/hovered/disabled. Active class MUST match DSL variant state, NOT a default index.",
+    "CRITICAL — Render count = structureSiblingCount: if ssc=1, that single instance IS complete — do NOT fabricate extra rows/items.",
+    "CRITICAL — BACKGROUND FROM splitContainers: splitContainers[].background IS the exact CSS background-color. Copy verbatim, no changes.",
+    "CRITICAL — FRAME/GROUP opacity: translate to rgba() on background only, NOT CSS opacity (would make children translucent).",
+    "CRITICAL — rowTexts: each entry has parentType/parentName for context and `_placeholder: true` if boilerplate. Use parentName to place text correctly; skip _placeholder entries.",
+    "Render ALL nodes recursively. Section root layoutStyle.width = section width. Do not call mcp__getDsl after completing section workflow.",
     ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
     ...parseRules(),
   ];
@@ -175,10 +249,14 @@ const createHttpUtil = () => {
     async extractSvg(
       fileId: string,
       layerId: string,
-      backgroundColor?: string
-    ): Promise<any> {
+      backgroundColor?: string,
+      page?: number,
+      pageSize?: number
+    ): Promise<ExtractSvgResponse> {
       const params: Record<string, any> = { fileId, layerId };
       if (backgroundColor) params.backgroundColor = backgroundColor;
+      if (page !== undefined) params.page = page;
+      if (pageSize !== undefined) params.pageSize = pageSize;
 
       const response = await axios.get(`${getBaseUrl()}/mcp/extract-svg`, {
         timeout: 30000,
@@ -188,7 +266,7 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<any> {
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<DesignSectionsResponse> {
       const params: Record<string, any> = { fileId, layerId };
       if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
 
@@ -204,42 +282,6 @@ const createHttpUtil = () => {
           throw new Error(
             `design-sections API not available on this server. ` +
             `Please update frontend-mcp-server to the latest version.`
-          );
-        }
-        throw err;
-      }
-    },
-
-    async getDesignSvgs(fileId: string, layerId: string): Promise<any> {
-      try {
-        const response = await axios.get(`${getBaseUrl()}/mcp/design-svgs`, {
-          timeout: 120000,
-          params: { fileId, layerId },
-          headers: getCommonHeader(),
-        });
-        return response.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error(
-            `design-svgs API not available on this server. Please update frontend-mcp-server to the latest version.`
-          );
-        }
-        throw err;
-      }
-    },
-
-    async getDesignTexts(fileId: string, layerId: string): Promise<any> {
-      try {
-        const response = await axios.get(`${getBaseUrl()}/mcp/design-texts`, {
-          timeout: 120000,
-          params: { fileId, layerId },
-          headers: getCommonHeader(),
-        });
-        return response.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error(
-            `design-texts API not available on this server. Please update frontend-mcp-server to the latest version.`
           );
         }
         throw err;
@@ -273,6 +315,43 @@ const createHttpUtil = () => {
       return response.data;
     },
 
+    /**
+     * SVG 占位符后处理 — 把代码里的 @@SVG:{svgKey}@@ 占位符替换为真实高精度 SVG。
+     *
+     * 解决根因：LLM 生成代码时会自主改写 path data 的精度（17.522848 → 17.523），
+     * 纯 prompt 约束压不住。本方法让 path data 从不经过 LLM——LLM 只放短占位符，
+     * 由服务端用 svgCache 里的真实 SVG 做确定性字符串替换（与目标语言无关）。
+     * 同时替换长文本占位符（T{si}|{nodeId}），确保所有占位符都由服务端确定性注入。
+     *
+     * 必须在 getDesignSections 拉取所有 section 之后调用（svgCache/textCache 由 section 工作流填充）。
+     */
+    async applyDesign(
+      code: string,
+      fileId: string,
+      layerId: string,
+      sourceLayerId?: string,
+      targetLang?: "html" | "dart"
+    ): Promise<ApplyDesignResponse> {
+      try {
+        const response = await axios.post(
+          `${getBaseUrl()}/mcp/apply-design`,
+          { code, fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}), ...(targetLang ? { targetLang } : {}) },
+          {
+            timeout: 60000,
+            headers: getCommonHeader(),
+          }
+        );
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `apply-design API not available on this server. Please update frontend-mcp-server to the latest version to enable placeholder post-processing.`
+          );
+        }
+        throw err;
+      }
+    },
+
     async getComponentStyleJson(fileId: string, layerId: string, sourceLayerId?: string) {
       const response = await axios.get(`${getBaseUrl()}/mcp/style`, {
         timeout: 30000,
@@ -290,11 +369,20 @@ const createHttpUtil = () => {
       return response.data;
     },
     /**
-     * Extract fileId and layerId from a MasterGo URL
+     * Extract fileId and layerId from a MasterGo URL.
+     *
+     * /goto/ 短链需一次 redirect 请求解析目标 URL。LLM 在 section 工作流里会对同一
+     * 设计稿反复传 shortLink（如调 48 次 getDesignSections），无缓存就是 48 次 redirect。
+     * 这里用进程级 LRU Map 缓存 shortLink → 解析结果，同一短链只请求一次。
+     * 非 shortLink 的普通 URL 是纯本地解析（无网络），无需缓存。
      */
     async extractIdsFromUrl(
       url: string
     ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
+      // shortLink 缓存命中：直接返回，跳过 redirect
+      if (url.includes("/goto/") && shortLinkCache.has(url)) {
+        return { ...shortLinkCache.get(url)! };
+      }
       let targetUrl = url;
 
       // Handle short links
@@ -336,7 +424,12 @@ const createHttpUtil = () => {
 
       const sourceLayerId = searchParams.get("source_layer_id") || undefined;
 
-      return { fileId, layerId, sourceLayerId };
+      const result = { fileId, layerId, sourceLayerId };
+      // shortLink 解析结果写入缓存（非 shortLink 不写：纯本地解析无网络开销）
+      if (url.includes("/goto/")) {
+        cacheShortLink(url, result);
+      }
+      return result;
     },
   };
 };

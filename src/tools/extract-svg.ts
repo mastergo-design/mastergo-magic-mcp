@@ -9,7 +9,8 @@ Extract SVG data from MasterGo design files. This tool retrieves the DSL from a 
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
-Returns { count, svgs: [{ name, id, svg }] } — one entry per icon/instance found in the design.
+
+Pagination: When there are many icons, use the first call without "page" to get totalCount. Then call again with page=0, page=1, etc. (page starts at 0, pageSize defaults to 20, max 100). If hasMore is false, you've fetched all pages.
 `;
 
 export class ExtractSvgTool extends BaseTool {
@@ -49,12 +50,29 @@ export class ExtractSvgTool extends BaseTool {
       .describe(
         "Solid background color for the SVG (e.g. '#000000', 'black'). Useful for previewing white/light icons."
       ),
+    page: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Page number for pagination (starts at 0). Omit to get all SVGs at once. When provided, the response includes totalCount/hasMore/page/pageSize for you to iterate through all pages."
+      ),
+    pageSize: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe(
+        "Number of SVGs per page (default 20, max 100). Only used when page is provided."
+      ),
     format: formatField(),
   });
 
   async execute(params: z.infer<typeof this.schema>) {
     try {
-      const { fileId, layerId, sourceLayerId, shortLink, backgroundColor, format } = params;
+      const { fileId, layerId, sourceLayerId, shortLink, backgroundColor, page, pageSize, format } = params;
 
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
@@ -81,7 +99,9 @@ export class ExtractSvgTool extends BaseTool {
       const result = await httpUtilInstance.extractSvg(
         finalFileId,
         effectiveLayerId,
-        backgroundColor
+        backgroundColor,
+        page,
+        pageSize
       );
 
       return {
