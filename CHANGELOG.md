@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.3 (2026-07-14)
+
+## What's Changed
+* fix: report actual package version in McpServer serverInfo by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/109
+* feat: replace getDesignSvgs/Texts with applyDesign tool, strengthen section workflow & anti-hallucination rules by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/103
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.2...v0.2.3
+
+
 ## v0.2.2 (2026-07-01)
 
 ## What's Changed
