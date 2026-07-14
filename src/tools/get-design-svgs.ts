@@ -5,24 +5,16 @@ import { formatField, formatOutput } from "../utils/format";
 
 const DESIGN_SVGS_TOOL_NAME = "mcp__getDesignSvgs";
 const DESIGN_SVGS_TOOL_DESCRIPTION = `
-After fetching ALL sections via mcp__getDesignSections, call this tool to retrieve all cached SVG HTML strings.
+[DEPRECATED] You do NOT need this tool in the section → applyDesign workflow.
+The SVG cache is filled by mcp__getDesignSections during section fetching, and mcp__applyDesign reads the SAME cache to inject real SVG into your \`@@SVG:{svgKey}@@\` placeholders server-side (the SVG data never passes through you). So in the normal workflow you should NOT call this tool — just place \`@@SVG:{svgKey}@@\` placeholders and call mcp__applyDesign at the end.
 
-This tool returns the SVG HTML for ALL sections that had stripped SVGs during the section fetch.
+This tool remains ONLY for legacy/manual workflows that still inline SVG by hand. It will be removed in a future release.
 
-WHEN to call: AFTER you have fetched every section (0..totalSections-1) via mcp__getDesignSections.
-The SVG cache is populated during section fetching — call getDesignSvgs after ALL sections are done.
-
-WHAT you get: two structures in the response:
+If you still call it (legacy path): after fetching ALL sections via mcp__getDesignSections, it returns the cached SVG HTML strings.
+WHAT you get:
 1. \`svgs\` — a flat map of svgKey -> complete \`<svg>...</svg>\` HTML string
-2. \`resolvedIcons\` — a two-level index {sectionIndex: {iconName: svgKey}} for DIRECT lookup
-
-HOW to use: for section N with an icon named "X", do:
-  resolvedIcons["N"]["X"] -> svgKey -> svgs[svgKey] -> svgHtml
-This is zero string matching — just dictionary lookups.
-
-CRITICAL — DO NOT skip this step if any section has hasStrippedSvgs: true.
-Missing SVGs include: logo/brand marks, pagination arrows (prev/next), table action icons (edit/delete), refresh buttons, filter/search icons, sidebar menu icons, and more.
-CRITICAL — DO NOT render stripped SVGs by hand or with placeholder shapes. The designer's original vector data is in this cache — use it.
+2. \`resolvedIcons\` — a two-level index {sectionIndex: {iconName: svgKey}} for DIRECT lookup (resolvedIcons["N"]["X"] -> svgKey -> svgs[svgKey])
+Do NOT render SVGs by hand or with placeholder shapes — the designer's original vector data is in this cache.
 
 You can provide either:
 1. fileId and layerId directly, or

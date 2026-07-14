@@ -5,9 +5,12 @@ import { formatField, formatOutput } from "../utils/format";
 
 const DESIGN_TEXTS_TOOL_NAME = "mcp__getDesignTexts";
 const DESIGN_TEXTS_TOOL_DESCRIPTION = `
-After fetching ALL sections via mcp__getDesignSections, call this tool to retrieve exact text content for large text nodes.
-In the section DSL, TEXT nodes with long content (>50 chars) have their "text" field replaced with a key like "T{sectionIndex}|{nodeId}".
-This tool returns the original text mapped by those keys. You MUST use the exact text from this response — never invent, paraphrase, or translate text.
+[DEPRECATED] You do NOT need this tool in the section → applyDesign workflow.
+Long text (>50 chars) appears in the DSL as \`T{sectionIndex}|{nodeId}\` placeholders. mcp__applyDesign replaces them with the real text server-side (from the same cache getDesignSections filled) — the text never passes through you. So in the normal workflow just leave the \`T{si}|{nodeId}\` placeholder in your code and call mcp__applyDesign at the end; do NOT call this tool.
+
+This tool remains ONLY for legacy/manual workflows. It will be removed in a future release.
+
+If you still call it (legacy path): after fetching ALL sections via mcp__getDesignSections, it returns the original text mapped by those keys. Use the exact text — never invent, paraphrase, or translate.
 
 You can provide either:
 1. fileId and layerId directly, or
