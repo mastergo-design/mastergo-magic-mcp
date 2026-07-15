@@ -44,7 +44,7 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 After ALL N sections have been fetched, understand how icons work:
 
 **PATH Nodes — ALL carry a \`svgKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgKey\` field (e.g. \`S3:喇叭-转曲\|31:5068\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+Every PATH node (icon) in the DSL has a \`svgKey\` field (e.g. \`S3:喇叭-转曲|31:5068\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
 1. When you encounter a PATH node, note its \`svgKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
