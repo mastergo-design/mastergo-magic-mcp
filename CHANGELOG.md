@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.4 (2026-07-15)
+
+## What's Changed
+* docs: update svgKey format examples to scoped S{si}:{name}|{nodeId} by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/110
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.3...v0.2.4
+
+
 ## v0.2.3 (2026-07-14)
 
 ## What's Changed
