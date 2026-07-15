@@ -44,7 +44,7 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 After ALL N sections have been fetched, understand how icons work:
 
 **PATH Nodes — ALL carry a \`svgKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID like \`#0\`, \`#1\`, \`#25\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+Every PATH node (icon) in the DSL has a \`svgKey\` field (e.g. \`S3:喇叭-转曲\|31:5068\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
 1. When you encounter a PATH node, note its \`svgKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
@@ -53,7 +53,7 @@ Every PATH node (icon) in the DSL has a \`svgKey\` field (a short sequential ID 
 
 **Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.
 
-**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`#0\`, \`#13\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
+**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`S0:通用/编辑|1:5454\`, \`S3:喇叭-转曲|31:5068\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
 
 **Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` server-side. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
 - Short text already inlined in the DSL (\`node.text\` / \`dsl.rowTexts\`) must be inserted VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
