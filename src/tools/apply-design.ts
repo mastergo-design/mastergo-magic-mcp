@@ -20,13 +20,13 @@ CRITICAL — outDir is MANDATORY: Always provide outDir so the finalized code is
 
 PLACEHOLDER FORMATS:
 - SVG icons: \`@@SVG:{svgShortKey}@@\` — svgShortKey comes from the PATH node's svgShortKey field in the section DSL.
-  Example: <span class="icon">@@SVG:#0@@</span>
+  Example: <span class="icon">@@SVG:S0#0@@</span>
 - Long text: \`T{sectionIndex}|{nodeId}\` — appears in TEXT nodes whose text was too long for inline DSL.
   Example: <p>T3|1:1234:5678</p>
 
 The server escapes the injected data according to the \`targetLang\` parameter:
-- \`html\` (default, also for Vue templates): place the placeholder in element content (\`<span>@@SVG:#0@@</span>\`, \`<p>T3|1:2</p>\`). SVG is inserted as-is; long text is HTML-escaped (& < >).
-- \`dart\` (Flutter): place the placeholder inside a single-quoted string literal (\`SvgPicture.string('@@SVG:#0@@')\`, \`Text('T3|1:2')\`). SVG/text are escaped for that string (\\ ' newline). Pass \`targetLang: "dart"\`.
+- \`html\` (default, also for Vue templates): place the placeholder in element content (\`<span>@@SVG:S0#0@@</span>\`, \`<p>T3|1:2</p>\`). SVG is inserted as-is; long text is HTML-escaped (& < >).
+- \`dart\` (Flutter): place the placeholder inside a single-quoted string literal (\`SvgPicture.string('@@SVG:S0#0@@')\`, \`Text('T3|1:2')\`). SVG/text are escaped for that string (\\ ' newline). Pass \`targetLang: "dart"\`.
 Pick targetLang to match the code you generated, and place placeholders in that language's standard position shown above.
 
 You can provide either:
