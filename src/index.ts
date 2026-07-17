@@ -44,7 +44,7 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 After ALL N sections have been fetched, understand how icons work:
 
 **PATH Nodes — ALL carry a \`svgShortKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgShortKey\` field (e.g. \`#0\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+Every PATH node (icon) in the DSL has a \`svgShortKey\` field (e.g. \`S0#0\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
 1. When you encounter a PATH node, note its \`svgShortKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
@@ -53,7 +53,7 @@ Every PATH node (icon) in the DSL has a \`svgShortKey\` field (e.g. \`#0\`) AND 
 
 **Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.
 
-**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgShortKey\` (e.g. \`#1\`, \`#0\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
+**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgShortKey\` (e.g. \`S0#1\`, \`S0#0\`). NEVER reuse a svgShortKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgShortKeys. Always use the exact \`svgShortKey\` from the PATH node where the icon appears.
 
 **Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` server-side. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
 - Short text already inlined in the DSL (\`node.text\` / \`dsl.rowTexts\`) must be inserted VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
@@ -238,7 +238,7 @@ If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputtin
 - If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
 - **CRITICAL — SVG icons for table actions**: table action columns (操作列) use PATH icon nodes with \`svgShortKey\` fields. Place \`@@SVG:{svgShortKey}@@\` for each action button. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text or hand-drawn shapes.
 - **CRITICAL — Persistent sidebars**: render all sidebar levels as static visible columns positioned via splitContainers coordinates. Do NOT hide or toggle sidebar levels.
-- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgShortKey\` (e.g. \`#5\`) in the DSL. A collapse/fold button icon is a DIFFERENT vector from a menu navigation arrow even if both look like arrows. You MUST use the exact \`svgShortKey\` from the PATH node where the icon appears — never use a svgShortKey from a different PATH node.
+- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgShortKey\` (e.g. \`S0#5\`) in the DSL. A collapse/fold button icon is a DIFFERENT vector from a menu navigation arrow even if both look like arrows. You MUST use the exact \`svgShortKey\` from the PATH node where the icon appears — never use a svgShortKey from a different PATH node.
 `;
 
 function main() {
