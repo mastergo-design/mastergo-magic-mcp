@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.5 (2026-07-19)
+
+## What's Changed
+* feat: svgKey → svgShortKey 同步更新，对齐 mcp-server 的短 key 方案 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/111
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.4...v0.2.5
+
+
 ## v0.2.4 (2026-07-15)
 
 ## What's Changed
