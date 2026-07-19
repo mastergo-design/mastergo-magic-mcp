@@ -2,7 +2,6 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import fs from "fs";
-import path from "path";
 
 /** 读取文件大小上限：10MB，防止 LLM 传入超大 HTML 文件阻塞事件循环。 */
 const C2D_MAX_FILE_SIZE = 10 * 1024 * 1024;
