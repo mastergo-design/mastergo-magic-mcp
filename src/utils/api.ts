@@ -193,8 +193,8 @@ const buildDslRules = (): string[] => {
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
     "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
     "",
-    "CRITICAL — SVG FROM PATH NODES: Every PATH node has a `svgKey` field. The SVG markup is NOT in the DSL. Place `@@SVG:{svgKey}@@` where each icon goes, then call `mcp__applyDesign` to inject real SVG. NEVER hand-write `<path d=\"...\">`.",
-    "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node must have a `@@SVG:{svgKey}@@` placeholder in your code. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect. After all placeholders are placed, call `mcp__applyDesign`.",
+    "CRITICAL — SVG FROM PATH NODES: Every PATH node has a `svgShortKey` field. The SVG markup is NOT in the DSL. Place `@@SVG:{svgShortKey}@@` where each icon goes, then call `mcp__applyDesign` to inject real SVG. NEVER hand-write `<path d=\"...\">`.",
+    "CRITICAL — RENDER EVERY PATH NODE ICON: do NOT skip any PATH node. Each PATH node must have a `@@SVG:{svgShortKey}@@` placeholder in your code. Table headers have sort/filter/search icons, sidebar menu items have PATH icons, pagination has prev/next/refresh/dropdown icons. A header cell with only plain text is a fidelity defect. After all placeholders are placed, call `mcp__applyDesign`.",
     "",
     "CRITICAL — OMIT _placeholder TEXT: any TEXT node with `_placeholder: true` is component-library boilerplate — the node name equals its text content (e.g. name=\"Hillstone Design\" and text=\"Hillstone Design\"). These appear in rowTexts[] with `_placeholder: true` — skip them. allTexts does NOT include placeholder strings. EXCEPTION: if _placeholder TEXT is the ONLY text in its section, it may be real content with an auto-generated name — evaluate carefully.",
     "CRITICAL — CLOSED-SET TEXT: the section LIST response carries `rootMetadata.allTexts` — the complete whitelist of real text strings in this design. Any visible string NOT in allTexts is either placeholder (omit) or hallucination (delete). allTexts EXCLUDES _placeholder boilerplate.",
@@ -316,7 +316,7 @@ const createHttpUtil = () => {
     },
 
     /**
-     * SVG 占位符后处理 — 把代码里的 @@SVG:{svgKey}@@ 占位符替换为真实高精度 SVG。
+     * SVG 占位符后处理 — 把代码里的 @@SVG:{svgShortKey}@@ 占位符替换为真实高精度 SVG。
      *
      * 解决根因：LLM 生成代码时会自主改写 path data 的精度（17.522848 → 17.523），
      * 纯 prompt 约束压不住。本方法让 path data 从不经过 LLM——LLM 只放短占位符，

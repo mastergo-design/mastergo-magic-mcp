@@ -43,17 +43,17 @@ CRITICAL: Fetch sections in BATCHES of 3-5 at a time. Do NOT request all section
 ### Step 2: Understand SVG Data Model (MANDATORY)
 After ALL N sections have been fetched, understand how icons work:
 
-**PATH Nodes — ALL carry a \`svgKey\` field:**
-Every PATH node (icon) in the DSL has a \`svgKey\` field (e.g. \`S3:喇叭-转曲|31:5068\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
+**PATH Nodes — ALL carry a \`svgShortKey\` field:**
+Every PATH node (icon) in the DSL has a \`svgShortKey\` field (e.g. \`S0#0\`) AND a \`svgName\` field (a semantic name like \`通用/刷新\`, \`通用/向左\`, \`搜索\`, \`齿轮\`). The actual SVG markup is NOT in the DSL — it lives in a server-side cache, retrieved at the end via \`mcp__applyDesign\`.
 
 **You do NOT copy SVG markup during code generation.** Instead:
-1. When you encounter a PATH node, note its \`svgKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
-2. In your generated code, place a placeholder \`@@SVG:{svgKey}@@\` where the icon goes. Use \`svgName\` to match each icon to its correct UI position — e.g. an icon with \`svgName: "通用/向左"\` belongs in a collapse/fold button, not a "add" button.
+1. When you encounter a PATH node, note its \`svgShortKey\` (for the placeholder) AND its \`svgName\` (to understand WHAT icon it is and WHERE it should go).
+2. In your generated code, place a placeholder \`@@SVG:{svgShortKey}@@\` where the icon goes. Use \`svgName\` to match each icon to its correct UI position — e.g. an icon with \`svgName: "通用/向左"\` belongs in a collapse/fold button, not a "add" button.
 3. After the complete code is generated, call \`mcp__applyDesign\` — it replaces all placeholders with real high-precision SVG.
 
 **Why this design**: copying SVG path data through LLM generation causes precision loss (17.522848 → 17.52), dropped subpaths, and shape corruption. The placeholder approach ensures path data never passes through generation — the server does deterministic string substitution.
 
-**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgKey\` (e.g. \`S0:通用/编辑|1:5454\`, \`S3:喇叭-转曲|31:5068\`). NEVER reuse a svgKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgKeys. Always use the exact \`svgKey\` from the PATH node where the icon appears.
+**CRITICAL — SVG UNIQUENESS:** Each PATH node has its OWN unique \`svgShortKey\` (e.g. \`S0#1\`, \`S0#0\`). NEVER reuse a svgShortKey from one PATH node for another — even if two icons look similar (e.g. two arrow icons), they are DIFFERENT vectors with DIFFERENT svgShortKeys. Always use the exact \`svgShortKey\` from the PATH node where the icon appears.
 
 **Text Data** — Long text (>50 chars) in the DSL appears as \`T{sectionIndex}|{nodeId}\` placeholders. These are automatically replaced by \`mcp__applyDesign\` server-side. Just leave the \`T{si}|{nodeId}\` placeholder in your code where the text should appear, and applyDesign will inject the real text.
 - Short text already inlined in the DSL (\`node.text\` / \`dsl.rowTexts\`) must be inserted VERBATIM — do NOT paraphrase, translate, summarize, or invent text.
@@ -67,15 +67,15 @@ After ALL N sections have been fetched:
 - CRITICAL — Overflow clipping: some design elements (brand logos, decorative shapes) are LARGER than their visible area — the design deliberately clips them via \`overflow: hidden\` on the parent. When a node's \`layoutStyle.width/height\` is smaller than its SVG content, you MUST preserve this clipping: set the parent container to the node's \`layoutStyle\` dimensions AND add \`overflow: hidden\`, then let the SVG render at its natural size inside. Do NOT shrink the SVG to fit the container (that distorts the logo) and do NOT enlarge the container (that breaks the layout).
 
 ### Step 4: SVG Placeholder Workflow (FINAL step — MANDATORY)
-Every icon in the design is a PATH node with a \`svgKey\`. The SVG markup is NOT in the DSL — you cannot copy it even if you wanted to. You MUST use placeholders.
+Every icon in the design is a PATH node with a \`svgShortKey\`. The SVG markup is NOT in the DSL — you cannot copy it even if you wanted to. You MUST use placeholders.
 
-**During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgKey}@@\`:
-- Read the \`svgKey\` from the PATH node in the section DSL.
-- Place \`@@SVG:\` + that exact svgKey + \`@@\` where the icon goes.
+**During code generation** — wherever an icon/SVG should appear, place a placeholder \`@@SVG:{svgShortKey}@@\`:
+- Read the \`svgShortKey\` from the PATH node in the section DSL.
+- Place \`@@SVG:\` + that exact svgShortKey + \`@@\` where the icon goes.
 - **CRITICAL — Icon container sizing**: the placeholder MUST be placed inside a container whose width and height match the PATH node's \`layoutStyle.width\` and \`layoutStyle.height\`. The injected SVG uses \`width="100%" height="100%"\`, so it fills its direct parent. If you place it directly inside a large button container (e.g. 32×32px) instead of the icon's own size (e.g. 16×16px), the icon will render too large. Always wrap the placeholder in an element sized to the PATH node's dimensions:
-  - **HTML/Vue**: \`<span style="width:{layoutStyle.width}px;height:{layoutStyle.height}px;display:flex;align-items:center;justify-content:center">@@SVG:{svgKey}@@</span>\`
-  - **JSX/React**: \`<span style={{width:'{w}px',height:'{h}px'}}>{/*@@SVG:{svgKey}@@*/}</span>\`
-  - **Flutter**: \`SizedBox(width:{w},height:{h},child: SvgPicture.string('@@SVG:{svgKey}@@'))\`
+  - **HTML/Vue**: \`<span style="width:{layoutStyle.width}px;height:{layoutStyle.height}px;display:flex;align-items:center;justify-content:center">@@SVG:{svgShortKey}@@</span>\`
+  - **JSX/React**: \`<span style={{width:'{w}px',height:'{h}px'}}>{/*@@SVG:{svgShortKey}@@*/}</span>\`
+  - **Flutter**: \`SizedBox(width:{w},height:{h},child: SvgPicture.string('@@SVG:{svgShortKey}@@'))\`
 - Use \`svgName\` to match each icon to its correct UI position — e.g. an icon with \`svgName: "通用/向左"\` belongs in a collapse/fold button, not a "add" button.
 
 **After generating the COMPLETE code** — call \`mcp__applyDesign\` with the full code string AND an \`outDir\` parameter. The tool substitutes every \`@@SVG:...@@\` with the real high-precision \`<svg>\` markup from the cache (character-for-character exact, no rounding) AND writes the final file directly to disk. **You MUST provide \`outDir\`** — this writes the patched code to a file WITHOUT it passing back through your generation, preventing any re-processing or precision loss. After the tool writes the file, you are DONE — do NOT output, copy, or edit the code further.
@@ -130,7 +130,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
-- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data).
+- NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgShortKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data).
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:
@@ -163,7 +163,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - If a section has empty or missing text data, render it as an empty placeholder — do NOT fabricate text.
 - NEVER generate placeholder values, generic tags, fabricated amounts, or invented statistics.
 - Every piece of text, every number, every label in your output MUST come directly from the DSL data.
-- NEVER fabricate SVG path data for icons or vector shapes — use \`@@SVG:{svgKey}@@\` placeholders for ALL icons, then call \`mcp__applyDesign\`.
+- NEVER fabricate SVG path data for icons or vector shapes — use \`@@SVG:{svgShortKey}@@\` placeholders for ALL icons, then call \`mcp__applyDesign\`.
 - NEVER fabricate background colors, gradients, or decorations that are not present in the DSL data.
 
 ### Empty Design Tolerance Rules (CLOSED-SET TEXT):
@@ -176,14 +176,14 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - When in doubt about whether a text string is real: it is NOT real unless you can cite the sectionIndex it came from.
 
 ### SVG Icon Anti-Simplification Rules:
-- PATH nodes carry a \`svgKey\` — the SVG markup is injected by \`mcp__applyDesign\` at the end. You MUST use \`@@SVG:{svgKey}@@\` placeholders — never hand-write \`<path d="...">\`.
-- **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs). NEVER reuse a \`svgKey\` from one section in another. Always use the exact \`svgKey\` from the PATH node in its own section.
+- PATH nodes carry a \`svgKey\` — the SVG markup is injected by \`mcp__applyDesign\` at the end. You MUST use \`@@SVG:{svgShortKey}@@\` placeholders — never hand-write \`<path d="...">\`.
+- **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs). NEVER reuse a \`svgShortKey\` from one section in another. Always use the exact \`svgKey\` from the PATH node in its own section.
 - **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
 - **VERIFY after copying each SVG**: count the number of \`M\` characters in the source path \`d\` attribute. Your copy MUST have exactly the same count. Fewer \`M\` → you corrupted the icon → redo.
 - **SHAPE CHECK**: if the source uses \`<path>\`, your output MUST use \`<path>\`. NOT \`<rect>\`, NOT \`<circle>\`, NOT \`<ellipse>\`. Shape type changes ARE visual changes.
 - The only acceptable SVG operation is: copy the complete \`<svg>...</svg>\` block from the DSL data and paste it into your HTML. Nothing else.
 - **Common failure pattern**: you saw a complex path and thought "this looks roughly like 4 rectangles" → you drew 4 \`<rect>\`s → the result is visually WRONG. The designer chose a vector path for a reason. Trust the data.
-- **COMPOSITE ICONS (logos, multi-subpath marks):** when a logo/brand mark is split into multiple sub-paths and stripped to svgCache, the SVG that \`mcp__applyDesign\` injects for the \`@@SVG:{svgKey}@@\` placeholder is the complete \`<svg>...</svg>\`. Keep it whole. The node's \`relativeX\`/\`relativeY\` are canvas placement coordinates — they are NOT to be reused as \`transform="translate(x,y) scale(...)"\` inside a hand-assembled \`<svg>\`. Doing so warps the glyph out of its viewBox.
+- **COMPOSITE ICONS (logos, multi-subpath marks):** when a logo/brand mark is split into multiple sub-paths and stripped to svgCache, the SVG that \`mcp__applyDesign\` injects for the \`@@SVG:{svgShortKey}@@\` placeholder is the complete \`<svg>...</svg>\`. Keep it whole. The node's \`relativeX\`/\`relativeY\` are canvas placement coordinates — they are NOT to be reused as \`transform="translate(x,y) scale(...)"\` inside a hand-assembled \`<svg>\`. Doing so warps the glyph out of its viewBox.
 
 ### INSTANCE Variant State Rules:
 - INSTANCE nodes may carry a **\`_variantProps\`** object with semantic state labels extracted from component variant properties (e.g. \`{"状态": "选中", "分类": "幽灵按钮", "尺寸": "24"}\`).
@@ -215,19 +215,19 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 ### Critical Rendering Checklist (MANDATORY — verify each item before finalizing):
 Before declaring the HTML complete, enumerate every structural element below and confirm it is rendered. Missing ANY item is a fidelity defect.
 
-1. **Sidebar menu item icons**: each sidebar menu section carries a PATH icon with a \`svgKey\`. Did you place \`@@SVG:{svgKey}@@\` for each? If you used a \`<rect>\` or \`<circle>\` or hand-wrote \`<path d="...">\`, DELETE it — the DSL does NOT contain path data. Use the placeholder.
+1. **Sidebar menu item icons**: each sidebar menu section carries a PATH icon with a \`svgKey\`. Did you place \`@@SVG:{svgShortKey}@@\` for each? If you used a \`<rect>\` or \`<circle>\` or hand-wrote \`<path d="...">\`, DELETE it — the DSL does NOT contain path data. Use the placeholder.
 
-2. **Table header column icons** (sort/filter/search): each table header cell may carry sort-arrow, filter-funnel, and search-lens PATH icons. Did you place \`@@SVG:{svgKey}@@\` for each? If a header cell has no icons, you may have skipped them.
+2. **Table header column icons** (sort/filter/search): each table header cell may carry sort-arrow, filter-funnel, and search-lens PATH icons. Did you place \`@@SVG:{svgShortKey}@@\` for each? If a header cell has no icons, you may have skipped them.
 
-3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE PATH icons. Did you place \`@@SVG:{svgKey}@@\` for EACH one?
+3. **Pagination icons** (refresh, prev/next arrows, dropdown): the pagination section has MULTIPLE PATH icons. Did you place \`@@SVG:{svgShortKey}@@\` for EACH one?
 
 4. **Brand/logo area text**: the brand section has a TEXT node with the actual brand name (present in \`allTexts\`). Did you render it as visible text?
 
-5. **Every PATH node has a placeholder**: walk through every section's DSL — every PATH node must have a corresponding \`@@SVG:{svgKey}@@\` in your code. Count: the number of \`@@SVG:\` placeholders in your code MUST equal the total number of PATH nodes across all sections.
+5. **Every PATH node has a placeholder**: walk through every section's DSL — every PATH node must have a corresponding \`@@SVG:{svgShortKey}@@\` in your code. Count: the number of \`@@SVG:\` placeholders in your code MUST equal the total number of PATH nodes across all sections.
 
 6. **Text provenance**: every text string in your output MUST be traceable to \`rootMetadata.allTexts\` or a section's \`dsl.rowTexts\`/\`node.text\`. If you cannot cite the exact source, the text is a hallucination — delete it.
 
-7. **SVG placeholder replacement (HARD GATE)**: your HTML is INVALID and must NOT be output until you have called \`mcp__applyDesign\` with the complete code and used the returned \`patchedCode\`. This is not optional — it is the FINAL mandatory step. If you wrote ANY \`<path d="...">\` by hand instead of using \`@@SVG:{svgKey}@@\` placeholders, the \`mcp__applyDesign\` tool will detect it as a FABRICATED path and return an error. You MUST then replace those hand-written paths with placeholders and call \`mcp__applyDesign\` again. The ONLY acceptable output is the \`patchedCode\` returned by \`mcp__applyDesign\` — never your pre-replacement code.
+7. **SVG placeholder replacement (HARD GATE)**: your HTML is INVALID and must NOT be output until you have called \`mcp__applyDesign\` with the complete code and used the returned \`patchedCode\`. This is not optional — it is the FINAL mandatory step. If you wrote ANY \`<path d="...">\` by hand instead of using \`@@SVG:{svgShortKey}@@\` placeholders, the \`mcp__applyDesign\` tool will detect it as a FABRICATED path and return an error. You MUST then replace those hand-written paths with placeholders and call \`mcp__applyDesign\` again. The ONLY acceptable output is the \`patchedCode\` returned by \`mcp__applyDesign\` — never your pre-replacement code.
 
 If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputting.
 
@@ -236,9 +236,9 @@ If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputtin
 - "共 X 项" is the pagination widget showing "total X items". The actual data rows come from the table body sections (preceding the pagination section).
 - Do NOT fabricate data rows based on pagination "total" values. Render ONLY the actual data rows present in the DSL.
 - If the DSL contains 1 data row, output exactly 1 table row. Do NOT multiply rows to match a pagination label.
-- **CRITICAL — SVG icons for table actions**: table action columns (操作列) use PATH icon nodes with \`svgKey\` fields. Place \`@@SVG:{svgKey}@@\` for each action button. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text or hand-drawn shapes.
+- **CRITICAL — SVG icons for table actions**: table action columns (操作列) use PATH icon nodes with \`svgShortKey\` fields. Place \`@@SVG:{svgShortKey}@@\` for each action button. NEVER render action buttons as \`<p>编辑</p>\` or \`<p>删除</p>\` plain text or hand-drawn shapes.
 - **CRITICAL — Persistent sidebars**: render all sidebar levels as static visible columns positioned via splitContainers coordinates. Do NOT hide or toggle sidebar levels.
-- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgKey\` (e.g. \`#5\`) in the DSL. A collapse/fold button icon is a DIFFERENT vector from a menu navigation arrow even if both look like arrows. You MUST use the exact \`svgKey\` from the PATH node where the icon appears — never use a svgKey from a different PATH node.
+- **CRITICAL — NEVER reuse an SVG from one section in another**: each icon position has its OWN \`svgShortKey\` (e.g. \`S0#5\`) in the DSL. A collapse/fold button icon is a DIFFERENT vector from a menu navigation arrow even if both look like arrows. You MUST use the exact \`svgShortKey\` from the PATH node where the icon appears — never use a svgShortKey from a different PATH node.
 `;
 
 function main() {

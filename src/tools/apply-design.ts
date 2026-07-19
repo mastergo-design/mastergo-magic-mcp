@@ -11,7 +11,7 @@ const APPLY_DESIGN_TOOL_DESCRIPTION = `
 Finalize generated design code: replace ALL placeholders (SVG icons + long text) with real high-precision data from the design cache, then write the final file directly to disk.
 
 WHAT it does:
-1. Replaces every \`@@SVG:{svgKey}@@\` placeholder with the real high-precision \`<svg>\` markup from the SVG cache (character-for-character exact, no rounding).
+1. Replaces every \`@@SVG:{svgShortKey}@@\` placeholder with the real high-precision \`<svg>\` markup from the SVG cache (character-for-character exact, no rounding).
 2. Replaces every \`T{sectionIndex}|{nodeId}\` text placeholder with the real long text from the text cache.
 3. Detects fabricated (hand-written) \`<path d="...">\` that were NOT injected via placeholders — reports them as errors.
 4. Writes the finalized code directly to \`{outDir}/{outputFileName}\` on disk.
@@ -19,14 +19,14 @@ WHAT it does:
 CRITICAL — outDir is MANDATORY: Always provide outDir so the finalized code is written directly to disk. This ensures the server-injected data reaches the file WITHOUT any LLM re-processing. Do NOT copy the code back into your response and re-output it — that causes precision loss. The file written by this tool IS the final deliverable.
 
 PLACEHOLDER FORMATS:
-- SVG icons: \`@@SVG:{svgKey}@@\` — svgKey comes from the PATH node's svgKey field in the section DSL.
-  Example: <span class="icon">@@SVG:#0@@</span>
+- SVG icons: \`@@SVG:{svgShortKey}@@\` — svgShortKey comes from the PATH node's svgShortKey field in the section DSL.
+  Example: <span class="icon">@@SVG:S0#0@@</span>
 - Long text: \`T{sectionIndex}|{nodeId}\` — appears in TEXT nodes whose text was too long for inline DSL.
   Example: <p>T3|1:1234:5678</p>
 
 The server escapes the injected data according to the \`targetLang\` parameter:
-- \`html\` (default, also for Vue templates): place the placeholder in element content (\`<span>@@SVG:#0@@</span>\`, \`<p>T3|1:2</p>\`). SVG is inserted as-is; long text is HTML-escaped (& < >).
-- \`dart\` (Flutter): place the placeholder inside a single-quoted string literal (\`SvgPicture.string('@@SVG:#0@@')\`, \`Text('T3|1:2')\`). SVG/text are escaped for that string (\\ ' newline). Pass \`targetLang: "dart"\`.
+- \`html\` (default, also for Vue templates): place the placeholder in element content (\`<span>@@SVG:S0#0@@</span>\`, \`<p>T3|1:2</p>\`). SVG is inserted as-is; long text is HTML-escaped (& < >).
+- \`dart\` (Flutter): place the placeholder inside a single-quoted string literal (\`SvgPicture.string('@@SVG:S0#0@@')\`, \`Text('T3|1:2')\`). SVG/text are escaped for that string (\\ ' newline). Pass \`targetLang: "dart"\`.
 Pick targetLang to match the code you generated, and place placeholders in that language's standard position shown above.
 
 You can provide either:
@@ -70,7 +70,7 @@ export class ApplyDesignTool extends BaseTool {
     code: z
       .string()
       .describe(
-        "The COMPLETE generated code containing @@SVG:{svgKey}@@ and/or T{sectionIndex}|{nodeId} placeholders."
+        "The COMPLETE generated code containing @@SVG:{svgShortKey}@@ and/or T{sectionIndex}|{nodeId} placeholders."
       ),
     outDir: z
       .string()
@@ -183,12 +183,12 @@ export class ApplyDesignTool extends BaseTool {
         const unresolvedCount =
           (report.svgUnresolved?.length || 0) + (report.textUnresolved?.length || 0);
         if (unresolvedCount > 0) {
-          response.warning = `${unresolvedCount} placeholder(s) unresolved — check svgKey/text keys.`;
+          response.warning = `${unresolvedCount} placeholder(s) unresolved — check svgShortKey/text keys.`;
         }
       }
       const fabricated = report.fabricatedPaths ?? [];
       if (!response.error && fabricated.length > 0) {
-        response.error = `${fabricated.length} fabricated path(s) detected — replace them with @@SVG:{svgKey}@@ placeholders and re-run.`;
+        response.error = `${fabricated.length} fabricated path(s) detected — replace them with @@SVG:{svgShortKey}@@ placeholders and re-run.`;
       }
 
       return {
