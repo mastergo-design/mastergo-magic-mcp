@@ -264,16 +264,39 @@ async function withDslCache<T>(
   return promise;
 }
 
-/** 清理 DSL 响应缓存（用于强制刷新场景，如 applyDesign 成功后清理 section 缓存）。 */
+/**
+ * 判断缓存 key 是否匹配给定的 fileId（和可选的 layerId）。
+ *
+ * 纯函数（无副作用），供 invalidateDslResponseCache 与单元测试共用。
+ *
+ * key 格式约定：`method:fileId:layerId[:extra]`（见 dslCacheKey）。
+ * 按段精确比对，避免 `String.includes` 子串误删
+ * （例如 fileId=123 会误命中 key 含 1234 的条目）。
+ */
+export function matchCacheKey(key: string, fileId: string, layerId?: string): boolean {
+  // 段切分：[method, fileId, layerId, extra?]
+  const segs = key.split(':');
+  if (segs.length < 3) return false;
+  const [, segFileId, segLayerId] = segs;
+  if (segFileId !== fileId) return false;
+  if (layerId !== undefined && segLayerId !== layerId) return false;
+  return true;
+}
+
+/**
+ * 清理 DSL 响应缓存（用于强制刷新场景，如 applyDesign 成功后清理 section 缓存）。
+ *
+ * key 格式约定：`method:fileId:layerId[:extra]`（见 dslCacheKey）。
+ * 委托 matchCacheKey 按段精确比对 fileId（和可选的 layerId），避免 `String.includes`
+ * 子串误删（例如 fileId=123 会误命中 key 含 1234 的条目）。
+ */
 export function invalidateDslResponseCache(fileId?: string, layerId?: string): void {
   if (!fileId) {
     dslResponseCache.clear();
     return;
   }
-  const prefix = layerId ? `${fileId}:${layerId}` : `:${fileId}:`;
-  for (const key of dslResponseCache.keys()) {
-    // key 格式：method:fileId:layerId:extra，匹配 fileId 或 fileId:layerId
-    if (key.includes(`:${fileId}:${layerId ?? ''}`) || key.includes(prefix)) {
+  for (const key of Array.from(dslResponseCache.keys())) {
+    if (matchCacheKey(key, fileId, layerId)) {
       dslResponseCache.delete(key);
     }
   }

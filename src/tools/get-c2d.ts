@@ -93,8 +93,13 @@ export class GetC2dTool extends BaseTool {
           throw new Error(`文件过大（${(stat.size / 1024 / 1024).toFixed(1)}MB > ${C2D_MAX_FILE_SIZE / 1024 / 1024}MB 上限）: ${filePath}`);
         }
         data = await fs.promises.readFile(filePath, "utf-8");
-      } catch (readError: any) {
-        throw new Error(`无法读取文件 ${filePath}: ${readError.message || readError}`);
+      } catch (readError: unknown) {
+        // readError 形态可能是 Error（含 message）、NodeJS.ErrnoException（含 code/path）或其它；
+        // 用 unknown 分支处理，避免 any 丢失类型安全。
+        const msg = readError instanceof Error
+          ? readError.message
+          : String(readError);
+        throw new Error(`无法读取文件 ${filePath}: ${msg}`);
       }
 
       const result = await httpUtilInstance.postC2d(
