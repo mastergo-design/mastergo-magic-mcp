@@ -2,6 +2,10 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import fs from "fs";
+import path from "path";
+
+/** 读取文件大小上限：10MB，防止 LLM 传入超大 HTML 文件阻塞事件循环。 */
+const C2D_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const C2D_TOOL_NAME = "mcp__C2d";
 const C2D_TOOL_DESCRIPTION = `
@@ -78,12 +82,19 @@ export class GetC2dTool extends BaseTool {
         throw new Error("Could not determine fileId");
       }
 
-      // 读取文件内容作为 data 传给接口
+      // 读取文件内容作为 data 传给接口（异步 + 大小上限检查，防止阻塞事件循环）
       let data: string;
       try {
-        data = fs.readFileSync(filePath, "utf-8");
-      } catch (readError) {
-        throw new Error(`无法读取文件 ${filePath}: ${readError}`);
+        const stat = await fs.promises.stat(filePath);
+        if (!stat.isFile()) {
+          throw new Error(`路径不是文件: ${filePath}`);
+        }
+        if (stat.size > C2D_MAX_FILE_SIZE) {
+          throw new Error(`文件过大（${(stat.size / 1024 / 1024).toFixed(1)}MB > ${C2D_MAX_FILE_SIZE / 1024 / 1024}MB 上限）: ${filePath}`);
+        }
+        data = await fs.promises.readFile(filePath, "utf-8");
+      } catch (readError: any) {
+        throw new Error(`无法读取文件 ${filePath}: ${readError.message || readError}`);
       }
 
       const result = await httpUtilInstance.postC2d(

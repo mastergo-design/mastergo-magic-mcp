@@ -13,8 +13,13 @@ const proxyUrl =
 
 if (proxyUrl) {
   try {
+    // keepAlive：stdio 长驻进程对同 baseUrl 高频调用，复用 TCP+TLS 连接降低 P99 延迟。
     const proxyAgent = new HttpsProxyAgent(proxyUrl, {
       rejectUnauthorized: false,
+      keepAlive: true,
+      keepAliveMsecs: 30_000,
+      maxSockets: 50,
+      maxFreeSockets: 8,
     });
     axios.defaults.httpAgent = proxyAgent;
     axios.defaults.httpsAgent = proxyAgent;
@@ -26,6 +31,10 @@ if (proxyUrl) {
 } else {
   axios.defaults.httpsAgent = new https.Agent({
     rejectUnauthorized: false,
+    keepAlive: true,
+    keepAliveMsecs: 30_000,
+    maxSockets: 50,
+    maxFreeSockets: 8,
   });
 }
 
@@ -172,6 +181,104 @@ function cacheShortLink(key: string, value: { fileId: string; layerId: string; s
   shortLinkCache.set(key, value);
 }
 
+/**
+ * DSL 响应缓存 + in-flight 请求去重。
+ *
+ * 场景：LLM 在 section 工作流中可能重试同一 sectionIndex，或并发批量请求时重复打 HTTP。
+ * 缓存命中直接返回，in-flight 请求复用同一 Promise，避免重复网络+Server 计算。
+ *
+ * 设计：
+ * - LRU + TTL：缓存上限 64 条（stdio 长驻进程一次会话涉及的设计稿/section 数有限），
+ *   TTL 5 分钟（与 Server 端 dslCache TTL 对齐，过期后 Server 可能已更新）。
+ * - in-flight Map：同 key 并发请求复用同一 Promise，首个完成后所有等待者共享结果。
+ * - 失败不缓存：异常时删除 in-flight，下次请求重试。
+ */
+const DSL_RESPONSE_CACHE_MAX = 64;
+const DSL_RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface DslCacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+const dslResponseCache = new Map<string, DslCacheEntry<any>>();
+const inflightRequests = new Map<string, Promise<any>>();
+
+function dslCacheKey(method: string, fileId: string, layerId: string, extra?: string): string {
+  return `${method}:${fileId}:${layerId}${extra ? `:${extra}` : ''}`;
+}
+
+/** LRU 读取：命中时 delete+set 移到末尾；过期返回 undefined。 */
+function getDslCache<T>(key: string): T | undefined {
+  const entry = dslResponseCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    dslResponseCache.delete(key);
+    return undefined;
+  }
+  // LRU promote
+  dslResponseCache.delete(key);
+  dslResponseCache.set(key, entry);
+  return entry.value as T;
+}
+
+/** LRU 写入：超容量淘汰最久未访问的 key。 */
+function setDslCache<T>(key: string, value: T): void {
+  if (dslResponseCache.has(key)) {
+    dslResponseCache.delete(key);
+  } else if (dslResponseCache.size >= DSL_RESPONSE_CACHE_MAX) {
+    const oldest = dslResponseCache.keys().next().value;
+    if (oldest !== undefined) dslResponseCache.delete(oldest);
+  }
+  dslResponseCache.set(key, { value, expiresAt: Date.now() + DSL_RESPONSE_CACHE_TTL_MS });
+}
+
+/**
+ * 带缓存 + in-flight 去重的请求执行器。
+ * - 缓存命中：直接返回缓存值
+ * - in-flight 命中：复用进行中的 Promise
+ * - 否则：执行 fetcher，成功后写入缓存，失败时清理 in-flight
+ */
+async function withDslCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  // 1. 缓存命中
+  const cached = getDslCache<T>(key);
+  if (cached !== undefined) return cached;
+
+  // 2. in-flight 去重：同 key 并发请求复用同一 Promise
+  const inflight = inflightRequests.get(key);
+  if (inflight) return inflight as Promise<T>;
+
+  // 3. 执行请求
+  const promise = fetcher()
+    .then((result) => {
+      setDslCache(key, result);
+      return result;
+    })
+    .finally(() => {
+      inflightRequests.delete(key);
+    });
+
+  inflightRequests.set(key, promise);
+  return promise;
+}
+
+/** 清理 DSL 响应缓存（用于强制刷新场景，如 applyDesign 成功后清理 section 缓存）。 */
+export function invalidateDslResponseCache(fileId?: string, layerId?: string): void {
+  if (!fileId) {
+    dslResponseCache.clear();
+    return;
+  }
+  const prefix = layerId ? `${fileId}:${layerId}` : `:${fileId}:`;
+  for (const key of dslResponseCache.keys()) {
+    // key 格式：method:fileId:layerId:extra，匹配 fileId 或 fileId:layerId
+    if (key.includes(`:${fileId}:${layerId ?? ''}`) || key.includes(prefix)) {
+      dslResponseCache.delete(key);
+    }
+  }
+}
+
 const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
 
@@ -217,12 +324,15 @@ const buildDslRules = (): string[] => {
 const createHttpUtil = () => {
   return {
     async getMeta(fileId: string, layerId: string, sourceLayerId?: string): Promise<string> {
-      const response = await axios.get(`${getBaseUrl()}/mcp/meta`, {
-        timeout: 30000,
-        params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
-        headers: getCommonHeader(),
+      const key = dslCacheKey('meta', fileId, layerId, sourceLayerId);
+      return withDslCache(key, async () => {
+        const response = await axios.get(`${getBaseUrl()}/mcp/meta`, {
+          timeout: 30000,
+          params: { fileId, layerId, ...(sourceLayerId ? { sourceLayerId } : {}) },
+          headers: getCommonHeader(),
+        });
+        return response.data;
       });
-      return response.data;
     },
 
     async getDsl(
@@ -230,20 +340,23 @@ const createHttpUtil = () => {
       layerId: string,
       options?: { sourceLayerId?: string }
     ): Promise<DslResponse> {
-      const params: Record<string, any> = { fileId, layerId };
-      if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
+      const key = dslCacheKey('dsl', fileId, layerId, options?.sourceLayerId);
+      return withDslCache(key, async () => {
+        const params: Record<string, any> = { fileId, layerId };
+        if (options?.sourceLayerId !== undefined) params.sourceLayerId = options.sourceLayerId;
 
-      const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
-        timeout: 30000,
-        params,
-        headers: getCommonHeader(),
+        const response = await axios.get(`${getBaseUrl()}/mcp/dsl`, {
+          timeout: 30000,
+          params,
+          headers: getCommonHeader(),
+        });
+
+        return {
+          dsl: response.data,
+          componentDocumentLinks: extractComponentDocumentLinks(response.data),
+          rules: parseNoRule() ? [] : buildDslRules(),
+        };
       });
-
-      return {
-        dsl: response.data,
-        componentDocumentLinks: extractComponentDocumentLinks(response.data),
-        rules: parseNoRule() ? [] : buildDslRules(),
-      };
     },
 
     async extractSvg(
@@ -267,25 +380,28 @@ const createHttpUtil = () => {
     },
 
     async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<DesignSectionsResponse> {
-      const params: Record<string, any> = { fileId, layerId };
-      if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+      const key = dslCacheKey('sections', fileId, layerId, sectionIndex !== undefined ? String(sectionIndex) : 'list');
+      return withDslCache(key, async () => {
+        const params: Record<string, any> = { fileId, layerId };
+        if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
 
-      try {
-        const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
-          timeout: 120000,
-          params,
-          headers: getCommonHeader(),
-        });
-        return response.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error(
-            `design-sections API not available on this server. ` +
-            `Please update frontend-mcp-server to the latest version.`
-          );
+        try {
+          const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
+            timeout: 120000,
+            params,
+            headers: getCommonHeader(),
+          });
+          return response.data;
+        } catch (err: any) {
+          if (err.response?.status === 404) {
+            throw new Error(
+              `design-sections API not available on this server. ` +
+              `Please update frontend-mcp-server to the latest version.`
+            );
+          }
+          throw err;
         }
-        throw err;
-      }
+      });
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {

@@ -45,48 +45,53 @@ export class GetComponentWorkflowTool extends BaseTool {
 
   async execute({ rootPath, fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
     const baseDir = `${rootPath}/.mastergo/`;
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir, { recursive: true });
-    }
+    // 异步确保目录存在（不阻塞事件循环）
+    await fs.promises.mkdir(baseDir, { recursive: true });
     const workflowFilePath = `${baseDir}/component-workflow.md`;
     const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
     const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
-    const walkLayer = (layer: any) => {
+
+    // walkLayer 改为异步：递归写 SVG 文件用 fs.promises，避免同步 IO 阻塞事件循环。
+    // 节点多时逐节点写文件会串行阻塞，改异步后可并发（通过 Promise.all 收集）。
+    const walkLayer = async (layer: any): Promise<void> => {
       if (layer.path && layer.path.length > 0) {
         layer.imageUrls = [];
         const id = layer.id.replaceAll("/", "&").replaceAll(":", "_");
         const imageDir = `${baseDir}/images`;
-        if (!fs.existsSync(imageDir)) {
-          fs.mkdirSync(imageDir, { recursive: true });
-        }
-        (layer.path ?? []).forEach((svgPath: string, index: number) => {
+        await fs.promises.mkdir(imageDir, { recursive: true });
+        // 并发写所有 SVG 文件
+        const writePromises: Promise<void>[] = [];
+        for (let index = 0; index < layer.path.length; index++) {
+          const svgPath = layer.path[index];
           const filePath = `${imageDir}/${id}-${index}.svg`;
-          if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(
-              filePath,
-              `<svg width="100%" height="100%" viewBox="0 0 16 16"xmlns="http://www.w3.org/2000/svg">
+          const svgContent = `<svg width="100%" height="100%" viewBox="0 0 16 16"xmlns="http://www.w3.org/2000/svg">
   <path d="${svgPath}" fill="currentColor"/>
-</svg>`
-            );
-          }
+</svg>`;
+          // 跳过已存在文件（与原 existsSync 短路语义一致）
+          writePromises.push(
+            fs.promises.writeFile(filePath, svgContent, { flag: 'wx' }).catch(() => {
+              // flag 'wx' 文件已存在时失败，静默跳过（与原 existsSync + writeFileSync 行为一致）
+            })
+          );
           layer.imageUrls.push(filePath);
-        });
+        }
+        await Promise.all(writePromises);
         delete layer.path;
       }
       if (layer.children) {
-        layer.children.forEach((child: any) => {
-          walkLayer(child);
-        });
+        // 并发处理所有子节点
+        await Promise.all(layer.children.map((child: any) => walkLayer(child)));
       }
     };
-    walkLayer(jsonData[0]);
+    await walkLayer(jsonData[0]);
 
-    //文件夹可能也不存在递归创建
-    if (!fs.existsSync(workflowFilePath)) {
-      fs.writeFileSync(workflowFilePath, componentWorkflow);
+    // 异步写文件（跳过已存在的 workflow 文件）
+    try {
+      await fs.promises.writeFile(workflowFilePath, componentWorkflow, { flag: 'wx' });
+    } catch {
+      // 文件已存在则跳过（flag 'wx' 失败 = 已存在）
     }
-
-    fs.writeFileSync(componentJsonDir, JSON.stringify(jsonData[0]));
+    await fs.promises.writeFile(componentJsonDir, JSON.stringify(jsonData[0]));
 
     try {
       return {
