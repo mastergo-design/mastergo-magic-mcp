@@ -3,6 +3,9 @@ import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import fs from "fs";
 
+/** 读取文件大小上限：10MB，防止 LLM 传入超大 HTML 文件阻塞事件循环。 */
+const C2D_MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const C2D_TOOL_NAME = "mcp__C2d";
 const C2D_TOOL_DESCRIPTION = `
 使用此工具将代码文件发送到 MasterGo MCP 服务进行 C2D（代码转设计）处理，将用户代码同步到设计稿。
@@ -78,12 +81,24 @@ export class GetC2dTool extends BaseTool {
         throw new Error("Could not determine fileId");
       }
 
-      // 读取文件内容作为 data 传给接口
+      // 读取文件内容作为 data 传给接口（异步 + 大小上限检查，防止阻塞事件循环）
       let data: string;
       try {
-        data = fs.readFileSync(filePath, "utf-8");
-      } catch (readError) {
-        throw new Error(`无法读取文件 ${filePath}: ${readError}`);
+        const stat = await fs.promises.stat(filePath);
+        if (!stat.isFile()) {
+          throw new Error(`路径不是文件: ${filePath}`);
+        }
+        if (stat.size > C2D_MAX_FILE_SIZE) {
+          throw new Error(`文件过大（${(stat.size / 1024 / 1024).toFixed(1)}MB > ${C2D_MAX_FILE_SIZE / 1024 / 1024}MB 上限）: ${filePath}`);
+        }
+        data = await fs.promises.readFile(filePath, "utf-8");
+      } catch (readError: unknown) {
+        // readError 形态可能是 Error（含 message）、NodeJS.ErrnoException（含 code/path）或其它；
+        // 用 unknown 分支处理，避免 any 丢失类型安全。
+        const msg = readError instanceof Error
+          ? readError.message
+          : String(readError);
+        throw new Error(`无法读取文件 ${filePath}: ${msg}`);
       }
 
       const result = await httpUtilInstance.postC2d(

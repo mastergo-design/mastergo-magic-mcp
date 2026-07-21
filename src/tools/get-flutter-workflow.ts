@@ -72,8 +72,17 @@ const MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg", "gif", "bmp"];
 
-/** 宽松 TLS agent — 兼容自签证书/私有化部署，与 api.ts 保持一致 */
-const relaxedAgent = new https.Agent({ rejectUnauthorized: false });
+/**
+ * 宽松 TLS agent — 兼容自签证书/私有化部署，与 api.ts 保持一致。
+ * 启用 keepAlive：stdio 长驻进程批量下载资源时复用 TCP+TLS 连接，降低握手开销。
+ */
+const relaxedAgent = new https.Agent({
+  rejectUnauthorized: false,
+  keepAlive: true,
+  keepAliveMsecs: 30_000,
+  maxSockets: 50,
+  maxFreeSockets: 8,
+});
 
 // ---------------------------------------------------------------------------
 // String / path helpers

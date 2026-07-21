@@ -308,7 +308,7 @@ export class GetD2cTool extends BaseTool {
       const payloadExtracted = extractPayload(d2c);
       const finalContentId = payloadExtracted.contentId || contentId;
 
-      await saveCodeAndResources({
+      const saveResult = await saveCodeAndResources({
         outDir,
         contentId: finalContentId,
         code: payloadExtracted.code,
@@ -317,11 +317,29 @@ export class GetD2cTool extends BaseTool {
         image: payloadExtracted.image,
       });
 
+      // 资源已落盘，仅回传摘要给 LLM，避免把大体积 code/svg/image 数据塞进上下文。
+      // 完整 d2c 响应体积可达数百 KB（含 base64 图片、svg 字符串、html 代码），
+      // 全量回传会导致 LLM 上下文爆炸。
+      const summary = {
+        contentId: finalContentId,
+        documentId,
+        frameType: payloadExtracted.frameType,
+        targetDir: saveResult.targetDir,
+        htmlFileName: saveResult.htmlFileName,
+        htmlPath: saveResult.htmlPath,
+        resourcePathMap: saveResult.resourcePathMap,
+        savedFiles: {
+          svg: saveResult.svgCount,
+          image: saveResult.imageCount,
+        },
+        message: `D2C 资源已落盘到 ${saveResult.htmlPath}。HTML 文件名：${saveResult.htmlFileName}。SVG 资源 ${saveResult.svgCount} 个，图片资源 ${saveResult.imageCount} 个。可直接打开 html 文件查看效果。`,
+      };
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(d2c),
+            text: JSON.stringify(summary),
           },
         ],
       };
