@@ -11,6 +11,7 @@ import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetFlutterWorkflowTool } from "./tools/get-flutter-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
+import { GetPageLayersTool } from "./tools/get-page-layers";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
@@ -127,6 +128,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
+- \`mcp__getPageLayers\` ENUMERATES layer_ids. Use it when you have a page_id (layerId) and need the list of all layers inside it BEFORE restoring each layer — it returns a lightweight {id, name, type, depth, parentId, childrenCount, width, height} list, then you feed each layer_id back into \`getDesignSections\` or \`getDsl\` to restore. It CANNOT list a document's pages from a fileId alone — you must already have a page_id / layerId.
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
@@ -284,6 +286,7 @@ function main() {
 
   new GetVersionTool().register(server);
   new GetDesignSectionsTool().register(server);
+  new GetPageLayersTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);

@@ -67,6 +67,29 @@ export interface DesignSectionsResponse {
   [k: string]: any;
 }
 
+/** getPageLayers 响应：某 page 下的全部图层级摘要列表 */
+export interface PageLayersResponse {
+  fileId: string;
+  pageLayerId: string;
+  pageName?: string;
+  pageType?: string;
+  totalLayers: number;
+  layers: Array<{
+    id: string;
+    name: string;
+    type: string;
+    depth: number;
+    parentId?: string;
+    childrenCount: number;
+    width?: number;
+    height?: number;
+  }>;
+  /** 超过 MAX_LAYERS 上限时为 true，layers 被截断 */
+  partial?: boolean;
+  message?: string;
+  [k: string]: any;
+}
+
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -425,6 +448,32 @@ const createHttpUtil = () => {
           throw err;
         }
       });
+    },
+
+    /**
+     * 枚举某 page（layerId）下的全部图层 id 列表。
+     *
+     * 不复用 withDslCache：本接口返回的是轻量图层级摘要（id/name/type/depth/parentId），
+     * 与 section DSL 缓存语义不同；且调用方通常拿到列表后会紧接着逐个调 getDesignSections
+     * （那些请求自带 dslCache），无需在此再缓存一层。
+     */
+    async getPageLayers(fileId: string, layerId: string): Promise<PageLayersResponse> {
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/page-layers`, {
+          timeout: 120000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `page-layers API not available on this server. ` +
+            `Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
