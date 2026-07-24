@@ -21,6 +21,12 @@ import packageJson from "../package.json";
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
 
+### Step -1: Page-level URL → enumerate first (when the URL has page_id)
+If the design URL contains \`page_id\` (e.g. \`?page_id=40:015\` or the default page \`?page_id=M\`) and NO specific \`layer_id\`, the URL refers to an ENTIRE PAGE, not a single component. In this case:
+1. Call \`mcp__getPageLayers\` with that page_id (passed as \`layerId\`) to enumerate ALL layers in the page.
+2. For each returned \`layer_id\`, call \`mcp__getDesignSections\` (or \`mcp__getDsl\`) to restore that layer.
+Do NOT call \`getDesignSections\` directly with a page_id as if it were a single component — a page_id enumerates many layers; restore them individually.
+
 ### Step 0: Get Layout Overview (MANDATORY)
 Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
 The response contains \`sections\` array with \`nodeCount\` per section, \`totalSections\`, and \`totalNodes\`.

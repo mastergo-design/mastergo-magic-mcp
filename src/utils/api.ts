@@ -603,9 +603,10 @@ const createHttpUtil = () => {
       const pathSegments = urlObj.pathname.split("/");
       const searchParams = new URLSearchParams(urlObj.search);
 
-      // Extract fileId and layerId
+      // layer_id 优先；缺失时回退到 page_id（两者在后端都是同一套 layerId 语义，
+      // page_id 是 MasterGo URL 的页面级标识，如 ?page_id=40:015 或默认页 ?page_id=M）。
       const fileId = pathSegments.find((segment) => /^\d+$/.test(segment));
-      const layerId = searchParams.get("layer_id");
+      const layerId = searchParams.get("layer_id") ?? searchParams.get("page_id");
 
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
