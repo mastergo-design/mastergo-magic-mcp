@@ -21,11 +21,21 @@ import packageJson from "../package.json";
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
 
-### Step -1: Page-level URL → enumerate first (when the URL has page_id)
-If the design URL contains \`page_id\` (e.g. \`?page_id=40:015\` or the default page \`?page_id=M\`) and NO specific \`layer_id\`, the URL refers to an ENTIRE PAGE, not a single component. In this case:
-1. Call \`mcp__getPageLayers\` with that page_id (passed as \`layerId\`) to enumerate ALL layers in the page.
-2. For each returned \`layer_id\`, call \`mcp__getDesignSections\` (or \`mcp__getDsl\`) to restore that layer.
-Do NOT call \`getDesignSections\` directly with a page_id as if it were a single component — a page_id enumerates many layers; restore them individually.
+### Step -1: Multi-layer restoration — enumerate, then restore ONE layer at a time
+Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER with multiple child layers (e.g. URL has \`page_id\`, or a top-level frame whose children should each be restored separately). Do NOT restore all layers in one shot — restore them sequentially.
+
+**Workflow:**
+1. **Enumerate**: Call \`mcp__getPageLayers\` with the page_id / parent layerId. It returns a flat list of ALL layers, each as \`{id, name, type, depth, parentId, childrenCount, width, height}\`.
+2. **Pick the layers to restore**: From the list, identify the top-level restorable layers (typically depth=0 or depth=1 FRAME/COMPONENT/INSTANCE nodes — the actual screens/cards/sections, not every nested leaf). For each, build a restorable URL: \`https://mastergo.com/file/{fileId}?layer_id={layer_id}\` (URL-encode the layer_id, e.g. \`802:02364\` → \`802%3A02364\`).
+3. **Restore ONE at a time (serial, not batch)**: Take the FIRST layer_id → run the normal single-layer restoration (Step 0 → Step 4 below: \`getDesignSections\` → fetch all sections → \`applyDesign\`) → output that layer's complete HTML. ONLY after finishing one layer's HTML, move to the NEXT layer_id and repeat. Do not start layer N+1 before layer N's HTML is done.
+4. Repeat until all picked layers are restored.
+
+**CRITICAL — restore sequentially, one HTML at a time.** Do NOT fetch all layers' DSLs in parallel and merge into one HTML. Each layer is an independent restoration: finish one (including \`applyDesign\`), output it, then start the next.
+
+**When to use this vs. direct restoration:**
+- URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually).
+- URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed.
+- A page_id returns empty (e.g. the synthetic \`page_id=M\`) → the page data isn't available via this API; ask the user for a specific layer_id URL instead.
 
 ### Step 0: Get Layout Overview (MANDATORY)
 Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.

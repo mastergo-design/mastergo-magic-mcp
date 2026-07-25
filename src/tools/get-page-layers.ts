@@ -6,13 +6,17 @@ import { formatField, formatOutput } from "../utils/format";
 const PAGE_LAYERS_TOOL_NAME = "mcp__getPageLayers";
 const PAGE_LAYERS_TOOL_DESCRIPTION = `
 List ALL layers under a given page (or any container layer) of a MasterGo design file.
+This is the ENUMERATION step of the multi-layer restoration workflow — it only lists
+layer_ids; it does NOT restore designs.
 
-Use this when you need to enumerate the layer_ids of a page — typically BEFORE restoring
-the full design. The workflow is:
-  1. Call this tool with the page's layerId (it is the page_id from the MasterGo URL,
-     e.g. "40:015"). It returns every layer inside that page as a flat list.
-  2. For each returned layer_id, call mcp__getDesignSections or mcp__getDsl with that
-     layer_id to restore its design.
+**Workflow (enumerate → build URLs → restore one by one):**
+  1. Call this tool with the page_id / parent layerId to get the full layer list.
+  2. Pick the top-level restorable layers from the result (FRAME/COMPONENT/INSTANCE at
+     depth 0/1). For each, build a URL: https://mastergo.com/file/{fileId}?layer_id={id}
+     (URL-encode the id, e.g. 802:02364 → 802%3A02364).
+  3. Restore them SEQUENTIALLY — take one layer_id, run the full single-layer restoration
+     (mcp__getDesignSections → fetch all sections → mcp__applyDesign), output its HTML,
+     THEN move to the next. Do NOT batch-restore or merge multiple layers into one HTML.
 
 You can provide either:
 1. fileId and layerId directly (layerId = the page's layerId, i.e. page_id), or
@@ -23,7 +27,8 @@ childrenCount, width, height. It does NOT contain DSL/styles/SVG paths — use t
 or DSL tools to restore each layer.
 
 NOTE: This tool cannot enumerate a document's PAGE list from a fileId alone — you must
-already know a page_id / layerId to pass in.
+already know a page_id / layerId to pass in. The synthetic page_id=M returns empty
+(page data not available via this API); use a real layer_id URL in that case.
 `;
 
 export class GetPageLayersTool extends BaseTool {
