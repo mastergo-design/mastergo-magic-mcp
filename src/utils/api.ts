@@ -193,9 +193,9 @@ export const isSameHost = (a: string, b: string): boolean => {
 // shortLink → 解析结果 LRU 缓存：避免 section 工作流里同一短链重复 redirect。
 // stdio 长驻进程，缓存条目极少（一次会话只涉及少数设计稿），设 32 条上限防无限增长。
 const SHORT_LINK_CACHE_MAX = 32;
-const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string }>();
+const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }>();
 /** LRU 写入：已有 key 先 delete 再 set 移到末尾；超容量淘汰最久未访问的 key。 */
-function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string }): void {
+function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }): void {
   if (shortLinkCache.has(key)) shortLinkCache.delete(key);
   else if (shortLinkCache.size >= SHORT_LINK_CACHE_MAX) {
     const oldest = shortLinkCache.keys().next().value;
@@ -425,11 +425,13 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<DesignSectionsResponse> {
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number, fromPageParam?: boolean): Promise<DesignSectionsResponse> {
       const key = dslCacheKey('sections', fileId, layerId, sectionIndex !== undefined ? String(sectionIndex) : 'list');
       return withDslCache(key, async () => {
         const params: Record<string, any> = { fileId, layerId };
         if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+        // 仅当确认为 pageId 来源时下发，服务端软兜底据此区分「pageId 误入」vs「真空设计」。
+        if (fromPageParam) params.fromPageParam = 'true';
 
         try {
           const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
@@ -566,7 +568,7 @@ const createHttpUtil = () => {
      */
     async extractIdsFromUrl(
       url: string
-    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
+    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }> {
       // shortLink 缓存命中：直接返回，跳过 redirect
       if (url.includes("/goto/") && shortLinkCache.has(url)) {
         return { ...shortLinkCache.get(url)! };
@@ -605,15 +607,22 @@ const createHttpUtil = () => {
 
       // layer_id 优先；缺失时回退到 page_id（两者在后端都是同一套 layerId 语义，
       // page_id 是 MasterGo URL 的页面级标识，如 ?page_id=40:015 或默认页 ?page_id=M）。
+      // 保留来源信号 fromPageParam：只有 layer_id 缺失、靠 page_id 兜底时才 true。
+      // 服务端用它做软兜底——确认是 pageId 误入（而非真空设计）时返回 pageId 引导。
       const fileId = pathSegments.find((segment) => /^\d+$/.test(segment));
-      const layerId = searchParams.get("layer_id") ?? searchParams.get("page_id");
+      const layerIdFromLayer = searchParams.get("layer_id");
+      const layerIdFromPage = searchParams.get("page_id");
+      const layerId = layerIdFromLayer ?? layerIdFromPage;
+      // 仅当 layer_id 缺失、由 page_id 提供时才标记。LLM 直传 layerId 参数（不走本函数）
+      // 时 fromPageParam 为 undefined，服务端软兜底不触发——这是有意设计，避免启发式误判。
+      const fromPageParam = !layerIdFromLayer && !!layerIdFromPage;
 
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
 
       const sourceLayerId = searchParams.get("source_layer_id") || undefined;
 
-      const result = { fileId, layerId, sourceLayerId };
+      const result = { fileId, layerId, sourceLayerId, fromPageParam };
       // shortLink 解析结果写入缓存（非 shortLink 不写：纯本地解析无网络开销）
       if (url.includes("/goto/")) {
         cacheShortLink(url, result);
