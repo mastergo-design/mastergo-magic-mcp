@@ -15,8 +15,10 @@ layer_ids; it does NOT restore designs.
      depth 0/1). For each, build a URL: https://mastergo.com/file/{fileId}?layer_id={id}
      (URL-encode the id, e.g. 802:02364 → 802%3A02364).
   3. Restore them SEQUENTIALLY — take one layer_id, run the full single-layer restoration
-     (mcp__getDesignSections → fetch all sections → mcp__applyDesign), output its HTML,
-     THEN move to the next. Do NOT batch-restore or merge multiple layers into one HTML.
+     (mcp__getDesignSections → fetch all sections → mcp__applyDesign), write its HTML to its
+     OWN separate .html file (a complete standalone document with <!DOCTYPE html>/<head>/<body>),
+     THEN move to the next. Do NOT batch-restore. Do NOT merge multiple layers into one HTML file —
+     ONE layer = ONE standalone .html file.
 
 You can provide either:
 1. fileId and layerId directly (layerId = the page's layerId, i.e. page_id), or

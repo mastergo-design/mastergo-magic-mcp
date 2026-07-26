@@ -21,20 +21,24 @@ import packageJson from "../package.json";
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
 
-### Step -1: Multi-layer restoration — enumerate, then restore ONE layer at a time
-Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER with multiple child layers (e.g. URL has \`page_id\`, or a top-level frame whose children should each be restored separately). Do NOT restore all layers in one shot — restore them sequentially.
+### Step -1: Multi-layer restoration — enumerate, then restore ONE layer at a time, EACH as its own file
+Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER with multiple child layers (e.g. URL has \`page_id\`, or a top-level frame whose children should each be restored separately). Do NOT restore all layers in one shot — restore them sequentially, and **each layer MUST become its own standalone HTML file**.
 
 **Workflow:**
 1. **Enumerate**: Call \`mcp__getPageLayers\` with the page_id / parent layerId. It returns a flat list of ALL layers, each as \`{id, name, type, depth, parentId, childrenCount, width, height}\`.
 2. **Pick the layers to restore**: From the list, identify the top-level restorable layers (typically depth=0 or depth=1 FRAME/COMPONENT/INSTANCE nodes — the actual screens/cards/sections, not every nested leaf). For each, build a restorable URL: \`https://mastergo.com/file/{fileId}?layer_id={layer_id}\` (URL-encode the layer_id, e.g. \`802:02364\` → \`802%3A02364\`).
-3. **Restore ONE at a time (serial, not batch)**: Take the FIRST layer_id → run the normal single-layer restoration (Step 0 → Step 4 below: \`getDesignSections\` → fetch all sections → \`applyDesign\`) → output that layer's complete HTML. ONLY after finishing one layer's HTML, move to the NEXT layer_id and repeat. Do not start layer N+1 before layer N's HTML is done.
-4. Repeat until all picked layers are restored.
+3. **Restore ONE layer at a time, writing EACH to its OWN separate .html file**: Take the FIRST layer_id → run the normal single-layer restoration (Step 0 → Step 4 below: \`getDesignSections\` → fetch all sections → \`applyDesign\`) → write that layer's complete HTML to a SEPARATE file. ONLY after finishing one layer's HTML FILE, move to the NEXT layer_id and repeat. Do not start layer N+1 before layer N's file is fully written.
+4. Repeat until all picked layers are restored — you should end up with N separate .html files (one per layer), NOT one merged file.
 
-**CRITICAL — restore sequentially, one HTML at a time.** Do NOT fetch all layers' DSLs in parallel and merge into one HTML. Each layer is an independent restoration: finish one (including \`applyDesign\`), output it, then start the next.
+**CRITICAL — ONE LAYER = ONE STANDALONE HTML FILE. This is non-negotiable:**
+- Each layer's output is a COMPLETE, standalone HTML document with its own \`<!DOCTYPE html>\`, \`<head>\`, and \`<body>\` — NOT an HTML fragment, NOT a \`<div>\` chunk to be concatenated.
+- Do NOT combine multiple layers into one HTML file. Do NOT stack multiple layers' \`<body>\` content into a single page. Do NOT fetch all layers' DSLs in parallel and merge them.
+- Write each layer to a DISTINCT file. Name files by the layer name or layer_id (e.g. \`容器1.html\`, \`navbar.html\`, or \`layer-802-02364.html\`). If the user specified an output directory, write each file there.
+- Finish one layer completely (including \`mcp__applyDesign\` and writing the file) before starting the next.
 
 **When to use this vs. direct restoration:**
-- URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually).
-- URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed.
+- URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually, each as its own file).
+- URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed, one file.
 - A page_id returns empty (e.g. the synthetic \`page_id=M\`) → the page data isn't available via this API; ask the user for a specific layer_id URL instead.
 
 ### Step 0: Get Layout Overview (MANDATORY)
