@@ -204,6 +204,33 @@ function cacheShortLink(key: string, value: { fileId: string; layerId: string; s
   shortLinkCache.set(key, value);
 }
 
+// getPageLayers 枚举结果缓存：LLM 拿到列表后常会「枚举→逐个还原」多次调用同一 page，
+// 超大 page 重复拉取数万条 layer 摘要开销显著。枚举结果是只读快照，缓存安全（不会脏读）。
+// 短 TTL（60s）：兼顾「避免重复拉」与「画布上报后能较快看到新数据」。
+const PAGE_LAYERS_CACHE_TTL_MS = 60000;
+const PAGE_LAYERS_CACHE_MAX = 32;
+const pageLayersCache = new Map<string, { data: PageLayersResponse; ts: number }>();
+function getCachedPageLayers(key: string): PageLayersResponse | undefined {
+  const entry = pageLayersCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() - entry.ts >= PAGE_LAYERS_CACHE_TTL_MS) {
+    pageLayersCache.delete(key);
+    return undefined;
+  }
+  // LRU：命中后移到末尾。
+  pageLayersCache.delete(key);
+  pageLayersCache.set(key, entry);
+  return entry.data;
+}
+function setCachedPageLayers(key: string, data: PageLayersResponse): void {
+  if (pageLayersCache.has(key)) pageLayersCache.delete(key);
+  else if (pageLayersCache.size >= PAGE_LAYERS_CACHE_MAX) {
+    const oldest = pageLayersCache.keys().next().value;
+    if (oldest !== undefined) pageLayersCache.delete(oldest);
+  }
+  pageLayersCache.set(key, { data, ts: Date.now() });
+}
+
 /**
  * DSL 响应缓存 + in-flight 请求去重。
  *
@@ -455,17 +482,21 @@ const createHttpUtil = () => {
     /**
      * 枚举某 page（layerId）下的全部图层 id 列表。
      *
-     * 不复用 withDslCache：本接口返回的是轻量图层级摘要（id/name/type/depth/parentId），
-     * 与 section DSL 缓存语义不同；且调用方通常拿到列表后会紧接着逐个调 getDesignSections
-     * （那些请求自带 dslCache），无需在此再缓存一层。
+     * 带 60s TTL 内存缓存：LLM 在「枚举→逐个还原」工作流中常多次调用同一 page，
+     * 超大 page 重复拉取开销显著。枚举结果是只读快照，缓存安全；后续 getDesignSections
+     * 逐个还原时自带 dslCache，不与此缓存冲突。失败结果不缓存（避免缓存错误态）。
      */
     async getPageLayers(fileId: string, layerId: string): Promise<PageLayersResponse> {
+      const cacheKey = `${fileId}:${layerId}`;
+      const cached = getCachedPageLayers(cacheKey);
+      if (cached) return cached;
       try {
         const response = await axios.get(`${getBaseUrl()}/mcp/page-layers`, {
           timeout: 120000,
           params: { fileId, layerId },
           headers: getCommonHeader(),
         });
+        setCachedPageLayers(cacheKey, response.data);
         return response.data;
       } catch (err: any) {
         if (err.response?.status === 404) {

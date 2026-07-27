@@ -120,13 +120,19 @@ export class GetPageLayersTool extends BaseTool {
         ],
       };
     } catch (error: any) {
-      const errorMessage = error.response?.data ?? error?.message;
+      // 统一错误结构：response.data 可能是对象/字符串/undefined，归一成 { error, message } 供 LLM 稳定解析。
+      // 与 getDesignSections 的错误处理风格一致（避免 JSON.stringify 一个裸字符串得到带引号的 "..."）。
+      const errData = error?.response?.data;
+      const errorMessage =
+        (typeof errData === 'string' ? errData : errData?.message) ||
+        error?.message ||
+        'Unknown error';
       return {
         isError: true,
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(errorMessage),
+            text: JSON.stringify({ error: 'getPageLayers failed', message: errorMessage }),
           },
         ],
       };
