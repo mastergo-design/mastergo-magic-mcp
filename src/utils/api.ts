@@ -67,6 +67,29 @@ export interface DesignSectionsResponse {
   [k: string]: any;
 }
 
+/** getPageLayers 响应：某 page 下的全部图层级摘要列表 */
+export interface PageLayersResponse {
+  fileId: string;
+  pageLayerId: string;
+  pageName?: string;
+  pageType?: string;
+  totalLayers: number;
+  layers: Array<{
+    id: string;
+    name: string;
+    type: string;
+    depth: number;
+    parentId?: string;
+    childrenCount: number;
+    width?: number;
+    height?: number;
+  }>;
+  /** 超过 MAX_LAYERS 上限时为 true，layers 被截断 */
+  partial?: boolean;
+  message?: string;
+  [k: string]: any;
+}
+
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -170,15 +193,42 @@ export const isSameHost = (a: string, b: string): boolean => {
 // shortLink → 解析结果 LRU 缓存：避免 section 工作流里同一短链重复 redirect。
 // stdio 长驻进程，缓存条目极少（一次会话只涉及少数设计稿），设 32 条上限防无限增长。
 const SHORT_LINK_CACHE_MAX = 32;
-const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string }>();
+const shortLinkCache = new Map<string, { fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }>();
 /** LRU 写入：已有 key 先 delete 再 set 移到末尾；超容量淘汰最久未访问的 key。 */
-function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string }): void {
+function cacheShortLink(key: string, value: { fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }): void {
   if (shortLinkCache.has(key)) shortLinkCache.delete(key);
   else if (shortLinkCache.size >= SHORT_LINK_CACHE_MAX) {
     const oldest = shortLinkCache.keys().next().value;
     if (oldest !== undefined) shortLinkCache.delete(oldest);
   }
   shortLinkCache.set(key, value);
+}
+
+// getPageLayers 枚举结果缓存：LLM 拿到列表后常会「枚举→逐个还原」多次调用同一 page，
+// 超大 page 重复拉取数万条 layer 摘要开销显著。枚举结果是只读快照，缓存安全（不会脏读）。
+// 短 TTL（60s）：兼顾「避免重复拉」与「画布上报后能较快看到新数据」。
+const PAGE_LAYERS_CACHE_TTL_MS = 60000;
+const PAGE_LAYERS_CACHE_MAX = 32;
+const pageLayersCache = new Map<string, { data: PageLayersResponse; ts: number }>();
+function getCachedPageLayers(key: string): PageLayersResponse | undefined {
+  const entry = pageLayersCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() - entry.ts >= PAGE_LAYERS_CACHE_TTL_MS) {
+    pageLayersCache.delete(key);
+    return undefined;
+  }
+  // LRU：命中后移到末尾。
+  pageLayersCache.delete(key);
+  pageLayersCache.set(key, entry);
+  return entry.data;
+}
+function setCachedPageLayers(key: string, data: PageLayersResponse): void {
+  if (pageLayersCache.has(key)) pageLayersCache.delete(key);
+  else if (pageLayersCache.size >= PAGE_LAYERS_CACHE_MAX) {
+    const oldest = pageLayersCache.keys().next().value;
+    if (oldest !== undefined) pageLayersCache.delete(oldest);
+  }
+  pageLayersCache.set(key, { data, ts: Date.now() });
 }
 
 /**
@@ -402,11 +452,13 @@ const createHttpUtil = () => {
       return response.data;
     },
 
-    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number): Promise<DesignSectionsResponse> {
+    async getDesignSections(fileId: string, layerId: string, sectionIndex?: number, fromPageParam?: boolean): Promise<DesignSectionsResponse> {
       const key = dslCacheKey('sections', fileId, layerId, sectionIndex !== undefined ? String(sectionIndex) : 'list');
       return withDslCache(key, async () => {
         const params: Record<string, any> = { fileId, layerId };
         if (sectionIndex !== undefined) params.sectionIndex = sectionIndex;
+        // 仅当确认为 pageId 来源时下发，服务端软兜底据此区分「pageId 误入」vs「真空设计」。
+        if (fromPageParam) params.fromPageParam = 'true';
 
         try {
           const response = await axios.get(`${getBaseUrl()}/mcp/design-sections`, {
@@ -425,6 +477,36 @@ const createHttpUtil = () => {
           throw err;
         }
       });
+    },
+
+    /**
+     * 枚举某 page（layerId）下的全部图层 id 列表。
+     *
+     * 带 60s TTL 内存缓存：LLM 在「枚举→逐个还原」工作流中常多次调用同一 page，
+     * 超大 page 重复拉取开销显著。枚举结果是只读快照，缓存安全；后续 getDesignSections
+     * 逐个还原时自带 dslCache，不与此缓存冲突。失败结果不缓存（避免缓存错误态）。
+     */
+    async getPageLayers(fileId: string, layerId: string): Promise<PageLayersResponse> {
+      const cacheKey = `${fileId}:${layerId}`;
+      const cached = getCachedPageLayers(cacheKey);
+      if (cached) return cached;
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/page-layers`, {
+          timeout: 120000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        setCachedPageLayers(cacheKey, response.data);
+        return response.data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          throw new Error(
+            `page-layers API not available on this server. ` +
+            `Please update frontend-mcp-server to the latest version.`
+          );
+        }
+        throw err;
+      }
     },
 
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
@@ -517,7 +599,7 @@ const createHttpUtil = () => {
      */
     async extractIdsFromUrl(
       url: string
-    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string }> {
+    ): Promise<{ fileId: string; layerId: string; sourceLayerId?: string; fromPageParam?: boolean }> {
       // shortLink 缓存命中：直接返回，跳过 redirect
       if (url.includes("/goto/") && shortLinkCache.has(url)) {
         return { ...shortLinkCache.get(url)! };
@@ -554,16 +636,24 @@ const createHttpUtil = () => {
       const pathSegments = urlObj.pathname.split("/");
       const searchParams = new URLSearchParams(urlObj.search);
 
-      // Extract fileId and layerId
+      // layer_id 优先；缺失时回退到 page_id（两者在后端都是同一套 layerId 语义，
+      // page_id 是 MasterGo URL 的页面级标识，如 ?page_id=40:015 或默认页 ?page_id=M）。
+      // 保留来源信号 fromPageParam：只有 layer_id 缺失、靠 page_id 兜底时才 true。
+      // 服务端用它做软兜底——确认是 pageId 误入（而非真空设计）时返回 pageId 引导。
       const fileId = pathSegments.find((segment) => /^\d+$/.test(segment));
-      const layerId = searchParams.get("layer_id");
+      const layerIdFromLayer = searchParams.get("layer_id");
+      const layerIdFromPage = searchParams.get("page_id");
+      const layerId = layerIdFromLayer ?? layerIdFromPage;
+      // 仅当 layer_id 缺失、由 page_id 提供时才标记。LLM 直传 layerId 参数（不走本函数）
+      // 时 fromPageParam 为 undefined，服务端软兜底不触发——这是有意设计，避免启发式误判。
+      const fromPageParam = !layerIdFromLayer && !!layerIdFromPage;
 
       if (!fileId) throw new Error("Could not extract fileId from URL");
       if (!layerId) throw new Error("Could not extract layerId from URL");
 
       const sourceLayerId = searchParams.get("source_layer_id") || undefined;
 
-      const result = { fileId, layerId, sourceLayerId };
+      const result = { fileId, layerId, sourceLayerId, fromPageParam };
       // shortLink 解析结果写入缓存（非 shortLink 不写：纯本地解析无网络开销）
       if (url.includes("/goto/")) {
         cacheShortLink(url, result);

@@ -11,6 +11,7 @@ import { GetComponentWorkflowTool } from "./tools/get-component-workflow";
 import { GetFlutterWorkflowTool } from "./tools/get-flutter-workflow";
 import { GetVersionTool } from "./tools/get-version";
 import { GetDesignSectionsTool } from "./tools/get-design-sections";
+import { GetPageLayersTool } from "./tools/get-page-layers";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
@@ -19,6 +20,26 @@ import packageJson from "../package.json";
 
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
+
+### Step -1: Multi-layer restoration — enumerate, then restore ONE layer at a time, EACH as its own file
+Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER with multiple child layers (e.g. URL has \`page_id\`, or a top-level frame whose children should each be restored separately). Do NOT restore all layers in one shot — restore them sequentially, and **each layer MUST become its own standalone HTML file**.
+
+**Workflow:**
+1. **Enumerate**: Call \`mcp__getPageLayers\` with the page_id / parent layerId. It returns a flat list of ALL layers, each as \`{id, name, type, depth, parentId, childrenCount, width, height}\`.
+2. **Pick the layers to restore**: From the list, identify the top-level restorable layers (typically depth=0 or depth=1 FRAME/COMPONENT/INSTANCE nodes — the actual screens/cards/sections, not every nested leaf). For each, build a restorable URL: \`https://mastergo.com/file/{fileId}?layer_id={layer_id}\` (URL-encode the layer_id, e.g. \`802:02364\` → \`802%3A02364\`).
+3. **Restore ONE layer at a time, writing EACH to its OWN separate .html file**: Take the FIRST layer_id → run the normal single-layer restoration (Step 0 → Step 4 below: \`getDesignSections\` → fetch all sections → \`applyDesign\`) → write that layer's complete HTML to a SEPARATE file. ONLY after finishing one layer's HTML FILE, move to the NEXT layer_id and repeat. Do not start layer N+1 before layer N's file is fully written.
+4. Repeat until all picked layers are restored — you should end up with N separate .html files (one per layer), NOT one merged file.
+
+**CRITICAL — ONE LAYER = ONE STANDALONE HTML FILE. This is non-negotiable:**
+- Each layer's output is a COMPLETE, standalone HTML document with its own \`<!DOCTYPE html>\`, \`<head>\`, and \`<body>\` — NOT an HTML fragment, NOT a \`<div>\` chunk to be concatenated.
+- Do NOT combine multiple layers into one HTML file. Do NOT stack multiple layers' \`<body>\` content into a single page. Do NOT fetch all layers' DSLs in parallel and merge them.
+- Write each layer to a DISTINCT file. Name files by the layer name or layer_id (e.g. \`容器1.html\`, \`navbar.html\`, or \`layer-802-02364.html\`). If the user specified an output directory, write each file there.
+- Finish one layer completely (including \`mcp__applyDesign\` and writing the file) before starting the next.
+
+**When to use this vs. direct restoration:**
+- URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually, each as its own file).
+- URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed, one file.
+- A page_id returns empty (e.g. the synthetic \`page_id=M\`) → the page data isn't available via this API; ask the user for a specific layer_id URL instead.
 
 ### Step 0: Get Layout Overview (MANDATORY)
 Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
@@ -127,6 +148,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
+- \`mcp__getPageLayers\` ENUMERATES layer_ids. Use it when you have a page_id (layerId) and need the list of all layers inside it BEFORE restoring each layer — it returns a lightweight {id, name, type, depth, parentId, childrenCount, width, height} list, then you feed each layer_id back into \`getDesignSections\` or \`getDsl\` to restore. It CANNOT list a document's pages from a fileId alone — you must already have a page_id / layerId.
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
@@ -284,6 +306,7 @@ function main() {
 
   new GetVersionTool().register(server);
   new GetDesignSectionsTool().register(server);
+  new GetPageLayersTool().register(server);
   new GetDslTool().register(server);
   new GetD2cTool().register(server);
   new GetC2dTool().register(server);
