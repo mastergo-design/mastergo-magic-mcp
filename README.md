@@ -1,5 +1,7 @@
 # MasterGo Magic MCP
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fmastergo-design%2Fmastergo-magic-mcp.svg)](https://mcptoplist.com/server/glama%2Fmastergo-design%2Fmastergo-magic-mcp)
+
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mastergo-design/mastergo-magic-mcp)
 
 MasterGo Magic MCP is a standalone MCP (Model Context Protocol) service designed to connect MasterGo design tools with AI models. It enables AI models to directly retrieve DSL data from MasterGo design files.
