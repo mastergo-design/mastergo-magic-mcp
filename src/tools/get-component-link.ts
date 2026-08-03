@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { toolName } from "../utils/tool-prefix";
 
-const COMPONENT_LINK_TOOL_NAME = "mcp__getComponentLink";
 const COMPONENT_LINK_TOOL_DESCRIPTION = `When the data returned by mcp__getDsl contains a non-empty componentDocumentLinks array, this tool is used to sequentially retrieve URLs from the componentDocumentLinks array and then obtain component documentation data. The returned document data is used for you to generate frontend code based on components.`;
 
 export class GetComponentLinkTool extends BaseTool {
-  name = COMPONENT_LINK_TOOL_NAME;
+  get name() {
+    return toolName("getComponentLink");
+  }
   description = COMPONENT_LINK_TOOL_DESCRIPTION;
 
   constructor() {

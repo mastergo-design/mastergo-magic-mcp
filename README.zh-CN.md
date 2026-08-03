@@ -73,7 +73,7 @@ MCP 服务连接成功后，可以在 AI 对话中使用以下提示词：
 ### 命令行选项
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header "Key: Value"] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header "Key: Value"] [--debug] [--no-rule] [--no-prefix]
 ```
 
 #### 参数:
@@ -86,6 +86,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--format=FORMAT` (可选): 设计数据工具的默认输出格式 —— 取值 `json`（默认）、`yaml`、`tree`。工具调用时显式传入的 `format` 参数优先级更高。也可通过 `DEFAULT_FORMAT` 环境变量设置。
 - `--debug` (可选): 启用调试模式，提供详细错误信息
 - `--no-rule` (可选): 禁用默认规则
+- `--no-prefix` (可选): 工具注册时不带 `mcp__` 名称前缀（如 `getDsl` 而非 `mcp__getDsl`）。部分 MCP 客户端（如 Grok Build）会静默跳过全限定名 `server__tool` 中含多个 `__` 分隔符的工具——服务端名已带前缀时，`mcp__getDsl` 会变成 `server__mcp__getDsl` 而被丢弃。为这类客户端启用此开关即可。也可通过 `MG_NO_PREFIX` 环境变量设置（`1`/`true`/`yes`）。
 
 你也可以使用空格分隔的参数格式:
 
@@ -101,6 +102,7 @@ npx @mastergo/magic-mcp --token YOUR_TOKEN --url API_URL --rule RULE_NAME --prox
 - `API_BASE_URL`: API 基础 URL
 - `RULES`: 规则的 JSON 数组 (例如: `'["rule1", "rule2"]'`)
 - `DEFAULT_FORMAT`: 设计数据工具的默认输出格式（`json` | `yaml` | `tree`）；`--format` 参数和工具调用时显式传入的 `format` 参数优先级更高。
+- `MG_NO_PREFIX`: 设为 `1`/`true`/`yes` 时工具注册不带 `mcp__` 名称前缀（`--no-prefix` 参数优先级更高）。
 - `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) 代理地址（`--proxy` 参数优先级更高）
 
 ### 工具输出格式

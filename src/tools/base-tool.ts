@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { applyToolPrefix } from "../utils/tool-prefix";
 
 export abstract class BaseTool {
   abstract name: string;
@@ -9,7 +10,9 @@ export abstract class BaseTool {
   register(server: McpServer) {
     server.tool(
       this.name,
-      this.description,
+      // 描述文本里引用的是带 `mcp__` 前缀的工具名，需随当前前缀设置同步改写，
+      // 否则无前缀模式下模型会被引导去调用不存在的 `mcp__xxx` 工具。
+      applyToolPrefix(this.description),
       this.schema.shape,
       this.execute.bind(this)
     );

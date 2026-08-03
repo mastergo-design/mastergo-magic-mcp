@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { parseToken, parseUrl, parseRules, parseNoRule, parseProxy, getEffectiveHeaders } from "./args";
+import { applyToolPrefix } from "./tool-prefix";
 import https from "https";
 import { HttpsProxyAgent } from "https-proxy-agent";
 
@@ -317,7 +318,7 @@ const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
 };
 
 const buildDslRules = (): string[] => {
-  return [
+  const rules = [
     "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",
     "CRITICAL — Sidebar columns: render ALL sidebar levels as persistent columns at splitContainers positions. Do NOT hide or toggle them.",
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
@@ -339,6 +340,8 @@ const buildDslRules = (): string[] => {
     ...(JSON.parse(process.env.RULES ?? "[]") as string[]),
     ...parseRules(),
   ];
+  // 规则文本里的工具名带 `mcp__` 前缀，需随当前前缀设置同步改写。
+  return rules.map((r) => applyToolPrefix(r));
 };
 
 /**

@@ -2,8 +2,8 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput } from "../utils/format";
+import { toolName } from "../utils/tool-prefix";
 
-const EXTRACT_SVG_TOOL_NAME = "mcp__extractSvg";
 const EXTRACT_SVG_TOOL_DESCRIPTION = `
 Extract SVG data from MasterGo design files. This tool retrieves the DSL from a design layer, finds all PATH nodes (typically inside INSTANCE/icon components), resolves their color references, and generates SVG markup strings.
 You can provide either:
@@ -14,7 +14,9 @@ Pagination: When there are many icons, use the first call without "page" to get 
 `;
 
 export class ExtractSvgTool extends BaseTool {
-  name = EXTRACT_SVG_TOOL_NAME;
+  get name() {
+    return toolName("extractSvg");
+  }
   description = EXTRACT_SVG_TOOL_DESCRIPTION;
 
   constructor() {

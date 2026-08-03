@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput } from "../utils/format";
+import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 
 // 进程级跟踪：记录已通过 getDesignSections 拉取过 section list 的 fileId+layerId。
 // 如果 LLM 在 section 工作流进行中调 getDsl，会返回 195KB+ 的全量数据撑爆上下文窗口，
@@ -95,7 +96,6 @@ export function clearSectionWorkflow(fileId: string, layerId: string): void {
   trackerTimestamps.delete(key);
 }
 
-const DSL_TOOL_NAME = "mcp__getDsl";
 const DSL_TOOL_DESCRIPTION = `
 [FALLBACK] Use only when mcp__getDesignSections is unavailable or returns an error.
 This returns the FULL DSL in one response — may be large and exceed context limits for complex designs.
@@ -109,7 +109,9 @@ The DSL data can also be used to transform and generate code for different frame
 `;
 
 export class GetDslTool extends BaseTool {
-  name = DSL_TOOL_NAME;
+  get name() {
+    return toolName("getDsl");
+  }
   description = DSL_TOOL_DESCRIPTION;
 
   constructor() {
@@ -177,7 +179,7 @@ export class GetDslTool extends BaseTool {
             {
               type: "text" as const,
               text: JSON.stringify({
-                error: "getDsl BLOCKED: You have already started the section workflow (mcp__getDesignSections) for this design. Do NOT call getDsl during or after the section workflow — it returns 195KB+ of full DSL data that will exhaust your context window and prevent you from fetching remaining sections. Continue fetching section DSL via mcp__getDesignSections with sectionIndex=N. If you need data you think only getDsl provides, it is already available in the section DSL responses (rowTexts, dsl.nodes).",
+                error: applyToolPrefix("getDsl BLOCKED: You have already started the section workflow (mcp__getDesignSections) for this design. Do NOT call getDsl during or after the section workflow — it returns 195KB+ of full DSL data that will exhaust your context window and prevent you from fetching remaining sections. Continue fetching section DSL via mcp__getDesignSections with sectionIndex=N. If you need data you think only getDsl provides, it is already available in the section DSL responses (rowTexts, dsl.nodes)."),
               }),
             },
           ],

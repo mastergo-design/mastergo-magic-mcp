@@ -73,7 +73,7 @@ Restore design, save as HTML file: https://{domain}/goto/{shortLink}
 ### Command Line Options
 
 ```
-npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header "Key: Value"] [--debug] [--no-rule]
+npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [--proxy=PROXY_URL] [--format=FORMAT] [--header "Key: Value"] [--debug] [--no-rule] [--no-prefix]
 ```
 
 #### Parameters:
@@ -86,6 +86,7 @@ npx @mastergo/magic-mcp --token=YOUR_TOKEN [--url=API_URL] [--rule=RULE_NAME] [-
 - `--format=FORMAT` (optional): Default output format for design-data tools — one of `json` (default), `yaml`, `tree`. An explicit per-call `format` tool parameter overrides this. Also settable via the `DEFAULT_FORMAT` environment variable.
 - `--debug` (optional): Enable debug mode for detailed error information
 - `--no-rule` (optional): Disable default rules
+- `--no-prefix` (optional): Register tools without the `mcp__` name prefix (e.g. `getDsl` instead of `mcp__getDsl`). Some MCP clients (such as Grok Build) silently skip tools whose fully-qualified `server__tool` name contains more than one `__` separator — since the server is already prefixed, a `mcp__getDsl` tool name becomes `server__mcp__getDsl` and is dropped. Enable this flag for those clients. Also settable via the `MG_NO_PREFIX` environment variable (`1`/`true`/`yes`).
 
 You can also use space-separated format for parameters:
 
@@ -101,6 +102,7 @@ Alternatively, you can use environment variables instead of command line argumen
 - `API_BASE_URL`: API base URL
 - `RULES`: JSON array of rules (e.g., `'["rule1", "rule2"]'`)
 - `DEFAULT_FORMAT`: Default output format for design-data tools (`json` | `yaml` | `tree`); the `--format` argument and an explicit per-call `format` tool parameter take precedence.
+- `MG_NO_PREFIX`: Set to `1`/`true`/`yes` to register tools without the `mcp__` name prefix (the `--no-prefix` argument takes priority).
 - `HTTPS_PROXY` / `https_proxy` / `HTTP_PROXY` / `http_proxy`: HTTP(S) proxy URL (the `--proxy` argument takes priority)
 
 ### Tool Output Format
