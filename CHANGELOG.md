@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.7 (2026-08-04)
+
+## What's Changed
+* feat: 支持 --no-prefix / MG_NO_PREFIX 无前缀工具名注册（兼容 Grok Build） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/116
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.6...v0.2.7
+
+
 ## v0.2.6 (2026-07-21)
 
 ## What's Changed
