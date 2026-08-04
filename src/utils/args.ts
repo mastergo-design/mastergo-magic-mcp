@@ -75,7 +75,7 @@ function parseNoRule(): boolean {
   return false;
 }
 
-function parseNoPrefix(): boolean {
+function parseNoPrefix(): boolean | undefined {
   const args = getArgs();
 
   for (const arg of args) {
@@ -84,7 +84,8 @@ function parseNoPrefix(): boolean {
     }
   }
 
-  return false;
+  // 未显式传 `--no-prefix`：返回 undefined，交由 MG_NO_PREFIX 环境变量决定。
+  return undefined;
 }
 
 function parseProxy(): string {
@@ -292,7 +293,7 @@ export function parserArgs(): {
   rules: string[];
   debug: boolean;
   noRule: boolean;
-  noPrefix: boolean;
+  noPrefix: boolean | undefined;
   proxy: string;
   format: string | undefined;
 } {

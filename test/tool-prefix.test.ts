@@ -146,6 +146,21 @@ test("env: MG_NO_PREFIX=0 / unset keeps default prefix", () => {
   assert.equal(getNoPrefix(), false);
 });
 
+test("env: MG_NO_PREFIX values are case-insensitive", () => {
+  reset();
+  process.env.MG_NO_PREFIX = "TRUE";
+  assert.equal(getNoPrefix(), true);
+  reset();
+  process.env.MG_NO_PREFIX = "True";
+  assert.equal(getNoPrefix(), true);
+  reset();
+  process.env.MG_NO_PREFIX = "YES";
+  assert.equal(getNoPrefix(), true);
+  reset();
+  process.env.MG_NO_PREFIX = "No";
+  assert.equal(getNoPrefix(), false);
+});
+
 // ---- parseNoPrefix() from args ----
 
 test("parseNoPrefix: --no-prefix flag returns true", () => {
@@ -157,10 +172,10 @@ test("parseNoPrefix: --no-prefix flag returns true", () => {
   }
 });
 
-test("parseNoPrefix: absent flag returns false", () => {
+test("parseNoPrefix: absent flag returns undefined (defer to env)", () => {
   try {
     withArgv("--debug", "--token", "x");
-    assert.equal(parseNoPrefix(), false);
+    assert.equal(parseNoPrefix(), undefined);
   } finally {
     restoreArgv();
   }
@@ -178,8 +193,60 @@ test("parseNoPrefix: --no-prefix mixed with other flags", () => {
 test("parseNoPrefix: --no-prefix=false form is ignored (only exact flag counts)", () => {
   try {
     withArgv("--no-prefix=false");
-    assert.equal(parseNoPrefix(), false);
+    assert.equal(parseNoPrefix(), undefined);
   } finally {
     restoreArgv();
   }
+});
+
+// ---- integration path: main() sets setNoPrefix(parseNoPrefix()) ----
+
+test("integration: MG_NO_PREFIX=1 + no --no-prefix keeps env-driven no-prefix", () => {
+  reset();
+  process.env.MG_NO_PREFIX = "1";
+  try {
+    withArgv("--token", "test"); // 无 --no-prefix → parseNoPrefix() 返回 undefined
+    const noPrefix = parseNoPrefix();
+    assert.equal(noPrefix, undefined);
+    setNoPrefix(noPrefix); // main() 中无条件调用，但 undefined 不应覆盖 env
+    assert.equal(getNoPrefix(), true);
+    assert.equal(toolName("getDsl"), "getDsl");
+    assert.equal(toolName("getDesignSections"), "getDesignSections");
+  } finally {
+    restoreArgv();
+  }
+});
+
+test("integration: MG_NO_PREFIX unset + no --no-prefix keeps default prefix", () => {
+  reset();
+  try {
+    withArgv("--token", "test");
+    setNoPrefix(parseNoPrefix());
+    assert.equal(getNoPrefix(), false);
+    assert.equal(toolName("getDsl"), "mcp__getDsl");
+  } finally {
+    restoreArgv();
+  }
+});
+
+test("integration: --no-prefix overrides MG_NO_PREFIX=0", () => {
+  reset();
+  process.env.MG_NO_PREFIX = "0";
+  try {
+    withArgv("--no-prefix");
+    setNoPrefix(parseNoPrefix());
+    assert.equal(getNoPrefix(), true);
+    assert.equal(toolName("getDsl"), "getDsl");
+  } finally {
+    restoreArgv();
+  }
+});
+
+test("setNoPrefix: does not mutate process.env.MG_NO_PREFIX", () => {
+  reset();
+  delete process.env.MG_NO_PREFIX;
+  setNoPrefix(true);
+  assert.equal(process.env.MG_NO_PREFIX, undefined);
+  setNoPrefix(false);
+  assert.equal(process.env.MG_NO_PREFIX, undefined);
 });

@@ -13,7 +13,7 @@
 let _noPrefix: boolean | null = null;
 
 function parseEnvNoPrefix(): boolean {
-  const v = process.env.MG_NO_PREFIX;
+  const v = (process.env.MG_NO_PREFIX ?? "").toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
 
@@ -23,11 +23,15 @@ function resolveNoPrefix(): boolean {
   return _noPrefix;
 }
 
-/** 解析出 `--no-prefix` 后调用，覆盖环境变量。 */
-export function setNoPrefix(v: boolean): void {
-  _noPrefix = v;
-  // 同步 env，保证运行时其它模块（如 api.ts 的 buildDslRules）读取一致。
-  process.env.MG_NO_PREFIX = v ? "1" : "0";
+/**
+ * 显式设置是否启用无前缀模式。
+ * `undefined` 表示调用方未显式指定（未传 `--no-prefix`），保持从环境变量读取；
+ * 传 `true`/`false` 时覆盖环境变量（CLI 参数优先于 `MG_NO_PREFIX`）。
+ */
+export function setNoPrefix(v: boolean | undefined): void {
+  if (v !== undefined) {
+    _noPrefix = v;
+  }
 }
 
 /** 重置缓存的解析结果，回到从环境变量读取。测试用。 */
