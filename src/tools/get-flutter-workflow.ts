@@ -6,9 +6,9 @@ import axios from "axios";
 import https from "https";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import flutterComponentWorkflow from "../markdown/flutter-component-workflow.md";
 
-const FLUTTER_GENERATOR_TOOL_NAME = "mcp__getFlutterGenerator";
 const FLUTTER_GENERATOR_TOOL_DESCRIPTION = `
 Users need to actively call this tool to get the Flutter component development workflow. When Flutter Generator or Flutter Component is mentioned, please actively call this tool.
 This tool provides a structured workflow for Flutter component development following best practices.
@@ -641,7 +641,9 @@ function rewriteDslUrls(node: any, urlMap: Map<string, string>): void {
 // ---------------------------------------------------------------------------
 
 export class GetFlutterWorkflowTool extends BaseTool {
-  name = FLUTTER_GENERATOR_TOOL_NAME;
+  get name() {
+    return toolName("getFlutterGenerator");
+  }
   description = FLUTTER_GENERATOR_TOOL_DESCRIPTION;
 
   constructor() {
@@ -975,13 +977,13 @@ export class GetFlutterWorkflowTool extends BaseTool {
     const assetRulePath = assetDirRelative;
     const lostMsg =
       unresolvedLostImageRefs.length > 0
-        ? `WARNING: ${unresolvedLostImageRefs.length} image references were LOST by the MasterGo upstream (cssCode contains url([object Object])). These cannot be recovered from the style API. Affected node IDs: ${Array.from(
+        ? applyToolPrefix(`WARNING: ${unresolvedLostImageRefs.length} image references were LOST by the MasterGo upstream (cssCode contains url([object Object])). These cannot be recovered from the style API. Affected node IDs: ${Array.from(
             new Set(unresolvedLostImageRefs.map((l) => l.nodeId))
           )
             .slice(0, 20)
             .join(", ")}${
             unresolvedLostImageRefs.length > 20 ? " …" : ""
-          }. Use placeholder widgets (Container with grey background + Icon) or ask the user to re-export via mcp__getD2c for those nodes.`
+          }. Use placeholder widgets (Container with grey background + Icon) or ask the user to re-export via mcp__getD2c for those nodes.`)
         : null;
 
     return {

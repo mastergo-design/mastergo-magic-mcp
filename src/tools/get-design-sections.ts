@@ -2,9 +2,9 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput } from "../utils/format";
+import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import { markSectionWorkflowActive, setTotalSections, trackSectionFetched } from "./get-dsl";
 
-const DESIGN_SECTIONS_TOOL_NAME = "mcp__getDesignSections";
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 [PRIMARY] This is the main tool for all designs. Operates in TWO modes:
 
@@ -72,7 +72,9 @@ const DSL_RULES: string[] = [
 
 
 export class GetDesignSectionsTool extends BaseTool {
-  name = DESIGN_SECTIONS_TOOL_NAME;
+  get name() {
+    return toolName("getDesignSections");
+  }
   description = DESIGN_SECTIONS_TOOL_DESCRIPTION;
 
   constructor() {
@@ -170,7 +172,7 @@ export class GetDesignSectionsTool extends BaseTool {
         typeof result === "object" &&
         (!result.rules || !Array.isArray(result.rules) || result.rules.length === 0)
       ) {
-        result.rules = DSL_RULES;
+        result.rules = DSL_RULES.map((r) => applyToolPrefix(r));
       }
 
       // section list 模式：在响应里注入 nextAction 显式指令，防止 LLM 跳过 section DSL 拉取。
@@ -192,7 +194,7 @@ export class GetDesignSectionsTool extends BaseTool {
           const maxSibling = Math.max(...highSiblingSections.map((s: any) => s.structureSiblingCount));
           siblingWarning = ` WARNING: ${highSiblingSections.length} sections have structureSiblingCount up to ${maxSibling} — they look identical in the list (same nodeCount, empty name) but each has DIFFERENT text content and variant state. You MUST fetch ALL of them individually (do NOT skip any after fetching a few). Skipping sibling sections causes missing active-state styling and wrong menu item rendering.`;
         }
-        result.nextAction = `STOP. This section LIST is only a directory — it has NO DSL nodes,  NO rowTexts. You CANNOT generate HTML from this list alone. Your NEXT ACTION: call mcp__getDesignSections with sectionIndex=0, then sectionIndex=1, ... up to sectionIndex=${n - 1} (total ${n} calls). Fetch ALL ${n} sections in batches of 3-5 before writing ANY HTML. Sections with nodeCount=3 and empty name are NOT empty — they contain real menu items and content (resolved from INSTANCE overrides during DSL transfer).${siblingWarning} Skipping section DSL fetch is the #1 cause of missing menus, broken icons, and wrong data.`;
+        result.nextAction = applyToolPrefix(`STOP. This section LIST is only a directory — it has NO DSL nodes,  NO rowTexts. You CANNOT generate HTML from this list alone. Your NEXT ACTION: call mcp__getDesignSections with sectionIndex=0, then sectionIndex=1, ... up to sectionIndex=${n - 1} (total ${n} calls). Fetch ALL ${n} sections in batches of 3-5 before writing ANY HTML. Sections with nodeCount=3 and empty name are NOT empty — they contain real menu items and content (resolved from INSTANCE overrides during DSL transfer).${siblingWarning} Skipping section DSL fetch is the #1 cause of missing menus, broken icons, and wrong data.`);
         // 检测多列布局：动态计算主内容区位置
         const scList = result.splitContainers;
         if (Array.isArray(scList) && scList.length > 0) {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import fs from "fs";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
+import { toolName } from "../utils/tool-prefix";
 import componentWorkflow from "../markdown/component-workflow.md";
 
 /**
@@ -46,7 +47,6 @@ function createConcurrencyLimiter(maxConcurrency: number) {
 const WRITE_FILE_CONCURRENCY = 32;
 const CHILDREN_RECURSION_CONCURRENCY = 8;
 
-const COMPONENT_GENERATOR_TOOL_NAME = "mcp__getComponentGenerator";
 const COMPONENT_GENERATOR_TOOL_DESCRIPTION = `
 Users need to actively call this tool to get the component development workflow. When Generator is mentioned, please actively call this tool.
 This tool provides a structured workflow for component development following best practices.
@@ -54,7 +54,9 @@ You must provide an absolute rootPath of workspace to save workflow files.
 `;
 
 export class GetComponentWorkflowTool extends BaseTool {
-  name = COMPONENT_GENERATOR_TOOL_NAME;
+  get name() {
+    return toolName("getComponentGenerator");
+  }
   description = COMPONENT_GENERATOR_TOOL_DESCRIPTION;
 
   constructor() {

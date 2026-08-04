@@ -2,11 +2,11 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import fs from "fs";
+import { toolName } from "../utils/tool-prefix";
 
 /** 读取文件大小上限：10MB，防止 LLM 传入超大 HTML 文件阻塞事件循环。 */
 const C2D_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const C2D_TOOL_NAME = "mcp__C2d";
 const C2D_TOOL_DESCRIPTION = `
 使用此工具将代码文件发送到 MasterGo MCP 服务进行 C2D（代码转设计）处理，将用户代码同步到设计稿。
 
@@ -22,7 +22,9 @@ const C2D_TOOL_DESCRIPTION = `
 `;
 
 export class GetC2dTool extends BaseTool {
-  name = C2D_TOOL_NAME;
+  get name() {
+    return toolName("C2d");
+  }
   description = C2D_TOOL_DESCRIPTION;
 
   constructor() {

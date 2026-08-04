@@ -75,6 +75,19 @@ function parseNoRule(): boolean {
   return false;
 }
 
+function parseNoPrefix(): boolean | undefined {
+  const args = getArgs();
+
+  for (const arg of args) {
+    if (arg === "--no-prefix") {
+      return true;
+    }
+  }
+
+  // 未显式传 `--no-prefix`：返回 undefined，交由 MG_NO_PREFIX 环境变量决定。
+  return undefined;
+}
+
 function parseProxy(): string {
   const args = getArgs();
   let proxy = "";
@@ -280,6 +293,7 @@ export function parserArgs(): {
   rules: string[];
   debug: boolean;
   noRule: boolean;
+  noPrefix: boolean | undefined;
   proxy: string;
   format: string | undefined;
 } {
@@ -288,6 +302,7 @@ export function parserArgs(): {
   const rules = parseRules();
   const debug = parseDebug();
   const noRule = parseNoRule();
+  const noPrefix = parseNoPrefix();
   const proxy = parseProxy();
   const format = parseFormat();
 
@@ -297,9 +312,10 @@ export function parserArgs(): {
     rules,
     debug,
     noRule,
+    noPrefix,
     proxy,
     format,
   };
 }
 
-export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseProxy, parseFormat, parseHeaders, parseEnvHeaders, getEffectiveHeaders, maskSensitiveHeaders, getArgs };
+export { parseToken, parseUrl, parseRules, parseDebug, parseNoRule, parseNoPrefix, parseProxy, parseFormat, parseHeaders, parseEnvHeaders, getEffectiveHeaders, maskSensitiveHeaders, getArgs };

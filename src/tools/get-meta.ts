@@ -2,9 +2,9 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput } from "../utils/format";
+import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import rules from "../markdown/meta.md";
 
-const META_TOOL_NAME = "mcp__getMeta";
 const META_TOOL_DESCRIPTION = `
 Use this tool when the user intends to build a complete website or needs to obtain high-level site
 configuration information. You must provide a fileld and layerld to identify the specific design element.
@@ -13,7 +13,9 @@ follow the rules and use the results to analyze the site and page.
 `;
 
 export class GetMetaTool extends BaseTool {
-  name = META_TOOL_NAME;
+  get name() {
+    return toolName("getMeta");
+  }
   description = META_TOOL_DESCRIPTION;
 
   constructor() {
@@ -47,7 +49,8 @@ export class GetMetaTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: formatOutput({ result, rules }, format),
+            // meta.md 里引用的工具名带 `mcp__` 前缀，需随当前前缀设置同步改写。
+            text: formatOutput({ result, rules: applyToolPrefix(rules) }, format),
           },
         ],
       };

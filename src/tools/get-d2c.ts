@@ -5,8 +5,8 @@ import axios from "axios";
 import path from "path";
 import { existsSync, mkdirSync } from "fs";
 import { writeFile } from "fs/promises";
+import { toolName } from "../utils/tool-prefix";
 
-const D2C_TOOL_NAME = "mcp__getD2c";
 const D2C_TOOL_DESCRIPTION = `
 使用此工具从 MasterGo 获取 D2C 数据，并在本地落盘：
 1）将返回的 code 写入 html；
@@ -270,7 +270,9 @@ function extractPayload(d2c: any): {
 }
 
 export class GetD2cTool extends BaseTool {
-  name = D2C_TOOL_NAME;
+  get name() {
+    return toolName("getD2c");
+  }
   description = D2C_TOOL_DESCRIPTION;
 
   constructor() {

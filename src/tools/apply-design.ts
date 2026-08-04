@@ -5,8 +5,8 @@ import { clearSectionWorkflow } from "./get-dsl";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { toolName } from "../utils/tool-prefix";
 
-const APPLY_DESIGN_TOOL_NAME = "mcp__applyDesign";
 const APPLY_DESIGN_TOOL_DESCRIPTION = `
 Finalize generated design code: replace ALL placeholders (SVG icons + long text) with real high-precision data from the design cache, then write the final file directly to disk.
 
@@ -37,7 +37,9 @@ IMPORTANT: Call this tool with the COMPLETE code string. After the tool writes t
 `;
 
 export class ApplyDesignTool extends BaseTool {
-  name = APPLY_DESIGN_TOOL_NAME;
+  get name() {
+    return toolName("applyDesign");
+  }
   description = APPLY_DESIGN_TOOL_DESCRIPTION;
 
   constructor() {

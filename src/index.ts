@@ -15,6 +15,7 @@ import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
+import { setNoPrefix, applyToolPrefix, getNoPrefix } from "./utils/tool-prefix";
 import packageJson from "../package.json";
 
 const SERVER_INSTRUCTIONS = `
@@ -243,7 +244,11 @@ If any item above is unchecked, your HTML is INCOMPLETE. Fix it before outputtin
 
 function main() {
   // Parse command line arguments and set environment variables
-  const { token, baseUrl, rules, debug, noRule, proxy, format } = parserArgs();
+  const { token, baseUrl, rules, debug, noRule, noPrefix, proxy, format } = parserArgs();
+
+  // `--no-prefix` / MG_NO_PREFIX: 注册无 `mcp__` 前缀的工具名（兼容 Grok Build 等客户端）。
+  // 必须在任何工具注册 / 指令生成之前调用，保证工具名与指令文本一致。
+  setNoPrefix(noPrefix);
 
   // `--format` (json|yaml|tree) sets the default output format for design-data tools.
   // An explicit per-call `format` tool parameter still takes precedence (see utils/format.ts).
@@ -267,6 +272,7 @@ function main() {
     console.log(`API URL: ${baseUrl || "default"}`);
     console.log(`Rules: ${rules.length > 0 ? rules.join(", ") : "none"}`);
     console.log(`No Rule: ${noRule ? "enabled" : "disabled"}`);
+    console.log(`No Prefix: ${getNoPrefix() ? "enabled (tools registered without 'mcp__' prefix)" : "disabled (default: 'mcp__' prefix)"}`);
     console.log(`Proxy: ${proxy || "none"}`);
     const effectiveHeaders = getEffectiveHeaders();
     console.log(`Custom Headers: ${Object.keys(effectiveHeaders).length > 0 ? JSON.stringify(maskSensitiveHeaders(effectiveHeaders)) : "none"}`);
@@ -279,7 +285,7 @@ function main() {
       name: "MasterGoMcpServer",
       version: packageJson.version,
     },
-    { instructions: SERVER_INSTRUCTIONS }
+    { instructions: applyToolPrefix(SERVER_INSTRUCTIONS) }
   );
 
   new GetVersionTool().register(server);
