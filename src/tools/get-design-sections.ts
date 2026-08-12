@@ -6,6 +6,18 @@ import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import { markSectionWorkflowActive, setTotalSections, trackSectionFetched } from "./get-dsl";
 
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
+BEFORE calling this tool, CHECK the layerId:
+- If layerId has NO colon and no digits (e.g. "M", or any short non-numeric id), it is likely a
+  PAGE-level id, NOT a layer id. Page-level ids return EMPTY from this tool (they cannot be
+  enumerated via /container).
+  → STOP. Call mcp__getPageLayers with the same fileId+layerId first to enumerate the real
+  layer_ids, then restore each one individually.
+- Only proceed with THIS tool when layerId looks like a real layer id (contains a colon and
+  digits, e.g. "802:02364", "453:6855").
+This check is MANDATORY when the user's URL contains ?page_id= (not ?layer_id=). If you ignore
+this and call this tool with a page-level id, the server will return an error redirecting you to
+mcp__getPageLayers anyway — so save the round-trip and call getPageLayers first.
+
 [PRIMARY] This is the main tool for all designs. Operates in TWO modes:
 
 Mode 1 — Get layout overview (sectionIndex NOT provided):
@@ -144,12 +156,16 @@ export class GetDesignSectionsTool extends BaseTool {
       let finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
       let finalSourceLayerId = sourceLayerId;
+      // 来源信号：仅在 shortLink 解析时由 extractIdsFromUrl 填充（layerId 来自 ?page_id= 时为 true）。
+      // LLM 直传 layerId 参数（不走 shortLink）时为 undefined——服务端软兜底不触发，由 prompt 拦截。
+      let fromPageParam: boolean | undefined;
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
         finalFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
+        fromPageParam = ids.fromPageParam;
       }
 
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
@@ -160,7 +176,8 @@ export class GetDesignSectionsTool extends BaseTool {
       const result = await httpUtilInstance.getDesignSections(
         finalFileId,
         effectiveLayerId,
-        sectionIndex
+        sectionIndex,
+        fromPageParam,
       );
 
       // 部分后端（如旧版 HTTP route）在 section list 响应里不下发 rules。
