@@ -2,6 +2,18 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.8 (2026-08-12)
+
+## What's Changed
+* Add MCP Toplist rank badge by @chrstphe in https://github.com/mastergo-design/mastergo-magic-mcp/pull/114
+* feat: 新增 mcp__getPageLayers 客户端 tool by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/113
+
+## New Contributors
+* @chrstphe made their first contribution in https://github.com/mastergo-design/mastergo-magic-mcp/pull/114
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.7...v0.2.8
+
+
 ## v0.2.7 (2026-08-04)
 
 ## What's Changed
