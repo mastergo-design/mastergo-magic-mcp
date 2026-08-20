@@ -29,6 +29,8 @@ type WriteResourceResult = {
   savedCount: number;
   attemptedCount: number;
   errorCount: number;
+  /** 原始资源 key -> 最终落盘文件名（相对资源目录），用于同步重写 HTML 中的引用。 */
+  fileNameMap: Record<string, string>;
 };
 
 function isEmpty(value: any): boolean {
@@ -77,101 +79,234 @@ function parseResourcePath(resourcePath: any): ResourcePathMap {
   return map;
 }
 
+const IMAGE_MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpg": "jpg",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+  "image/avif": "avif",
+  "image/x-icon": "ico",
+};
+
+export function extFromMime(mime: string): string | undefined {
+  const normalized = String(mime).toLowerCase().split(";")[0].trim();
+  return IMAGE_MIME_EXT[normalized];
+}
+
+export function decodeDataUrl(dataUrl: string): { data: Buffer; ext?: string } | undefined {
+  const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+  if (!match) return undefined;
+  const ext = match[1] ? extFromMime(match[1]) : undefined;
+  const isBase64 = Boolean(match[2]);
+  const data = isBase64
+    ? Buffer.from(match[3], "base64")
+    : Buffer.from(decodeURIComponent(match[3]), "utf8");
+  return { data, ext };
+}
+
+/**
+ * 把资源 key 清洗成可落盘文件名：
+ * - 保留中文等非 ASCII 字符（此前的 [^a-zA-Z0-9_-] 过滤会把中文全部替换成下划线，
+ *   导致落盘文件名与 HTML 引用不一致）；
+ * - 仅剔除路径分隔符与 `.`/`..`，避免目录穿越。
+ */
+export function sanitizeResourceKey(key: string): string {
+  return String(key)
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((seg) => seg.length > 0 && seg !== "." && seg !== "..")
+    .join("/");
+}
+
+export function splitResourceKey(key: string): { stem: string; ext?: string } {
+  const match = String(key).match(/^(.+)\.([a-zA-Z0-9]+)$/);
+  if (!match) return { stem: String(key) };
+  return { stem: match[1], ext: match[2].toLowerCase() };
+}
+
+/**
+ * 重写 HTML/code 中指定资源名的引用。使用前后边界检查，避免
+ * `a.jpg` 误伤 `ba.jpg`；保留目录前缀，只替换 key 本身。
+ */
+export function replaceResourceRef(code: string, originalKey: string, finalName: string): string {
+  if (originalKey === finalName) return code;
+  const escaped = originalKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "g");
+  return code.replace(pattern, () => finalName);
+}
+
+export function detectImageExt(buffer: Buffer): string | undefined {
+  if (!buffer || buffer.length < 4) return undefined;
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return "png";
+  }
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "jpg";
+  }
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return "gif";
+  }
+  if (
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return "webp";
+  }
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    return "bmp";
+  }
+  const head = buffer.slice(0, 512).toString("latin1").toLowerCase();
+  if (head.includes("<svg") || head.startsWith("<?xml")) {
+    return "svg";
+  }
+  return undefined;
+}
+
+function pickStringFromObject(value: any): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  for (const key of ["url", "src", "href", "data", "content", "base64", "value"]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) return candidate;
+  }
+  return undefined;
+}
+
+async function downloadHttpResource(url: string): Promise<{ data: Buffer; ext?: string }> {
+  const response = await axios.get(url, {
+    responseType: "arraybuffer",
+    timeout: 30000,
+  });
+  const data = Buffer.isBuffer(response.data) ? response.data : Buffer.from(response.data);
+  const headerExt = extFromMime(String(response.headers?.["content-type"] ?? ""));
+  return { data, ext: headerExt ?? detectImageExt(data) };
+}
+
+async function resolveResourceContent(
+  content: any,
+  extHint: string
+): Promise<{ data: Buffer; ext?: string } | undefined> {
+  if (typeof content === "string") {
+    if (/^https?:\/\//i.test(content)) {
+      try {
+        return await downloadHttpResource(content);
+      } catch (err: any) {
+        const isWrongSsl =
+          err?.code === "EPROTO" || String(err?.message ?? "").includes("wrong version number");
+
+        // 有些资源链接会误把 http 服务包装成 https，导致 EPROTO：
+        // 尝试回退到 http 再请求一次。
+        if (isWrongSsl && content.startsWith("https://")) {
+          return await downloadHttpResource(content.replace(/^https:\/\//, "http://"));
+        }
+
+        throw err;
+      }
+    }
+
+    if (content.startsWith("data:")) {
+      return decodeDataUrl(content);
+    }
+
+    if (extHint === "svg" || /^\s*<svg[\s>]/i.test(content) || /^\s*<\?xml/i.test(content)) {
+      return { data: Buffer.from(content, "utf8"), ext: "svg" };
+    }
+
+    // 裸 base64 图片：先嗅探真实字节格式，避免把 png 字节存成 jpg 文件。
+    const buffer = Buffer.from(content, "base64");
+    return { data: buffer, ext: detectImageExt(buffer) };
+  }
+
+  if (typeof content === "object" && content !== null) {
+    const nested = pickStringFromObject(content);
+    if (nested) return resolveResourceContent(nested, extHint);
+  }
+
+  return undefined;
+}
+
 async function writeResource(
   resData: any,
   targetDir: string,
   folderName: string,
-  ext: string
+  extHint: string
 ): Promise<WriteResourceResult> {
-  if (isEmpty(resData)) return { savedCount: 0, attemptedCount: 0, errorCount: 0 };
+  const emptyResult: WriteResourceResult = {
+    savedCount: 0,
+    attemptedCount: 0,
+    errorCount: 0,
+    fileNameMap: {},
+  };
+  if (isEmpty(resData)) return emptyResult;
 
   let parsed: any;
   try {
     parsed = typeof resData === "string" ? JSON.parse(resData) : resData;
   } catch {
-    return { savedCount: 0, attemptedCount: 0, errorCount: 1 };
+    return { ...emptyResult, errorCount: 1 };
   }
 
   if (!parsed || typeof parsed !== "object") {
-    return { savedCount: 0, attemptedCount: 0, errorCount: 1 };
+    return { ...emptyResult, errorCount: 1 };
   }
 
   const keys = Object.keys(parsed);
   if (keys.length === 0) {
-    return { savedCount: 0, attemptedCount: 0, errorCount: 0 };
+    return emptyResult;
   }
 
   const resDir = path.join(targetDir, folderName);
   if (!existsSync(resDir)) mkdirSync(resDir, { recursive: true });
 
+  const fileNameMap: Record<string, string> = {};
   let successCount = 0;
   let errorCount = 0;
+  let attemptedCount = 0;
 
   await Promise.all(
     Object.entries(parsed).map(async ([key, value]) => {
-      const match = String(key).match(/(.+)\.([a-zA-Z0-9]+)$/);
-      const safeKey = (match ? match[1] : key).replace(/[^a-zA-Z0-9_-]/g, "_");
-      const finalExt = match ? match[2] : ext;
-      const filePath = path.join(resDir, `${safeKey}.${finalExt}`);
-
-      const content = value as any;
+      attemptedCount += 1;
+      const originalKey = String(key);
+      const safeKey = sanitizeResourceKey(originalKey);
+      if (!safeKey) {
+        errorCount += 1;
+        return;
+      }
 
       try {
-        if (typeof content === "string" && content.startsWith("http")) {
-          try {
-            const response = await axios.get(content, {
-              responseType: "arraybuffer",
-              timeout: 30000,
-            });
-            await writeFile(filePath, response.data);
-            successCount += 1;
-            return;
-          } catch (err: any) {
-            const isWrongSsl =
-              err?.code === "EPROTO" ||
-              String(err?.message ?? "").includes("wrong version number");
-
-            // 有些资源链接会误把 http 服务包装成 https，导致 EPROTO：
-            // 尝试回退到 http 再请求一次。
-            if (isWrongSsl && content.startsWith("https://")) {
-              const httpUrl = content.replace(/^https:\/\//, "http://");
-              const response = await axios.get(httpUrl, {
-                responseType: "arraybuffer",
-                timeout: 30000,
-              });
-              await writeFile(filePath, response.data);
-              successCount += 1;
-              return;
-            }
-
-            errorCount += 1;
-            return;
-          }
-        }
-
-        if (typeof content === "string" && content.startsWith("data:image/")) {
-          const parts = content.split(";base64,");
-          if (parts.length === 2) {
-            await writeFile(filePath, parts[1], "base64");
-            successCount += 1;
-          }
+        const outcome = await resolveResourceContent(value, extHint);
+        if (!outcome) {
+          errorCount += 1;
           return;
         }
 
-        const dataToWrite =
-          typeof content === "object" ? JSON.stringify(content, null, 2) : String(content ?? "");
-        const encoding: BufferEncoding =
-          finalExt === "png" || finalExt === "jpg" || finalExt === "jpeg" ? "base64" : "utf8";
-        await writeFile(filePath, dataToWrite, encoding);
+        const { stem, ext: keyExt } = splitResourceKey(safeKey);
+        const finalExt = outcome.ext ?? keyExt ?? extHint;
+        const finalName = `${stem}.${finalExt}`;
+        const filePath = path.join(resDir, finalName);
+
+        if (finalName.includes("/")) {
+          mkdirSync(path.dirname(filePath), { recursive: true });
+        }
+
+        await writeFile(filePath, outcome.data);
+        fileNameMap[originalKey] = finalName;
         successCount += 1;
       } catch {
         errorCount += 1;
-        return;
       }
     })
   );
 
-  return { savedCount: successCount, attemptedCount: keys.length, errorCount };
+  return { savedCount: successCount, attemptedCount, errorCount, fileNameMap };
 }
 
 async function saveCodeAndResources(params: {
@@ -195,10 +330,6 @@ async function saveCodeAndResources(params: {
   const htmlFileName = `${contentId || "index"}.html`;
   const htmlPath = path.join(targetDir, htmlFileName);
 
-  if (!isEmpty(code)) {
-    await writeFile(htmlPath, code, "utf8");
-  }
-
   const resPathMap = parseResourcePath(resourcePath);
 
   // 即使资源为空，也确保目录按 resourcePath 规划创建出来，便于后续排查
@@ -209,11 +340,25 @@ async function saveCodeAndResources(params: {
   ensureResDir(resPathMap.image);
   ensureResDir(resPathMap.svg);
 
-
+  // 先落盘资源，拿到「原始 key -> 最终文件名」映射，再据此重写 HTML 引用；
+  // 否则 HTML 里的中文文件名和实际落盘的下划线文件名会对不上。
   const [svgWrite, imageWrite] = await Promise.all([
     writeResource(svg, targetDir, resPathMap.svg, "svg"),
     writeResource(image, targetDir, resPathMap.image, "png"),
   ]);
+
+  let finalCode = code;
+  const rewriteRefs = (fileNameMap: Record<string, string>) => {
+    for (const [originalKey, fileName] of Object.entries(fileNameMap)) {
+      finalCode = replaceResourceRef(finalCode, originalKey, fileName);
+    }
+  };
+  rewriteRefs(imageWrite.fileNameMap);
+  rewriteRefs(svgWrite.fileNameMap);
+
+  if (!isEmpty(finalCode)) {
+    await writeFile(htmlPath, finalCode, "utf8");
+  }
 
   return {
     targetDir,
