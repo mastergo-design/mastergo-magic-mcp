@@ -2,6 +2,17 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.9 (2026-08-25)
+
+## What's Changed
+* fix(get-d2c): 保留中文资源文件名并修正图片格式 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/118
+* fix(release): 修复 npm 发布配置 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/119
+* fix(ci): make yarn workflows reliable by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/120
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.8...v0.2.9
+
+
 ## v0.2.8 (2026-08-12)
 
 ## What's Changed
