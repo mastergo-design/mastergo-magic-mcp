@@ -19,7 +19,7 @@ jobs:
           node-version: 18.x
 
       - name: Install dependencies
-        run: npm install
+        run: yarn install --frozen-lockfile
 
       - name: Lint
         run: npm run lint

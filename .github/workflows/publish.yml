@@ -46,7 +46,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm install
+        run: yarn install --frozen-lockfile
 
       - name: Build project
         run: npm run build
