@@ -35,12 +35,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "18.x"
           registry-url: "https://registry.npmjs.org"
@@ -98,7 +98,13 @@ jobs:
           done
 
       - name: Publish to NPM
-        run: npm publish
+        run: |
+          NPM_TAG=latest
+          case "${{ github.event.inputs.release-type }}" in
+            beta) NPM_TAG=beta ;;
+            alpha) NPM_TAG=alpha ;;
+          esac
+          npm publish --access public --tag "$NPM_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

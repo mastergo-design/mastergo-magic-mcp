@@ -42,6 +42,9 @@
   "author": "",
   "license": "ISC",
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "axios": "1.18.1",
