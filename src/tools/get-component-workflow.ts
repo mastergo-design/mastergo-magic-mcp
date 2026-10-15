@@ -113,7 +113,15 @@ export class GetComponentWorkflowTool extends BaseTool {
     const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
     // 组件名来自远端 API，属不可信输入：消毒后再拼文件名，防止
     // name 含 "../../" 之类序列把 JSON 写到 baseDir 之外。
-    const componentJsonDir = `${baseDir}/${sanitizeFileName(jsonData[0].name, "component")}.json`;
+    // 消毒兜底不用固定串：中文产品里图层名多为中文，sanitizeFileName 只保留
+    // [a-zA-Z0-9._-]，固定 fallback 会让所有中文名组件都写进同一个 JSON 互相覆盖；
+    // 用 layerId（含 sourceLayerId）派生唯一名保证多组件可并存。
+    const sanitized = sanitizeFileName(jsonData[0].name, "");
+    const fallback = sanitizeFileName(
+      `${sourceLayerId ?? layerId}-${jsonData[0]?.id ?? "component"}`,
+      "component"
+    );
+    const componentJsonDir = `${baseDir}/${sanitized || fallback}.json`;
 
     // walkLayer 改为异步：递归写 SVG 文件用 fs.promises，避免同步 IO 阻塞事件循环。
     // 节点多时逐节点写文件会串行阻塞，改异步后可并发（通过 Promise.all 收集）。
