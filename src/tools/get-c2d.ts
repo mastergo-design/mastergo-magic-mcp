@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import fs from "fs";
+import { isReadableHtmlFilePath } from "../utils/security";
 import { toolName } from "../utils/tool-prefix";
 
 /** 读取文件大小上限：10MB，防止 LLM 传入超大 HTML 文件阻塞事件循环。 */
@@ -61,6 +62,13 @@ export class GetC2dTool extends BaseTool {
     shortLink,
   }: z.infer<typeof this.schema>) {
     try {
+      // CVE-2026-15749 修复：filePath 由 LLM 传入，先做路径校验——必须是指向
+      // .html/.htm 的绝对路径，杜绝读取任意系统文件（/etc/passwd、SSH 私钥等）。
+      const pathCheck = isReadableHtmlFilePath(filePath);
+      if (!pathCheck.ok) {
+        throw new Error(`Invalid filePath: ${pathCheck.reason}`);
+      }
+
       const link = shortLink?.trim();
       const fid = fileId?.trim();
       const lid = layerId?.trim();

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import fs from "fs";
+import path from "path";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { toolName } from "../utils/tool-prefix";
+import { isWritableWorkspaceRoot, sanitizeFileName } from "../utils/security";
 import componentWorkflow from "../markdown/component-workflow.md";
 
 /**
@@ -88,12 +90,30 @@ export class GetComponentWorkflowTool extends BaseTool {
   });
 
   async execute({ rootPath, fileId, layerId, sourceLayerId }: z.infer<typeof this.schema>) {
-    const baseDir = `${rootPath}/.mastergo/`;
+    // CVE-2026-15751 修复：rootPath 由 LLM 传入，必须是合法的项目级绝对路径
+    // （拒绝相对路径与文件系统根目录），与 get-flutter-workflow 同一口径。
+    const rootCheck = isWritableWorkspaceRoot(rootPath);
+    if (!rootCheck.ok) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              error: "Invalid rootPath",
+              reason: rootCheck.reason,
+            }),
+          },
+        ],
+      };
+    }
+    const baseDir = path.resolve(rootPath, ".mastergo");
     // 异步确保目录存在（不阻塞事件循环）
     await fs.promises.mkdir(baseDir, { recursive: true });
     const workflowFilePath = `${baseDir}/component-workflow.md`;
     const jsonData = await httpUtilInstance.getComponentStyleJson(fileId, layerId, sourceLayerId);
-    const componentJsonDir = `${baseDir}/${jsonData[0].name}.json`;
+    // 组件名来自远端 API，属不可信输入：消毒后再拼文件名，防止
+    // name 含 "../../" 之类序列把 JSON 写到 baseDir 之外。
+    const componentJsonDir = `${baseDir}/${sanitizeFileName(jsonData[0].name, "component")}.json`;
 
     // walkLayer 改为异步：递归写 SVG 文件用 fs.promises，避免同步 IO 阻塞事件循环。
     // 节点多时逐节点写文件会串行阻塞，改异步后可并发（通过 Promise.all 收集）。
