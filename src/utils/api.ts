@@ -134,7 +134,8 @@ export interface CodeResponse {
 // and this is called on every HTTP request. Callers spread the result into a new object,
 // so returning the shared cached reference is safe from mutation.
 let _commonHeaderCache: Record<string, string> | null = null;
-const getCommonHeader = (): Record<string, string> => {
+// 导出：getComponentLink 等工具需要按「仅同域携带凭据」策略自行组头（SSRF 防护配套）。
+export const getCommonHeader = (): Record<string, string> => {
   if (_commonHeaderCache) return _commonHeaderCache;
   _commonHeaderCache = {
     "Content-Type": "application/json",
@@ -151,7 +152,8 @@ const getCommonHeader = (): Record<string, string> => {
 // next call re-evaluates (and re-throws) — caching an error would make a bad state
 // permanent.
 let _baseUrlCache: string | null = null;
-const getBaseUrl = (): string => {
+// 导出：getComponentLink 需用它构造 SSRF 校验的 allowHosts（放行用户配置的部署地址）。
+export const getBaseUrl = (): string => {
   if (_baseUrlCache !== null) return _baseUrlCache;
   const url = process.env.API_BASE_URL || parseUrl();
   try {
