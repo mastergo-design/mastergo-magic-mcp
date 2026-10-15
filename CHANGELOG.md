@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.10 (2026-10-15)
+
+## What's Changed
+* fix(security): mitigate CVE-2026-15749/15750/15751 (path traversal & SSRF) by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/125
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.9...v0.2.10
+
+
 ## v0.2.9 (2026-08-25)
 
 ## What's Changed
