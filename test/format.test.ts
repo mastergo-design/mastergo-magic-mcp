@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import yaml from "js-yaml";
 import {
   formatOutput,
+  formatToolError,
   normalizeFormat,
   FORMAT_VALUES,
 } from "../src/utils/format";
@@ -14,6 +15,58 @@ const isJson = (s: string) => {
 };
 const roundTripYaml = (data: unknown) =>
   yaml.load(formatOutput(data, "yaml")) as unknown;
+
+// ---- structured HTTP tool errors ----
+test("formatToolError: preserves a parsed 10017 response object", () => {
+  const response = {
+    code: "10017",
+    status: 413,
+    message: "Layer data exceeds the 20MB limit",
+    info: { turtleSize: 36.1 * 1024 * 1024 },
+  };
+  assert.equal(
+    formatToolError({ response: { status: 413, data: response } }, "getPageLayers"),
+    JSON.stringify(response),
+  );
+});
+
+test("formatToolError: parses JSON string bodies without dropping the code", () => {
+  const response = { code: "10017", status: 413, message: "Too large" };
+  assert.equal(
+    formatToolError({ response: { data: JSON.stringify(response) } }, "getDesignSections"),
+    JSON.stringify(response),
+  );
+});
+
+test("formatToolError: wraps non-JSON response text", () => {
+  assert.deepEqual(
+    JSON.parse(formatToolError({ response: { data: "upstream unavailable" } }, "getPageLayers")),
+    { error: "getPageLayers failed", message: "upstream unavailable" },
+  );
+});
+
+test("formatToolError: falls back to the local error message", () => {
+  assert.deepEqual(
+    JSON.parse(formatToolError(new Error("local failure"), "getDesignSections")),
+    { error: "getDesignSections failed", message: "local failure" },
+  );
+});
+
+test("formatToolError: surfaces HTTP status for gateway bodies without a code", () => {
+  // e.g. an nginx HTML 413 page — no parseable code, but the status still tells the
+  // caller this is a capacity error so the OVERSIZED guidance applies.
+  assert.deepEqual(
+    JSON.parse(formatToolError({ response: { status: 413, data: "<html>413</html>" } }, "getPageLayers")),
+    { error: "getPageLayers failed", status: 413, message: "<html>413</html>" },
+  );
+});
+
+test("formatToolError: JSON-stringifies non-object response bodies", () => {
+  assert.deepEqual(
+    JSON.parse(formatToolError({ response: { status: 500, data: ["a", "b"] } }, "getDesignSections")),
+    { error: "getDesignSections failed", status: 500, message: ["a", "b"] },
+  );
+});
 
 // ---- fixtures matching the real server response shapes ----
 const rawDsl = {

@@ -1,12 +1,17 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
-import { formatField, formatOutput } from "../utils/format";
+import { formatField, formatOutput, formatToolError } from "../utils/format";
 import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import { markSectionWorkflowActive, setTotalSections, trackSectionFetched } from "./get-dsl";
 
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 BEFORE calling this tool, CHECK the layerId:
+- If a previous call returned error code [10017] (layer exceeds the 20MB limit), do NOT retry that
+  same layerId and do NOT fall back to mcp__getDsl — it fetches the same oversized data.
+  Use the page_id from the URL with mcp__getPageLayers to enumerate top-level layers, then restore
+  them one by one. If one top-level layer is still too large, ask the user to select a smaller
+  nested container in the MasterGo canvas and copy its link.
 - If layerId has NO colon and no digits (e.g. "M", or any short non-numeric id), it is likely a
   PAGE-level id, NOT a layer id. Page-level ids return EMPTY from this tool (they cannot be
   enumerated via /container).
@@ -45,7 +50,10 @@ IMPORTANT workflow:
 8. Generate the complete HTML with all SVG placeholders, then call \`mcp__applyDesign\` as the FINAL step.
 
 DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
-If this tool returns an error (e.g. old server), fall back to mcp__getDsl.
+If this tool is unavailable on an old server (HTTP 404), fall back to mcp__getDsl. For error code
+[10017], do NOT fall back to getDsl — follow the OVERSIZED LAYER instructions above. For other
+errors (e.g. HTTP 5xx or network timeout), retry once; if it still fails, fall back to mcp__getDsl
+or report the error to the user.
 
 You can provide either:
 1. fileId and layerId directly, or
@@ -267,13 +275,12 @@ export class GetDesignSectionsTool extends BaseTool {
         ],
       };
     } catch (error: any) {
-      const errorMessage = error.response?.data ?? error?.message;
       return {
         isError: true,
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(errorMessage),
+            text: formatToolError(error, "getDesignSections"),
           },
         ],
       };

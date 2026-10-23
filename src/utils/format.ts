@@ -52,6 +52,40 @@ export function formatOutput(
 }
 
 /**
+ * Serialize a tool failure without dropping a structured server error response.
+ * In particular, preserve `code` and `message` from HTTP 413 responses such as
+ * TURTLE_TOO_LARGE so callers can distinguish capacity limits from transform failures.
+ */
+export function formatToolError(error: unknown, toolName: string): string {
+  const value = error as {
+    response?: { status?: unknown; data?: unknown };
+    message?: unknown;
+  } | null;
+  const response = value && typeof value === "object" ? value.response : undefined;
+  const status = typeof response?.status === "number" ? response.status : undefined;
+  const responseData = response?.data;
+
+  if (responseData !== undefined && responseData !== null) {
+    if (typeof responseData === "string") {
+      try {
+        const parsed: unknown = JSON.parse(responseData);
+        if (isPlainObject(parsed)) return JSON.stringify(parsed);
+      } catch {
+        // Keep non-JSON server error text in the standard tool error envelope.
+      }
+      // Gateway/proxy bodies (e.g. an HTML 413 page) carry no parseable code — surface the HTTP
+      // status so callers can still recognize capacity errors and follow the OVERSIZED guidance.
+      return JSON.stringify({ error: `${toolName} failed`, status, message: responseData });
+    }
+    if (isPlainObject(responseData)) return JSON.stringify(responseData);
+    return JSON.stringify({ error: `${toolName} failed`, status, message: responseData });
+  }
+
+  const message = value && typeof value.message === "string" ? value.message : "Unknown error";
+  return JSON.stringify({ error: `${toolName} failed`, status, message });
+}
+
+/**
  * Validate a raw format string (from a tool param, CLI flag, or env var).
  * Returns the normalized format, or null if invalid/unset.
  */
