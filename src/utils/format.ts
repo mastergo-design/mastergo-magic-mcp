@@ -58,10 +58,12 @@ export function formatOutput(
  */
 export function formatToolError(error: unknown, toolName: string): string {
   const value = error as {
-    response?: { data?: unknown };
+    response?: { status?: unknown; data?: unknown };
     message?: unknown;
   } | null;
-  const responseData = value && typeof value === "object" ? value.response?.data : undefined;
+  const response = value && typeof value === "object" ? value.response : undefined;
+  const status = typeof response?.status === "number" ? response.status : undefined;
+  const responseData = response?.data;
 
   if (responseData !== undefined && responseData !== null) {
     if (typeof responseData === "string") {
@@ -71,14 +73,16 @@ export function formatToolError(error: unknown, toolName: string): string {
       } catch {
         // Keep non-JSON server error text in the standard tool error envelope.
       }
-      return JSON.stringify({ error: `${toolName} failed`, message: responseData });
+      // Gateway/proxy bodies (e.g. an HTML 413 page) carry no parseable code — surface the HTTP
+      // status so callers can still recognize capacity errors and follow the OVERSIZED guidance.
+      return JSON.stringify({ error: `${toolName} failed`, status, message: responseData });
     }
     if (isPlainObject(responseData)) return JSON.stringify(responseData);
-    return JSON.stringify({ error: `${toolName} failed`, message: String(responseData) });
+    return JSON.stringify({ error: `${toolName} failed`, status, message: responseData });
   }
 
   const message = value && typeof value.message === "string" ? value.message : "Unknown error";
-  return JSON.stringify({ error: `${toolName} failed`, message });
+  return JSON.stringify({ error: `${toolName} failed`, status, message });
 }
 
 /**

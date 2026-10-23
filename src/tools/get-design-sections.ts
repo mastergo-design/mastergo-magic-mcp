@@ -51,7 +51,9 @@ IMPORTANT workflow:
 
 DO NOT call mcp__getDsl after completing this workflow — all data is already provided.
 If this tool is unavailable on an old server (HTTP 404), fall back to mcp__getDsl. For error code
-[10017], do NOT fall back to getDsl — follow the OVERSIZED LAYER instructions above.
+[10017], do NOT fall back to getDsl — follow the OVERSIZED LAYER instructions above. For other
+errors (e.g. HTTP 5xx or network timeout), retry once; if it still fails, fall back to mcp__getDsl
+or report the error to the user.
 
 You can provide either:
 1. fileId and layerId directly, or

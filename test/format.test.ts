@@ -52,6 +52,22 @@ test("formatToolError: falls back to the local error message", () => {
   );
 });
 
+test("formatToolError: surfaces HTTP status for gateway bodies without a code", () => {
+  // e.g. an nginx HTML 413 page — no parseable code, but the status still tells the
+  // caller this is a capacity error so the OVERSIZED guidance applies.
+  assert.deepEqual(
+    JSON.parse(formatToolError({ response: { status: 413, data: "<html>413</html>" } }, "getPageLayers")),
+    { error: "getPageLayers failed", status: 413, message: "<html>413</html>" },
+  );
+});
+
+test("formatToolError: JSON-stringifies non-object response bodies", () => {
+  assert.deepEqual(
+    JSON.parse(formatToolError({ response: { status: 500, data: ["a", "b"] } }, "getDesignSections")),
+    { error: "getDesignSections failed", status: 500, message: ["a", "b"] },
+  );
+});
+
 // ---- fixtures matching the real server response shapes ----
 const rawDsl = {
   styles: { "paint_1:1": { value: ["#FFFFFF"] } },
