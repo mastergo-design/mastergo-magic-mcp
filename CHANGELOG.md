@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.11 (2026-10-23)
+
+## What's Changed
+* fix(magic-mcp): preserve structured oversized-layer errors by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/127
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.10...v0.2.11
+
+
 ## v0.2.10 (2026-10-15)
 
 ## What's Changed
