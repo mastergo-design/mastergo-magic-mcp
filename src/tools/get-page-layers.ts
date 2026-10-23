@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
-import { formatField, formatOutput } from "../utils/format";
+import { formatField, formatOutput, formatToolError } from "../utils/format";
 
 const PAGE_LAYERS_TOOL_NAME = "mcp__getPageLayers";
 const PAGE_LAYERS_TOOL_DESCRIPTION = `
@@ -19,6 +19,13 @@ layer_ids; it does NOT restore designs.
      OWN separate .html file (a complete standalone document with <!DOCTYPE html>/<head>/<body>),
      THEN move to the next. Do NOT batch-restore. Do NOT merge multiple layers into one HTML file —
      ONE layer = ONE standalone .html file.
+
+OVERSIZED PARENT LAYER (a previous call to getDesignSections/getDsl/getMeta returned error
+code [10017] "layer data exceeds the 20MB limit"):
+Do NOT pass the same oversized container layerId to this tool — that downloads the same layer data
+and hits the same limit. Use the page-level ID from the URL (page_id) to list that page's top-level
+layers, then restore them individually via getDesignSections. If a top-level layer is still too
+large, ask the user to select a smaller nested container in the MasterGo canvas and copy its link.
 
 You can provide either:
 1. fileId and layerId directly (layerId = the page's layerId, i.e. page_id), or
@@ -120,19 +127,14 @@ export class GetPageLayersTool extends BaseTool {
         ],
       };
     } catch (error: any) {
-      // 统一错误结构：response.data 可能是对象/字符串/undefined，归一成 { error, message } 供 LLM 稳定解析。
-      // 与 getDesignSections 的错误处理风格一致（避免 JSON.stringify 一个裸字符串得到带引号的 "..."）。
-      const errData = error?.response?.data;
-      const errorMessage =
-        (typeof errData === 'string' ? errData : errData?.message) ||
-        error?.message ||
-        'Unknown error';
+      // Preserve structured server errors (especially HTTP 413 / code 10017) instead of
+      // reducing them to the generic "getPageLayers failed" envelope.
       return {
         isError: true,
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({ error: 'getPageLayers failed', message: errorMessage }),
+            text: formatToolError(error, "getPageLayers"),
           },
         ],
       };
