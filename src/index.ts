@@ -22,19 +22,20 @@ import packageJson from "../package.json";
 const SERVER_INSTRUCTIONS = `
 ## MasterGo Design DSL - Section-by-Section Workflow
 
-### Step -1: Multi-layer restoration — enumerate, then restore ONE layer at a time, EACH as its own file
+### Step -1: Multi-layer restoration — AUTOMATED plan; restore ONE layer at a time, EACH as its own file
 Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER with multiple child layers (e.g. URL has \`page_id\`, or a top-level frame whose children should each be restored separately). Do NOT restore all layers in one shot — restore them sequentially, and **each layer MUST become its own standalone HTML file**.
 
-**Workflow:**
-1. **Enumerate**: Call \`mcp__getPageLayers\` with the page_id / parent layerId. It returns a flat list of ALL layers, each as \`{id, name, type, depth, parentId, childrenCount, width, height}\`.
-2. **Pick the layers to restore**: From the list, identify the top-level restorable layers (typically depth=0 or depth=1 FRAME/COMPONENT/INSTANCE nodes — the actual screens/cards/sections, not every nested leaf). For each, build a restorable URL: \`https://mastergo.com/file/{fileId}?layer_id={layer_id}\` (URL-encode the layer_id, e.g. \`802:02364\` → \`802%3A02364\`).
-3. **Restore ONE layer at a time, writing EACH to its OWN separate .html file**: Take the FIRST layer_id → run the normal single-layer restoration (Step 0 → Step 4 below: \`getDesignSections\` → fetch all sections → \`applyDesign\`) → write that layer's complete HTML to a SEPARATE file. ONLY after finishing one layer's HTML FILE, move to the NEXT layer_id and repeat. Do not start layer N+1 before layer N's file is fully written.
-4. Repeat until all picked layers are restored — you should end up with N separate .html files (one per layer), NOT one merged file.
+**The plan is tracked for you — follow the \`pageRestore\` fields, do not improvise:**
+1. **Enumerate**: Call \`mcp__getPageLayers\` with the page_id / parent layerId. The response creates a page restore plan automatically: it carries \`pageRestore.firstLayerId\` / \`pageRestore.firstFileName\` and a \`nextAction\` naming the FIRST layer to restore (with the exact fileId+layerId — no URL assembly needed).
+2. **Restore layer by layer**: For the named layer, run the normal single-layer workflow (Step 0 → Step 4: \`getDesignSections\` → fetch all sections → \`applyDesign\`). Each \`getDesignSections\` response carries \`pageRestore.position\` ("[k/N] of page ...") so you always know where you are.
+3. **After each \`applyDesign\` success**: its response carries \`pageRestore\` with \`status: "LAYER_DONE"\` + \`nextLayerId\` / \`nextFileName\` / \`nextInstruction\` — execute that instruction next (it is the authoritative next step). When \`status: "COMPLETE"\`, the whole page is done — report the file list to the user.
+4. **Oversized layer**: if a layer errors with 10017/20MB, the response marks it \`LAYER_FAILED_SKIPPED\` — do NOT retry it; continue with the next pending layer.
+5. If you ever lose track of the plan, re-call \`mcp__getPageLayers\` — already-completed layers keep their status and the plan resumes from the first unfinished layer.
 
 **CRITICAL — ONE LAYER = ONE STANDALONE HTML FILE. This is non-negotiable:**
 - Each layer's output is a COMPLETE, standalone HTML document with its own \`<!DOCTYPE html>\`, \`<head>\`, and \`<body>\` — NOT an HTML fragment, NOT a \`<div>\` chunk to be concatenated.
 - Do NOT combine multiple layers into one HTML file. Do NOT stack multiple layers' \`<body>\` content into a single page. Do NOT fetch all layers' DSLs in parallel and merge them.
-- Write each layer to a DISTINCT file. Name files by the layer name or layer_id (e.g. \`容器1.html\`, \`navbar.html\`, or \`layer-802-02364.html\`). If the user specified an output directory, write each file there.
+- Write each layer to a DISTINCT file (use the suggested \`nextFileName\` / \`firstFileName\` when provided). If the user specified an output directory, reuse it for every file.
 - Finish one layer completely (including \`mcp__applyDesign\` and writing the file) before starting the next.
 
 **When to use this vs. direct restoration:**

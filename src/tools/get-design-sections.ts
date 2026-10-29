@@ -4,6 +4,7 @@ import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput, formatToolError } from "../utils/format";
 import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import { markSectionWorkflowActive, setTotalSections, trackSectionFetched } from "./get-dsl";
+import { markLayerInProgress, failLayer, buildPageRestorePayload } from "../utils/page-restore-tracker";
 
 const DESIGN_SECTIONS_TOOL_DESCRIPTION = `
 BEFORE calling this tool, CHECK the layerId:
@@ -136,6 +137,9 @@ export class GetDesignSectionsTool extends BaseTool {
   }).passthrough();
 
   async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format, ...rest }: z.infer<typeof this.schema>) {
+    // 提升到 catch 可见的作用域：编排兜底（10017 跳层）需要在 catch 里识别图层。
+    let finalFileId: string | undefined;
+    let effectiveLayerId: string | undefined;
     try {
       // 阻断所有未知参数：已知参数已解构，rest 即 LLM 传的 schema 未定义参数——静默忽略会让它
       // 以为参数生效。高频误用是复数 sectionIndices，其它拼错参数同样报错。排除 _ 前缀元字段。
@@ -161,7 +165,7 @@ export class GetDesignSectionsTool extends BaseTool {
         );
       }
 
-      let finalFileId = this.normalizeFileId(fileId);
+      let normalizedFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
       let finalSourceLayerId = sourceLayerId;
       // 来源信号：仅在 shortLink 解析时由 extractIdsFromUrl 填充（layerId 来自 ?page_id= 时为 true）。
@@ -170,15 +174,23 @@ export class GetDesignSectionsTool extends BaseTool {
 
       if (shortLink) {
         const ids = await httpUtilInstance.extractIdsFromUrl(shortLink);
-        finalFileId = this.normalizeFileId(ids.fileId);
+        normalizedFileId = this.normalizeFileId(ids.fileId);
         finalLayerId = ids.layerId;
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
         fromPageParam = ids.fromPageParam;
       }
 
-      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      effectiveLayerId = finalSourceLayerId || finalLayerId;
+      finalFileId = normalizedFileId;
       if (!finalFileId || !effectiveLayerId) {
         throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
+      }
+
+      // 整页编排：该图层属于某 pageRestore 计划时标记 in_progress，
+      // 并在响应里注入 pageRestore 位置（第几层/共几层），LLM 无需自行记忆。
+      const pageRestorePayload = buildPageRestorePayload(finalFileId, effectiveLayerId);
+      if (pageRestorePayload && sectionIndex === undefined) {
+        markLayerInProgress(finalFileId, effectiveLayerId);
       }
 
       const result = await httpUtilInstance.getDesignSections(
@@ -266,6 +278,11 @@ export class GetDesignSectionsTool extends BaseTool {
         }
       }
 
+      // 整页编排：注入 pageRestore 位置信息（两模式都注入——DSL 模式下也持续可见整页上下文）。
+      if (pageRestorePayload) {
+        result.pageRestore = pageRestorePayload;
+      }
+
       return {
         content: [
           {
@@ -275,6 +292,44 @@ export class GetDesignSectionsTool extends BaseTool {
         ],
       };
     } catch (error: any) {
+      // 整页编排：确定性失败（10017 超大图层等）标记 failed 并注入跳层指令，
+      // 让整页流程继续走完而不是卡死在单层——与 prompt 的 OVERSIZED LAYER 引导互补。
+      try {
+        const errText = formatToolError(error, "getDesignSections");
+        if (
+          finalFileId &&
+          effectiveLayerId &&
+          typeof errText === "string" &&
+          (errText.includes("10017") || errText.includes("20MB"))
+        ) {
+          const skipped = failLayer(finalFileId, effectiveLayerId);
+          if (skipped) {
+            const done = skipped.statuses.filter((s) => s === "done").length;
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "LAYER_SKIPPED_IN_PAGE_RESTORE",
+                    pageRestore: {
+                      status: "LAYER_FAILED_SKIPPED",
+                      layerId: effectiveLayerId,
+                      progress: `${done}/${skipped.layers.length} layers restored so far`,
+                      instruction:
+                        `This layer failed deterministically (oversized / 20MB limit) and has been marked SKIPPED in the page restore plan. ` +
+                        `Do NOT retry this layer. Continue the page restore with the NEXT pending layer from the plan ` +
+                        `(the next layer id was included in the plan's order; if you lost track, re-call mcp__getPageLayers — ` +
+                        `completed layers keep their status).`,
+                    },
+                  }),
+                },
+              ],
+            };
+          }
+        }
+      } catch {
+        // 编排注入失败不影响原始错误透传。
+      }
       return {
         isError: true,
         content: [

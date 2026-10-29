@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { clearSectionWorkflow } from "./get-dsl";
+import { completeLayer, buildNextLayerInstruction } from "../utils/page-restore-tracker";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
@@ -168,6 +169,10 @@ export class ApplyDesignTool extends BaseTool {
       // 工作流完成：清理该设计的 section 跟踪数据，释放内存（stdio 长驻进程防泄漏）。
       clearSectionWorkflow(finalFileId, effectiveLayerId);
 
+      // 整页编排：单图层完成 → 标记 done 并注入下一个待还原图层指令。
+      // 不属于任何 pageRestore 计划时（单图层正常还原）completeLayer 返回 null，不注入。
+      const updatedPlan = completeLayer(finalFileId, effectiveLayerId, targetDir);
+
       // 返回简要报告（不返回 finalizedCode 全文——防止 LLM 拿到后又编辑）
       const report = result.report || {};
       const response: any = {
@@ -176,6 +181,18 @@ export class ApplyDesignTool extends BaseTool {
         fileName,
         report,
       };
+      if (updatedPlan) {
+        const { instruction, allDone, next } = buildNextLayerInstruction(updatedPlan);
+        response.pageRestore = allDone
+          ? { status: "COMPLETE", instruction }
+          : {
+              status: "LAYER_DONE",
+              nextLayerId: next?.layerId,
+              nextFileName: next?.fileName,
+              nextInstruction: instruction,
+            };
+        response.nextAction = instruction;
+      }
       // 优先透传服务端已算好的 warning/error（服务端 route 已按 svgUnresolved/textUnresolved 组装）。
       if (result.warning) response.warning = result.warning;
       if (result.error) response.error = result.error;
