@@ -101,8 +101,12 @@ function renderNode(node: any, inFlex: boolean): string {
     ? node.children.map((c: any) => renderNode(c, Boolean(flex))).join("")
     : "";
 
-  if (node.type === "PATH" || node.svgShortKey) {
+  if (node.svgShortKey) {
     return `<span style="${style}display:flex;align-items:center;justify-content:center;overflow:hidden">@@SVG:${node.svgShortKey}@@</span>`;
+  }
+  if (node.type === "PATH") {
+    // 无 svgShortKey（SVG 未进 cache）的 PATH：留空图标槽，不产出 @@SVG:undefined@@。
+    return `<span style="${style}display:flex;align-items:center;justify-content:center;overflow:hidden"></span>`;
   }
   if (node.type === "IMAGE") {
     return `<div style="${style}background:#eee;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999" title="${esc(node.name)}">IMG</div>`;
