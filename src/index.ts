@@ -165,6 +165,18 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - Do NOT duplicate text from one node to another — each TEXT node has unique content.
 - Do NOT skip any child nodes. Render ALL nodes: every tab, every button, every text element.
 
+### Typography Rules (MANDATORY — font values come from the STYLES TABLE, never guessed):
+- **Each TEXT node carries \`text[0].font\`** — a style id such as \`"font_856:4306"\`. Look it up in \`dsl.styles[...].value\` and emit CSS **exactly** from it:
+  - \`family\` → \`font-family\`
+  - \`size\` → \`font-size: {size}px\`
+  - \`weight\` → \`font-weight\`
+  - \`lineHeight\` → \`line-height\` (see semantics below)
+  - \`letterSpacing\` → \`letter-spacing\` (omit the property when the value is \`"auto"\`)
+- **NEVER guess a font size from a token name, layer name, or visual impression.** Token names like \`--heading-sm\` are for CSS-variable naming only — the numeric truth is in the styles table.
+- **lineHeight semantics**: the value is a **multiplier** (\`"1.4"\`), not px. Older payloads may still send a percentage string (\`"140"\` = 140%): if the value is a plain number **>= 50**, divide by 100 (\`140\` → \`1.4\`); values below 10 are already multipliers; values with units (\`"20px"\`) are used as-is.
+- **One style id = one CSS class / token.** All TEXT nodes referencing the same \`text[0].font\` must share the same font declaration — do not re-derive per node.
+- **DO NOT NORMALIZE TYPOGRAPHY.** Never round font sizes or unify sibling text to a "nicer" value (e.g. turning a 36px bold figure into 16px to match its neighbours). The design's font values are the only truth. If the design looks self-inconsistent, reproduce it faithfully and list the inconsistency in your delivery notes instead of silently fixing it.
+
 ### Background & Color Rules:
 - **PREFER the \`_color\` field**: every node with a resolved fill carries a \`_color\` field containing the computed CSS hex/rgb value. Use this value DIRECTLY in CSS — no styles-table lookup needed. Example: \`color: #4E5969\` from \`"_color": "#4E5969"\`.
 - The \`fill\` field (e.g. \`paint_1:7200\`) remains for reference. Use \`_token\` (e.g. \`"Text/Text-4"\`) for CSS variable naming like \`var(--text-text-4, #4E5969)\`.
@@ -200,6 +212,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - When in doubt about whether a text string is real: it is NOT real unless you can cite the sectionIndex it came from.
 
 ### SVG Icon Anti-Simplification Rules:
+- **\`_svgUnavailable: true\` nodes have no vector data** (instance-internal paths, system status-bar glyphs) and deliberately carry no \`svgShortKey\`. Draw a minimal approximation sized to the node's \`layoutStyle\` (simple CSS shapes, or a tiny inline SVG you author) and note it in a code comment. **NEVER borrow a \`svgShortKey\` from another node or section** — a mismatched viewBox renders the wrong icon at the wrong size and overflows its container.
 - PATH nodes carry a \`svgKey\` — the SVG markup is injected by \`mcp__applyDesign\` at the end. You MUST use \`@@SVG:{svgShortKey}@@\` placeholders — never hand-write \`<path d="...">\`.
 - **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs). NEVER reuse a \`svgShortKey\` from one section in another. Always use the exact \`svgKey\` from the PATH node in its own section.
 - **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
