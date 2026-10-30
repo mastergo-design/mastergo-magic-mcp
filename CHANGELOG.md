@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.12 (2026-10-30)
+
+## What's Changed
+* feat(magic-mcp): auto-orchestrate multi-layer page restoration by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/128
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.11...v0.2.12
+
+
 ## v0.2.11 (2026-10-23)
 
 ## What's Changed
