@@ -374,6 +374,7 @@ const buildDslRules = (): string[] => {
     "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",
     "CRITICAL — Sidebar columns: render ALL sidebar levels as persistent columns at splitContainers positions. Do NOT hide or toggle them.",
     "token filed must be generated as a variable (colors, shadows, fonts, etc.) and the token field must be displayed in the comment",
+    "CRITICAL — TYPOGRAPHY FROM THE STYLES TABLE: each TEXT node's `text[0].font` is a style id; read `dsl.styles[...].value` and use its `family`/`size`/`weight`/`lineHeight`/`letterSpacing` verbatim (never guess font sizes from token or layer names). `lineHeight` is a multiplier (`\"1.4\"`; a legacy `\"140\"` means 140% → divide by 100). `letterSpacing: \"auto\"` → omit. Do NOT normalize/round the design's font values.",
     "componentDocumentLinks is a list of frontend component documentation links. When it exists and is not empty, use mcp__getComponentLink to get the documentation.",
     "",
     "CRITICAL — SVG FROM PATH NODES: Every PATH node has a `svgShortKey` field. The SVG markup is NOT in the DSL. Place `@@SVG:{svgShortKey}@@` where each icon goes, then call `mcp__applyDesign` to inject real SVG. NEVER hand-write `<path d=\"...\">`.",
