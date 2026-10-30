@@ -212,6 +212,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - When in doubt about whether a text string is real: it is NOT real unless you can cite the sectionIndex it came from.
 
 ### SVG Icon Anti-Simplification Rules:
+- **\`_svgUnavailable: true\` nodes have no vector data** (instance-internal paths, system status-bar glyphs) and deliberately carry no \`svgShortKey\`. Draw a minimal approximation sized to the node's \`layoutStyle\` (simple CSS shapes, or a tiny inline SVG you author) and note it in a code comment. **NEVER borrow a \`svgShortKey\` from another node or section** — a mismatched viewBox renders the wrong icon at the wrong size and overflows its container.
 - PATH nodes carry a \`svgKey\` — the SVG markup is injected by \`mcp__applyDesign\` at the end. You MUST use \`@@SVG:{svgShortKey}@@\` placeholders — never hand-write \`<path d="...">\`.
 - **SVG UNIQUENESS:** Each icon in the DSL is a distinct design artifact — different sections may have DIFFERENT icons even if they look similar (e.g. "搜索" in section 2 vs "搜索" in section 40 are DIFFERENT SVGs). NEVER reuse a \`svgShortKey\` from one section in another. Always use the exact \`svgKey\` from the PATH node in its own section.
 - **NEVER substitute vector paths with simplified shapes** — a \`<path>\` containing a house icon is NOT replaceable by a \`<rect>\` + \`<polygon>\`. The designer chose every anchor point; your simplified version WILL look different.
