@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BaseTool } from "./base-tool";
 import { httpUtilInstance } from "../utils/api";
 import { formatField, formatOutput, formatToolError } from "../utils/format";
+import { startPageRestore, suggestFileName } from "../utils/page-restore-tracker";
 
 const PAGE_LAYERS_TOOL_NAME = "mcp__getPageLayers";
 const PAGE_LAYERS_TOOL_DESCRIPTION = `
@@ -19,6 +20,12 @@ layer_ids; it does NOT restore designs.
      OWN separate .html file (a complete standalone document with <!DOCTYPE html>/<head>/<body>),
      THEN move to the next. Do NOT batch-restore. Do NOT merge multiple layers into one HTML file —
      ONE layer = ONE standalone .html file.
+
+  AUTOMATED PROGRESS TRACKING: once this tool returns layers, a page restore plan is created
+  automatically. Every subsequent getDesignSections response carries a \`pageRestore\` position,
+  and every applyDesign success response carries \`pageRestore.next\` with the NEXT layer to
+  restore (layerId + suggested file name). Follow those fields instead of tracking manually —
+  they are the authoritative progress record for the whole page.
 
 OVERSIZED PARENT LAYER (a previous call to getDesignSections/getDsl/getMeta returned error
 code [10017] "layer data exceeds the 20MB limit"):
@@ -117,6 +124,32 @@ export class GetPageLayersTool extends BaseTool {
         finalFileId,
         effectiveLayerId
       );
+
+      // 整页编排：枚举非空 → 建立还原计划（pageRestore），后续 getDesignSections /
+      // applyDesign 响应会持续注入进度与下一步指令，LLM 无需自行记忆整页流程。
+      if (result && Array.isArray(result.layers) && result.layers.length > 0) {
+        const planned = result.layers.map((l: any) => ({
+          layerId: String(l.id),
+          name: String(l.name ?? ""),
+          type: String(l.type ?? ""),
+        }));
+        startPageRestore(finalFileId, effectiveLayerId, planned, result.pageName);
+        const first = planned[0];
+        if (first) {
+          result.pageRestore = {
+            plan: `${planned.length} layers queued for sequential restoration (ONE layer = ONE standalone .html file)`,
+            firstLayerId: first.layerId,
+            firstFileName: suggestFileName(first.name, first.layerId),
+          };
+          // 覆盖服务端通用 nextAction：给出具体首图层 + fileId，消除 LLM 自行拼 URL 的出错面。
+          result.nextAction =
+            `PAGE RESTORE PLAN created: ${planned.length} layers. START with layer 1: "${first.name}" ` +
+            `(layerId=${first.layerId}). Call getDesignSections(fileId=${finalFileId}, layerId=${first.layerId}) ` +
+            `→ fetch ALL its sections → generate standalone HTML → applyDesign writing file "${suggestFileName(first.name, first.layerId)}". ` +
+            `After applyDesign succeeds, the response's pageRestore.next tells you the next layer. ` +
+            `Do NOT merge layers into one file. Do NOT stop after the first layer.`;
+        }
+      }
 
       return {
         content: [
