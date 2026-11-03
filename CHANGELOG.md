@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.13 (2026-11-03)
+
+## What's Changed
+* feat(prompt): 同步 MCP 链接透出教学——text 分段 link 与 interactive link by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/130
+* feat(prompt): read typography from the styles table instead of guessing by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/129
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.12...v0.2.13
+
+
 ## v0.2.12 (2026-10-30)
 
 ## What's Changed
