@@ -129,7 +129,17 @@ Every node in a section's DSL has TWO pieces of layout data:
 \`\`\`
 Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relativeX\` and \`layoutStyle.relativeY\`. Never use a shared \`left:0; top:0\` for all children. Never use flex.
 
-9. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
+
+9. **Traditional constraints vs auto-layout size limits (UNRELATED — do not confuse)**: \`layoutStyle.minWidth/minHeight/maxWidth/maxHeight\` are the auto-layout panel's SIZE LIMITS. \`layoutStyle.constraint\` is a different thing — the anchoring rule for when the PARENT resizes. \`constraint.horizontal\` ∈ \`LEFT\`/\`RIGHT\`/\`LEFT_RIGHT\`/\`CENTER\`/\`SCALE\`, \`constraint.vertical\` ∈ \`TOP\`/\`BOTTOM\`/\`TOP_BOTTOM\`/\`CENTER\`/\`SCALE\`. The name IS the readable enum — use it directly. Never emit min/max CSS from \`constraint\`, never treat min/max as constraints. Absent = the designer did not set it.
+
+10. **Fixed aspect ratio** — \`layoutStyle.preserveRatio: true\` means the node keeps its width:height ratio when scaled; preserve it (e.g. \`aspect-ratio: {width} / {height}\`) instead of letting one axis resize freely. The field is ABSENT (not \`false\`) when the ratio is NOT locked — absence means free resizing, it does NOT mean \`false\`.
+
+11. **Blend modes are THREE independent levels — CSS \`mix-blend-mode\` is NOT a faithful equivalent** — the DSL surfaces blending at three separate places, apply each at its own level:
+    - **Node level** — \`blendMode\` on the node itself (sibling of \`layoutStyle\`): apply \`mix-blend-mode: {value}\` on that element.
+    - **Fill level** — \`styles["paint_*"].blendMode\`: belongs to the FILL only — apply it to an overlay background element, NOT to the node's text or children.
+    - **Effect level** — \`styles["effect_*"].blendModes\` is an object keyed by INDEX into that style's \`value\` array: \`blendModes[2]\` belongs to \`value[2]\` (e.g. the 3rd box-shadow).
+    - **NEVER concatenate these into the shadow/filter CSS string** — \`mix-blend-mode\` is a separate CSS property, not a shadow/filter parameter. All three are absent by default (PassThrough / Normal are omitted) — absence means no blending; do NOT emit \`mix-blend-mode: normal\`.
+12. **Fallback** — Nodes with NEITHER \`flexContainerInfo\` NOR being inside a flex container: use \`position: absolute; left: {relativeX}px; top: {relativeY}px;\`.
 - Generate a single complete HTML file containing ALL sections in order, nested inside the root container.
 - token fields must be generated as CSS variables with comments indicating the token name.
 - If componentDocumentLinks exists, call mcp__getComponentLink to fetch documentation.
