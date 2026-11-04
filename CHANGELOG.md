@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.14 (2026-11-04)
+
+## What's Changed
+* docs(prompt): flex item 契约改为 flexGrow/alignSelf，flex-shrink 由 flexGrow 派生 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/132
+* fix(prompt): 同步 page_id=M 与空结果两分支契约（client ↔ server） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/131
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.13...v0.2.14
+
+
 ## v0.2.13 (2026-11-03)
 
 ## What's Changed
