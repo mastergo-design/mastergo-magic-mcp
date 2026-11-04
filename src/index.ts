@@ -112,7 +112,11 @@ Every node in a section's DSL has TWO pieces of layout data:
 
 3. **Nested flex containers** — A flex container can contain a child that is ALSO a flex container (e.g. a horizontal toolbar with a vertical menu inside). Each level independently uses its own \`flexContainerInfo\`. **You MUST preserve ALL nesting levels** — do NOT flatten a two-level flex structure into one. For example, a table header cell where "label + sort-icon" form an inner group and "action-icon" sits at the outer level MUST be rendered as TWO nested flex containers, not one flat flex with all three items side by side. Flattening loses the visual grouping (label+sort tightly paired, action-icon separated) and causes layout breakage.
 
-4. **When a child has \`flexGrow\` / \`flexShrink\`** — These are flex item properties. Apply \`flex: {flexGrow} 1 0\` on the child element. Do NOT position it absolutely.
+4. **When a child has \`flexGrow\` / \`alignSelf\`** — These are flex item properties; apply them on the child element itself, and do NOT position that child absolutely.
+
+   - \`flexGrow\` (only value \`1\` is emitted) — the child absorbs remaining main-axis space: \`flex-grow: 1\`. When \`flexGrow\` is absent or \`0\`, the child is fixed-size: emit \`flex-shrink: 0\`. **Derive \`flex-shrink\` from \`flexGrow\` yourself — the DSL does NOT carry a \`flexShrink\` field.**
+   - \`alignSelf\` (only values \`AUTO\` / \`STRETCH\` are emitted) — per-child cross-axis override: \`align-self: stretch\` when \`STRETCH\`, otherwise inherit the container's \`align-items\` (i.e. emit nothing for \`AUTO\`).
+   - These are independent: a child may have \`flexGrow\` without \`alignSelf\`, or vice versa. Handle each field only when present.
 
 5. **CRITICAL — Flex column with fixed-height children**: When a container uses \`flex-direction: column\` with a FIXED height and \`overflow: hidden\`, ALL children with fixed heights (tabs, headers, pagination bars, footers, scrollbars) MUST have \`flex-shrink: 0\`. Only ONE child — the flexible content area (table body, scrollable region) — should use \`flex: 1\`. If you forget \`flex-shrink: 0\` on fixed-height children, flex layout will squeeze them out of the visible area and they get clipped by \`overflow: hidden\` (e.g. pagination bar becomes invisible).
 
