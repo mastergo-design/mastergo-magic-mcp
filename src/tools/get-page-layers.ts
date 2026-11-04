@@ -43,8 +43,19 @@ childrenCount, width, height. It does NOT contain DSL/styles/SVG paths — use t
 or DSL tools to restore each layer.
 
 NOTE: This tool cannot enumerate a document's PAGE list from a fileId alone — you must
-already know a page_id / layerId to pass in. The synthetic page_id=M returns empty
-(page data not available via this API); use a real layer_id URL in that case.
+already know a page_id / layerId to pass in.
+
+The URL marker \`page_id=M\` means the file's DEFAULT page and IS supported — do NOT ask the
+user for "a real layer_id URL" just because the page_id is \`M\`.
+
+EMPTY RESULT — TWO DISTINCT CASES (must distinguish):
+1. **Page genuinely has no layers** (\`totalLayers: 0\` + \`pageName\` present + NO \`needsCanvasVisit\`):
+   the page EXISTS in this file but contains no restorable layers. This is a real empty page —
+   do NOT tell the user to visit the canvas; report it as an empty page.
+2. **Page not found / data unavailable** (\`needsCanvasVisit: true\` + \`guidance\` field present):
+   the page_id is not a page of this file (e.g. it is a container/layer id, or the page was deleted),
+   OR the page data could not be loaded (too large / timeout). Relay the \`guidance\` text to the user.
+Do NOT silently treat an empty result without checking which case it is.
 `;
 
 export class GetPageLayersTool extends BaseTool {

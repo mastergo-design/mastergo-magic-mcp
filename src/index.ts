@@ -41,7 +41,17 @@ Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER wit
 **When to use this vs. direct restoration:**
 - URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually, each as its own file).
 - URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed, one file.
-- A page_id returns empty (e.g. the synthetic \`page_id=M\`) → the page data isn't available via this API; ask the user for a specific layer_id URL instead.
+- A page_id returns an EMPTY result → first check WHICH empty case it is (see EMPTY RESULT below), it is NOT automatically a dead end.
+  \`page_id=M\` is the URL marker for the file's DEFAULT page and IS supported — do NOT tell the user to "use a real layer_id URL instead" just because the page_id is \`M\`.
+
+**EMPTY RESULT — TWO DISTINCT CASES (must distinguish, applies to \`mcp__getPageLayers\`):**
+1. **Page genuinely has no layers** (\`totalLayers: 0\` + \`pageName\` present + NO \`needsCanvasVisit\`):
+   the page EXISTS in this file but contains no restorable layers. This is a real empty page —
+   do NOT tell the user to visit the canvas; report it as an empty page.
+2. **Page not found / data unavailable** (\`needsCanvasVisit: true\` + \`guidance\` field present):
+   the page_id is not a page of this file (e.g. it is a container/layer id, or the page was deleted),
+   OR the page data could not be loaded (too large / timeout). Relay the \`guidance\` text to the user.
+Do NOT silently treat an empty result without checking which case it is.
 
 ### Step 0: Get Layout Overview (MANDATORY)
 Call \`mcp__getDesignSections\` WITHOUT sectionIndex first.
