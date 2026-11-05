@@ -95,7 +95,13 @@ export interface PageLayersResponse {
 export interface ExtractSvgResponse {
   totalCount: number;
   count: number;
-  svgs: Array<{ name: string; id: string; svg: string }>;
+  svgs: Array<{
+    name: string;
+    id: string;
+    svg: string;
+    /** L5a：SVG 源节点在父容器坐标系下的尺寸与偏移（相对坐标，非页面绝对坐标） */
+    layout?: { width: number; height: number; relativeX: number; relativeY: number };
+  }>;
   page?: number;
   pageSize?: number;
   hasMore?: boolean;
