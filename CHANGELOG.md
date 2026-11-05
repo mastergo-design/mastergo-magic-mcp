@@ -2,6 +2,17 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.15 (2026-11-05)
+
+## What's Changed
+* docs(prompt): 补 constraint / preserveRatio / blendMode 三级字段语义 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/133
+* docs(prompt): 补 mask / maskVisible 蒙版语义（L4） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/135
+* feat(types): extractSvg 响应 svgs[] 项补充 layout 字段（L5a） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/134
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.14...v0.2.15
+
+
 ## v0.2.14 (2026-11-04)
 
 ## What's Changed
