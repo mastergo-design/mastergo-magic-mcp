@@ -48,12 +48,16 @@ const stubPlugin = {
   },
 };
 
+// 多个集成测试入口一起打包（每个 test 文件独立 bundle）。
+const integrationEntries = ["page-restore-integration.test.ts", "export-asset-integration.test.ts"];
+
 const result = await esbuild.build({
-  entryPoints: [path.join(here, "page-restore-integration.test.ts")],
+  entryPoints: integrationEntries.map((f) => path.join(here, f)),
   bundle: true,
   platform: "node",
   format: "cjs",
-  outfile: path.join(pkgRoot, ".test", "page-restore-integration.test.cjs"),
+  outdir: path.join(pkgRoot, ".test"),
+  outExtension: { ".js": ".cjs" },
   plugins: [stubPlugin],
   logLevel: "warning",
 });

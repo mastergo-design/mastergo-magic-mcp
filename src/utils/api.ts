@@ -648,13 +648,38 @@ const createHttpUtil = () => {
      * 切图字节由服务端在渲染时暂存，这里只取清单，用于让 LLM 知道有哪些
      * exportId 可下载，避免盲猜。
      */
+    /**
+     * 列出某文件/图层下已缓存的切图（GET /mcp/export-asset 不带 exportId）。
+     *
+     * 切图字节由服务端在渲染时暂存，这里只取清单。
+     *
+     * **404 不是错误**：服务端在「该范围还没有已缓存的切图」时返回 404，这正是
+     * 「需要先渲染」的正常信号。必须把它归一化成空清单返回，否则调用方会在
+     * 自动渲染之前就被 axios 抛错打断（2026-11-09 dev 实测踩到：缓存过期后
+     * downloadExportAssets 直接抛 404，压根走不到自动渲染那段）。
+     */
     async listExportAssets(fileId: string, layerId: string): Promise<ExportAssetListResponse> {
-      const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
-        timeout: 30000,
-        params: { fileId, layerId },
-        headers: getCommonHeader(),
-      });
-      return response.data;
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
+          timeout: 30000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          // 服务端明确表示「当前没有缓存」→ 当作空清单，让上层走渲染路径。
+          const body = err.response.data;
+          return {
+            fileId,
+            layerId,
+            total: 0,
+            assets: [],
+            serverMessage: typeof body?.message === "string" ? body.message : undefined,
+          };
+        }
+        throw err;
+      }
     },
 
     /**
