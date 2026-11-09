@@ -91,6 +91,23 @@ export interface PageLayersResponse {
   [k: string]: any;
 }
 
+/** 切图字节缓存清单响应（GET /mcp/export-asset 不带 exportId 时返回） */
+export interface ExportAssetListResponse {
+  fileId: string;
+  layerId: string;
+  total: number;
+  assets: Array<{
+    exportId: string;
+    layerId: string;
+    format: string;
+    width?: number;
+    height?: number;
+    bytes: number;
+    fileName: string;
+  }>;
+  [k: string]: any;
+}
+
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -526,6 +543,49 @@ const createHttpUtil = () => {
       }
     },
 
+    /**
+     * 列出某文件/图层下已缓存的切图（GET /mcp/export-asset 不带 exportId）。
+     * 切图字节由服务端在 mcp__getExportAssets 渲染时暂存，这里只取清单，用于
+     * 让 LLM 知道有哪些 exportId 可下载，避免盲猜。
+     */
+    async listExportAssets(fileId: string, layerId: string): Promise<ExportAssetListResponse> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
+        timeout: 30000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    /**
+     * 下载单张切图的二进制本体（GET /mcp/export-asset?exportId=xxx）。
+     *
+     * 背景：服务端渲染把切图落盘到自己的容器内 os.tmpdir()，LLM 客户端拿不到那个路径；
+     * 该端点把同一份字节经 HTTP 回传，返回 Buffer 供上层落盘成真实图片文件。
+     *
+     * 注意：本接口返回二进制，不能用 getCommonHeader() —— 它带
+     * `Accept: application/json`，会让服务端内容协商出错。这里显式要
+     * `application/octet-stream` 并设 responseType=arraybuffer。
+     */
+    async downloadExportAsset(
+      fileId: string,
+      layerId: string,
+      exportId: string
+    ): Promise<{ data: Buffer; contentType?: string; contentDisposition?: string }> {
+      const headers = { ...getCommonHeader(), Accept: "application/octet-stream" };
+      const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
+        timeout: 120000,
+        params: { fileId, layerId, exportId },
+        headers,
+        responseType: "arraybuffer",
+      });
+      return {
+        data: Buffer.from(response.data),
+        contentType: headerAsString(response.headers?.["content-type"]),
+        contentDisposition: headerAsString(response.headers?.["content-disposition"]),
+      };
+    },
+
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
       const params: Record<string, any> = { contentId: contentId, documentId: documentId };
       const response = await axios.get(`${getBaseUrl()}/mcp/d2c/events`, {
@@ -681,3 +741,14 @@ const createHttpUtil = () => {
 };
 
 export const httpUtilInstance = createHttpUtil();
+
+/**
+ * axios 的响应头值类型是 AxiosHeaderValue（string | string[] | number | boolean | null），
+ * 下载端点需要的是字符串。ordinal/空值统一收敛为 undefined，避免下游拿到 null 当文件名。
+ */
+function headerAsString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.length > 0 ? String(value[0]) : undefined;
+  if (value === null || value === undefined) return undefined;
+  return String(value);
+}
