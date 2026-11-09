@@ -108,6 +108,70 @@ export interface ExportAssetListResponse {
   [k: string]: any;
 }
 
+/** 单个切图配置项（GET /mcp/export-list 的 exports[] 元素） */
+export interface ExportListItem {
+  /** 导出项自身 id（如 "2:0"），下载时用作 exportId */
+  id: string;
+  /** 承载该导出项的图层 id（如 "1:3"） */
+  layerId: string;
+  layerName?: string;
+  layerType?: string;
+  fileType: number;
+  /** 人类可读格式名：PNG / JPG / SVG / PDF / WEBP / AVIF */
+  format?: string;
+  sizeType?: number;
+  sizeValue?: number;
+  sizeRule?: string;
+  isSuffix?: boolean;
+  exportQuality?: number;
+  isBKVisible?: boolean;
+  width?: number;
+  height?: number;
+  targetWidth?: number;
+  targetHeight?: number;
+  [k: string]: any;
+}
+
+/** 切图配置清单响应（GET /mcp/export-list） */
+export interface ExportListResponse {
+  fileId: string;
+  layerId: string;
+  scope?: string;
+  resolvedPageId?: string;
+  pageName?: string;
+  total: number;
+  skipped?: { missingLayer: number; removedLayer: number };
+  /** 切图子树内图片填充的 imageRef（渲染时服务端据此带图） */
+  imageRefs?: string[];
+  exports: ExportListItem[];
+  note?: string;
+  guidance?: string;
+  [k: string]: any;
+}
+
+/** 渲染结果（POST /mcp/export-render） */
+export interface ExportRenderResponse {
+  fileId: string;
+  layerId: string;
+  scope?: string;
+  total: number;
+  dir?: string;
+  assets: ExportAssetListResponse["assets"];
+  skipped: Array<{ exportId?: string; layerId?: string; reason: string }>;
+  images?: { loaded: number; skipped: Array<{ ref: string; reason: string }> };
+  server?: {
+    successCount?: number;
+    itemCount?: number;
+    payloadBytes?: number;
+    imageLoaded?: number;
+    elapsedMs?: number;
+  };
+  note?: string;
+  truncated?: boolean;
+  guidance?: string;
+  [k: string]: any;
+}
+
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -544,9 +608,45 @@ const createHttpUtil = () => {
     },
 
     /**
+     * 取切图配置清单（GET /mcp/export-list）。
+     *
+     * 这是**纯元数据**接口：只解析 turtle 里的 exports，不渲染、不打引擎，
+     * 因此随时可调、成本极低。LLM 需要先知道「这个设计有哪些切图、什么格式、
+     * 多大尺寸」就靠它。
+     */
+    async getExportList(fileId: string, layerId: string): Promise<ExportListResponse> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/export-list`, {
+        timeout: 120000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    /**
+     * 触发真实切图渲染（POST /mcp/export-render）。
+     *
+     * 服务端渲染后，切图字节会写入它的内存缓存（TTL ~5min），随后即可用
+     * downloadExportAsset 下载。没有这一步，客户端只能读缓存 —— 缓存空就永远 404，
+     * 因为它拿不到 SSE 工具 mcp__getExportAssets。
+     */
+    async renderExportAssets(
+      fileId: string,
+      layerId: string,
+      exportIds?: string[]
+    ): Promise<ExportRenderResponse> {
+      const response = await axios.post(
+        `${getBaseUrl()}/mcp/export-render`,
+        { fileId, layerId, ...(exportIds && exportIds.length > 0 ? { exportIds } : {}) },
+        { timeout: 300000, headers: getCommonHeader() }
+      );
+      return response.data;
+    },
+
+    /**
      * 列出某文件/图层下已缓存的切图（GET /mcp/export-asset 不带 exportId）。
-     * 切图字节由服务端在 mcp__getExportAssets 渲染时暂存，这里只取清单，用于
-     * 让 LLM 知道有哪些 exportId 可下载，避免盲猜。
+     * 切图字节由服务端在渲染时暂存，这里只取清单，用于让 LLM 知道有哪些
+     * exportId 可下载，避免盲猜。
      */
     async listExportAssets(fileId: string, layerId: string): Promise<ExportAssetListResponse> {
       const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {

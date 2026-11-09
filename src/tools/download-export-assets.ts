@@ -12,9 +12,9 @@ Download the REAL slice images (切图) that the designer configured on a Master
 and save them as local image files.
 
 WHY THIS TOOL EXISTS
-\`mcp__getExportAssets\` renders the slices server-side and returns a \`filePath\` — but that path
-is on the SERVER's own disk, not yours. You cannot open it. This tool fetches the same bytes
-over HTTP and writes them into YOUR local output directory, returning paths you can actually use.
+Rendering a slice produces image bytes on the **SERVER's** disk — a \`filePath\` you cannot open
+from your machine. This tool fetches those bytes over HTTP and writes them into YOUR local output
+directory, returning paths you can actually use.
 
 WHEN TO USE
 - You need the actual PNG / JPG / WEBP slice files to reference in generated code.
@@ -25,18 +25,24 @@ WHAT IT RETURNS
 - \`assets[]\`: { exportId, layerId, fileName, format, bytes, filePath } — files actually written locally
 - \`skipped[]\`: { exportId, reason } — slices that could not be fetched
 - \`dir\`: the directory the files were written to
+- \`autoRendered\`: true when this call had to render the slices first (nothing was cached yet)
 
-HOW IT WORKS (two-step, both automatic)
-1. Lists the cached slices for this file/layer (\`exportId\` + metadata).
-2. Downloads each one and writes it to \`outDir\`.
+HOW IT WORKS (fully automatic — ONE call is enough)
+1. Reads the server's cached slice list for this file/layer.
+2. If nothing is cached, it **renders the slices automatically** (no extra call needed from you).
+3. Downloads each slice and writes it to \`outDir\`.
 
-IMPORTANT — CACHE PREREQUISITE
-The slice bytes are cached **in memory on the server** when \`mcp__getExportAssets\` renders them
-(cache TTL ~5 minutes). So the correct order is:
-  1) \`mcp__getExportList\` (or \`mcp__getExportAssets\`) to see/trigger the slices
-  2) **this tool** to download them locally
-If nothing is cached, this tool reports which exportIds are unavailable — call \`mcp__getExportAssets\`
-first, then retry.
+WHY THAT MATTERS
+The server caches rendered slice bytes in memory (TTL ~5 minutes). If you call this tool long after
+a previous render, the cache may have expired — this tool re-renders on demand instead of failing.
+
+SCOPE SEMANTICS
+Scope = the subtree of the \`layerId\` you pass. A node that is ITSELF a slice is NOT part of its own
+subtree, so if you expect slices and get none, pass the PAGE id (e.g. \`layerId: "M"\`).
+
+WHAT "NO SLICE" MEANS
+If the design genuinely has no Export settings in scope, this tool says so explicitly — in that case
+restore the nodes as normal layers (from the DSL), do NOT invent images.
 
 LIMITATIONS
 - Only PNG / JPG / WEBP are produced server-side (SVG / PDF / AVIF are not).
@@ -64,7 +70,7 @@ export class DownloadExportAssetsTool extends BaseTool {
         .string()
         .optional()
         .describe(
-          "Layer id (container / node) OR page id — same semantics as mcp__getExportList / mcp__getExportAssets."
+          "Layer id (container / node) OR page id — same semantics as mcp__getExportList. A slice node does not include itself in its own subtree scope; use the page id to find slices."
         ),
       sourceLayerId: z
         .string()
@@ -137,8 +143,22 @@ export class DownloadExportAssetsTool extends BaseTool {
         throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
       }
 
-      // ① 列出服务端已缓存的切图（渲染发生在 mcp__getExportAssets）
-      const list = await httpUtilInstance.listExportAssets(finalFileId, effectiveLayerId);
+      // ① 先读缓存清单。缓存空 → 自动触发一次渲染（POST /mcp/export-render），再读一次。
+      //
+      // 这一步很关键：客户端拿不到 SSE 工具 mcp__getExportAssets，如果不自己渲染，
+      // 服务端缓存永远为空，下载必然 404。自动补渲染让「一步调用即可拿图」成立。
+      let list = await httpUtilInstance.listExportAssets(finalFileId, effectiveLayerId);
+      let autoRendered: any = null;
+      if ((list.assets || []).length === 0) {
+        autoRendered = await httpUtilInstance.renderExportAssets(
+          finalFileId,
+          effectiveLayerId,
+          exportIds
+        );
+        // 渲染后缓存已写入；再读一次清单拿到最新可下载项。
+        list = await httpUtilInstance.listExportAssets(finalFileId, effectiveLayerId);
+      }
+
       const wanted = exportIds && exportIds.length > 0 ? new Set(exportIds) : null;
       const candidates = (list.assets || []).filter((a) => !wanted || wanted.has(a.exportId));
 
@@ -181,13 +201,16 @@ export class DownloadExportAssetsTool extends BaseTool {
           skipped.push({
             exportId: item.exportId,
             reason: err?.response?.status === 404
-              ? "slice not cached on the server (call mcp__getExportAssets first, cache TTL ~5min)"
+              ? "slice cache expired between render and download (server cache TTL ~5min); retry this tool"
               : err?.message || String(err),
           });
         }
       }
 
       if (assets.length === 0 && skipped.length === 0) {
+        // 走到这里说明：自动渲染后依然没有任何可下载切图 —— 通常是这个范围里真的没有切图配置。
+        // 把渲染结果里的 total 与渲染说明带回去，让调用方区分「没切图」和「渲染失败」。
+        const renderedTotal = autoRendered?.total ?? list.total ?? 0;
         return {
           isError: true,
           content: [
@@ -195,10 +218,17 @@ export class DownloadExportAssetsTool extends BaseTool {
               type: "text" as const,
               text: JSON.stringify({
                 error:
-                  "No cached slice found for this file/layer. Run mcp__getExportAssets (or mcp__getExportList to confirm there ARE export settings) first, then retry this tool. Slice bytes live in server memory for ~5 minutes after rendering.",
+                  "No downloadable slice in this range. " +
+                  (renderedTotal === 0
+                    ? "The design has NO Export settings in this scope — restore these nodes as normal layers instead. " +
+                      "Pass the page id (e.g. layerId=M) if you expected to find slices here, since a slice node does not include itself in its own subtree scope."
+                    : "Export settings exist but nothing could be rendered (see render output)."),
                 fileId: finalFileId,
                 layerId: effectiveLayerId,
-                totalInScope: list.total ?? 0,
+                totalInScope: renderedTotal,
+                autoRendered: autoRendered ? true : false,
+                renderNote: autoRendered?.note,
+                renderSkipped: autoRendered?.skipped,
               }),
             },
           ],
@@ -214,6 +244,7 @@ export class DownloadExportAssetsTool extends BaseTool {
         dir,
         assets,
         skipped,
+        autoRendered: autoRendered ? true : false,
         note:
           "Files were written to your LOCAL disk. Reference these filePath values in the code you generate. " +
           "Slices must be rendered as one whole image block, never decomposed into inner layers. " +

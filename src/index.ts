@@ -15,6 +15,7 @@ import { GetPageLayersTool } from "./tools/get-page-layers";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { DownloadExportAssetsTool } from "./tools/download-export-assets";
+import { GetExportListTool } from "./tools/get-export-list";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
 import { setNoPrefix, applyToolPrefix, getNoPrefix } from "./utils/tool-prefix";
@@ -363,6 +364,7 @@ function main() {
   new ExtractSvgTool().register(server);
   new ApplyDesignTool().register(server);
   new DownloadExportAssetsTool().register(server);
+  new GetExportListTool().register(server);
 
   server.connect(new StdioServerTransport());
 }
