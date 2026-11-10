@@ -19,6 +19,14 @@ export interface IntegrationFixtures {
   designSectionsError?: any;
   /** applyDesign 的返回（必须含 patchedCode） */
   applyDesign?: any;
+  /** getExportList 的返回（切图元数据，GET /mcp/export-list） */
+  exportList?: any;
+  /** listExportAssets 的返回（GET /mcp/export-asset 清单）；可给多次调用设置序列 */
+  exportAssetList?: any;
+  /** renderExportAssets 的返回（POST /mcp/export-render） */
+  exportRender?: any;
+  /** downloadExportAsset 的返回；设置后 downloadExportAssets 可完整跑通落盘 */
+  exportAssetDownload?: any;
 }
 
 export const integrationFixtures: IntegrationFixtures = {};
@@ -60,6 +68,32 @@ export const httpUtilInstance = {
   ) {
     integrationCalls.push({ method: "applyDesign", fileId, layerId, sourceLayerId, targetLang, codeLen: code.length });
     return integrationFixtures.applyDesign;
+  },
+
+  async getExportList(fileId: string, layerId: string) {
+    integrationCalls.push({ method: "getExportList", fileId, layerId });
+    return integrationFixtures.exportList;
+  },
+
+  async listExportAssets(fileId: string, layerId: string) {
+    integrationCalls.push({ method: "listExportAssets", fileId, layerId });
+    // 支持数组序列：第一次返回空（模拟缓存过期），第二次返回渲染后的清单。
+    const f = integrationFixtures.exportAssetList;
+    if (Array.isArray(f)) {
+      const idx = integrationCalls.filter((c) => c.method === "listExportAssets").length - 1;
+      return f[Math.min(idx, f.length - 1)];
+    }
+    return f;
+  },
+
+  async renderExportAssets(fileId: string, layerId: string, exportIds?: string[]) {
+    integrationCalls.push({ method: "renderExportAssets", fileId, layerId, exportIds });
+    return integrationFixtures.exportRender;
+  },
+
+  async downloadExportAsset(fileId: string, layerId: string, exportId: string) {
+    integrationCalls.push({ method: "downloadExportAsset", fileId, layerId, exportId });
+    return integrationFixtures.exportAssetDownload;
   },
 
   // 以下方法集成测试不应触达，触达即失败（尽早暴露误接线）。

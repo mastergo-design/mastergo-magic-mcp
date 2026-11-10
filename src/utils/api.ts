@@ -91,6 +91,87 @@ export interface PageLayersResponse {
   [k: string]: any;
 }
 
+/** 切图字节缓存清单响应（GET /mcp/export-asset 不带 exportId 时返回） */
+export interface ExportAssetListResponse {
+  fileId: string;
+  layerId: string;
+  total: number;
+  assets: Array<{
+    exportId: string;
+    layerId: string;
+    format: string;
+    width?: number;
+    height?: number;
+    bytes: number;
+    fileName: string;
+  }>;
+  [k: string]: any;
+}
+
+/** 单个切图配置项（GET /mcp/export-list 的 exports[] 元素） */
+export interface ExportListItem {
+  /** 导出项自身 id（如 "2:0"），下载时用作 exportId */
+  id: string;
+  /** 承载该导出项的图层 id（如 "1:3"） */
+  layerId: string;
+  layerName?: string;
+  layerType?: string;
+  fileType: number;
+  /** 人类可读格式名：PNG / JPG / SVG / PDF / WEBP / AVIF */
+  format?: string;
+  sizeType?: number;
+  sizeValue?: number;
+  sizeRule?: string;
+  isSuffix?: boolean;
+  exportQuality?: number;
+  isBKVisible?: boolean;
+  width?: number;
+  height?: number;
+  targetWidth?: number;
+  targetHeight?: number;
+  [k: string]: any;
+}
+
+/** 切图配置清单响应（GET /mcp/export-list） */
+export interface ExportListResponse {
+  fileId: string;
+  layerId: string;
+  scope?: string;
+  resolvedPageId?: string;
+  pageName?: string;
+  total: number;
+  skipped?: { missingLayer: number; removedLayer: number };
+  /** 切图子树内图片填充的 imageRef（渲染时服务端据此带图） */
+  imageRefs?: string[];
+  exports: ExportListItem[];
+  note?: string;
+  guidance?: string;
+  [k: string]: any;
+}
+
+/** 渲染结果（POST /mcp/export-render） */
+export interface ExportRenderResponse {
+  fileId: string;
+  layerId: string;
+  scope?: string;
+  total: number;
+  dir?: string;
+  assets: ExportAssetListResponse["assets"];
+  skipped: Array<{ exportId?: string; layerId?: string; reason: string }>;
+  images?: { loaded: number; skipped: Array<{ ref: string; reason: string }> };
+  server?: {
+    successCount?: number;
+    itemCount?: number;
+    payloadBytes?: number;
+    imageLoaded?: number;
+    elapsedMs?: number;
+  };
+  note?: string;
+  truncated?: boolean;
+  guidance?: string;
+  [k: string]: any;
+}
+
 /** extractSvg 响应(分页) */
 export interface ExtractSvgResponse {
   totalCount: number;
@@ -526,6 +607,110 @@ const createHttpUtil = () => {
       }
     },
 
+    /**
+     * 取切图配置清单（GET /mcp/export-list）。
+     *
+     * 这是**纯元数据**接口：只解析 turtle 里的 exports，不渲染、不打引擎，
+     * 因此随时可调、成本极低。LLM 需要先知道「这个设计有哪些切图、什么格式、
+     * 多大尺寸」就靠它。
+     */
+    async getExportList(fileId: string, layerId: string): Promise<ExportListResponse> {
+      const response = await axios.get(`${getBaseUrl()}/mcp/export-list`, {
+        timeout: 120000,
+        params: { fileId, layerId },
+        headers: getCommonHeader(),
+      });
+      return response.data;
+    },
+
+    /**
+     * 触发真实切图渲染（POST /mcp/export-render）。
+     *
+     * 服务端渲染后，切图字节会写入它的内存缓存（TTL ~5min），随后即可用
+     * downloadExportAsset 下载。没有这一步，客户端只能读缓存 —— 缓存空就永远 404，
+     * 因为它拿不到 SSE 工具 mcp__getExportAssets。
+     */
+    async renderExportAssets(
+      fileId: string,
+      layerId: string,
+      exportIds?: string[]
+    ): Promise<ExportRenderResponse> {
+      const response = await axios.post(
+        `${getBaseUrl()}/mcp/export-render`,
+        { fileId, layerId, ...(exportIds && exportIds.length > 0 ? { exportIds } : {}) },
+        { timeout: 300000, headers: getCommonHeader() }
+      );
+      return response.data;
+    },
+
+    /**
+     * 列出某文件/图层下已缓存的切图（GET /mcp/export-asset 不带 exportId）。
+     * 切图字节由服务端在渲染时暂存，这里只取清单，用于让 LLM 知道有哪些
+     * exportId 可下载，避免盲猜。
+     */
+    /**
+     * 列出某文件/图层下已缓存的切图（GET /mcp/export-asset 不带 exportId）。
+     *
+     * 切图字节由服务端在渲染时暂存，这里只取清单。
+     *
+     * **404 不是错误**：服务端在「该范围还没有已缓存的切图」时返回 404，这正是
+     * 「需要先渲染」的正常信号。必须把它归一化成空清单返回，否则调用方会在
+     * 自动渲染之前就被 axios 抛错打断（2026-11-09 dev 实测踩到：缓存过期后
+     * downloadExportAssets 直接抛 404，压根走不到自动渲染那段）。
+     */
+    async listExportAssets(fileId: string, layerId: string): Promise<ExportAssetListResponse> {
+      try {
+        const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
+          timeout: 30000,
+          params: { fileId, layerId },
+          headers: getCommonHeader(),
+        });
+        return response.data;
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          // 服务端明确表示「当前没有缓存」→ 当作空清单，让上层走渲染路径。
+          const body = err.response.data;
+          return {
+            fileId,
+            layerId,
+            total: 0,
+            assets: [],
+            serverMessage: typeof body?.message === "string" ? body.message : undefined,
+          };
+        }
+        throw err;
+      }
+    },
+
+    /**
+     * 下载单张切图的二进制本体（GET /mcp/export-asset?exportId=xxx）。
+     *
+     * 背景：服务端渲染把切图落盘到自己的容器内 os.tmpdir()，LLM 客户端拿不到那个路径；
+     * 该端点把同一份字节经 HTTP 回传，返回 Buffer 供上层落盘成真实图片文件。
+     *
+     * 注意：本接口返回二进制，不能用 getCommonHeader() —— 它带
+     * `Accept: application/json`，会让服务端内容协商出错。这里显式要
+     * `application/octet-stream` 并设 responseType=arraybuffer。
+     */
+    async downloadExportAsset(
+      fileId: string,
+      layerId: string,
+      exportId: string
+    ): Promise<{ data: Buffer; contentType?: string; contentDisposition?: string }> {
+      const headers = { ...getCommonHeader(), Accept: "application/octet-stream" };
+      const response = await axios.get(`${getBaseUrl()}/mcp/export-asset`, {
+        timeout: 120000,
+        params: { fileId, layerId, exportId },
+        headers,
+        responseType: "arraybuffer",
+      });
+      return {
+        data: Buffer.from(response.data),
+        contentType: headerAsString(response.headers?.["content-type"]),
+        contentDisposition: headerAsString(response.headers?.["content-disposition"]),
+      };
+    },
+
     async getD2c(contentId: string,documentId: string): Promise<DslResponse> {
       const params: Record<string, any> = { contentId: contentId, documentId: documentId };
       const response = await axios.get(`${getBaseUrl()}/mcp/d2c/events`, {
@@ -681,3 +866,14 @@ const createHttpUtil = () => {
 };
 
 export const httpUtilInstance = createHttpUtil();
+
+/**
+ * axios 的响应头值类型是 AxiosHeaderValue（string | string[] | number | boolean | null），
+ * 下载端点需要的是字符串。ordinal/空值统一收敛为 undefined，避免下游拿到 null 当文件名。
+ */
+function headerAsString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.length > 0 ? String(value[0]) : undefined;
+  if (value === null || value === undefined) return undefined;
+  return String(value);
+}

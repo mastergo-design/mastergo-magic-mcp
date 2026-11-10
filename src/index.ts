@@ -14,6 +14,8 @@ import { GetDesignSectionsTool } from "./tools/get-design-sections";
 import { GetPageLayersTool } from "./tools/get-page-layers";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
+import { DownloadExportAssetsTool } from "./tools/download-export-assets";
+import { GetExportListTool } from "./tools/get-export-list";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
 import { setNoPrefix, applyToolPrefix, getNoPrefix } from "./utils/tool-prefix";
@@ -173,6 +175,33 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - \`structureSiblingCount: 1\` means render EXACTLY 1 data row. Do NOT add rows "for visual density", "to look complete", or "because a pagination label says 共10项". Pagination labels reflect a UI control state, NOT a data-row count — they must never inflate the row count.
 - Before outputting any table, verify: count your \`<tr>\` (data rows, excluding header) → it MUST equal \`structureSiblingCount\`. If you rendered more, delete the extras now.
 
+### Slices / Export settings (OPTIONAL, call when fidelity matters)
+Some nodes are marked by the designer as **slices** (Export settings, 切图). Those nodes must be
+rendered as ONE image block, not decomposed into child layers. The ordinary DSL does NOT carry this
+information, so you cannot tell which nodes are slices from the DSL alone — you must ask.
+
+1. Call \`mcp__getExportList\` with the same fileId + layerId you are restoring (or the page id).
+   It is a CHEAP metadata read: it only parses the design's Export configuration and does not render
+   anything. Each entry carries \`id\`, \`layerId\`, \`layerName\`, \`format\`, \`targetWidth\`/\`targetHeight\`
+   and the export scale rule.
+
+2. If you need the actual image files, call \`mcp__downloadExportAssets\` (same fileId + layerId,
+   optional \`exportIds\`, plus \`outDir\`). It renders the slices and **writes them to YOUR local disk**,
+   returning \`filePath\` values you can reference in the generated code. One call is enough — it
+   renders automatically when nothing is cached yet. PNG / JPG / WEBP only; at most 20 slices per
+   underlying render call.
+
+Rules when \`mcp__getExportList\` returned a non-empty list:
+- Render each listed node as a single block sized to its \`targetWidth\` x \`targetHeight\`; do NOT
+  rebuild its inner structure and do NOT hand-draw its content.
+- Nodes NOT in the list are ordinary layers — restore them from the DSL as usual.
+- \`total: 0\` means this scope has no slices: restore everything as normal layers. Do NOT invent image
+  blocks "just in case". Note that a slice node is NOT included in its own subtree scope — if you
+  expect slices and get none, pass the PAGE id instead of the slice node's id.
+- Only PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF slices appear in the list but
+  cannot be produced by the download tool — report that honestly instead of substituting a guess.
+- Do NOT inline base64 image data into your response; reference the returned \`filePath\` instead.
+
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
 - \`mcp__getPageLayers\` ENUMERATES layer_ids. Use it when you have a page_id (layerId) and need the list of all layers inside it BEFORE restoring each layer — it returns a lightweight {id, name, type, depth, parentId, childrenCount, width, height} list, then you feed each layer_id back into \`getDesignSections\` or \`getDsl\` to restore. It CANNOT list a document's pages from a fileId alone — you must already have a page_id / layerId.
@@ -180,6 +209,7 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
 - NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgShortKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data).
+- \`mcp__getExportList\` / \`mcp__downloadExportAssets\` handle slices (切图). Call \`getExportList\` once per layer/page **alongside** the section workflow — it is cheap metadata and tells you which nodes must be restored as whole images. Call \`downloadExportAssets\` only when the user actually needs the image files. Neither replaces the section workflow.
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:
@@ -361,6 +391,8 @@ function main() {
   new GetFlutterWorkflowTool().register(server);
   new ExtractSvgTool().register(server);
   new ApplyDesignTool().register(server);
+  new DownloadExportAssetsTool().register(server);
+  new GetExportListTool().register(server);
 
   server.connect(new StdioServerTransport());
 }
