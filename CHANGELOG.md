@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.16 (2026-11-10)
+
+## What's Changed
+* feat(export): 新增 mcp__downloadExportAssets，把切图下载到用户本地目录 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/136
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.15...v0.2.16
+
+
 ## v0.2.15 (2026-11-05)
 
 ## What's Changed
