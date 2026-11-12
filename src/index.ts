@@ -175,29 +175,39 @@ Each child's \`left\` and \`top\` come from that child's own \`layoutStyle.relat
 - \`structureSiblingCount: 1\` means render EXACTLY 1 data row. Do NOT add rows "for visual density", "to look complete", or "because a pagination label says 共10项". Pagination labels reflect a UI control state, NOT a data-row count — they must never inflate the row count.
 - Before outputting any table, verify: count your \`<tr>\` (data rows, excluding header) → it MUST equal \`structureSiblingCount\`. If you rendered more, delete the extras now.
 
-### Slices / Export settings (OPTIONAL, call when fidelity matters)
+### Slices / Export settings (IMPORTANT, section list already carries them)
 Some nodes are marked by the designer as **slices** (Export settings, 切图). Those nodes must be
 rendered as ONE image block, not decomposed into child layers. The ordinary DSL does NOT carry this
-information, so you cannot tell which nodes are slices from the DSL alone — you must ask.
+information, so you cannot tell which nodes are slices from the DSL alone — you must look for it.
 
-1. Call \`mcp__getExportList\` with the same fileId + layerId you are restoring (or the page id).
-   It is a CHEAP metadata read: it only parses the design's Export configuration and does not render
-   anything. Each entry carries \`id\`, \`layerId\`, \`layerName\`, \`format\`, \`targetWidth\`/\`targetHeight\`
-   and the export scale rule.
+**The section LIST response already includes it.** When the design has slices in your restore scope,
+the section list carries \`slices\` / \`sliceTotal\` / \`sliceScope\` (each entry: \`layerId\`, \`layerName\`,
+\`format\`, \`targetWidth\`/\`targetHeight\`) plus a \`SLICES:\` line in \`nextAction\`. Check these fields
+FIRST — they are the same data \`mcp__getExportList\` returns, so you normally do NOT need a separate
+metadata call.
 
-2. If you need the actual image files, call \`mcp__downloadExportAssets\` (same fileId + layerId,
+1. Prefer the \`slices\` field on the section list. If it is absent (older server) or you need the full
+   export configuration (scale rule, quality, export id for downloading), call \`mcp__getExportList\`
+   with the SAME fileId + layerId you are restoring.
+
+2. **Use the layerId you are restoring — NOT a page id.** Scope = the subtree of that layerId.
+   A page id only helps when you restore the whole page. In particular:
+   \`total: 0\` / no \`slices\` on a page id does NOT prove the design has no slices — some documents
+   return a nearly-empty page chunk while the slice settings live in layer scope. If you are
+   restoring a layer and want to know about its slices, query that same layer.
+
+3. If you need the actual image files, call \`mcp__downloadExportAssets\` (same fileId + layerId,
    optional \`exportIds\`, plus \`outDir\`). It renders the slices and **writes them to YOUR local disk**,
    returning \`filePath\` values you can reference in the generated code. One call is enough — it
    renders automatically when nothing is cached yet. PNG / JPG / WEBP only; at most 20 slices per
    underlying render call.
 
-Rules when \`mcp__getExportList\` returned a non-empty list:
+Rules when the slice list is non-empty (either from the section list \`slices\` field or \`mcp__getExportList\`):
 - Render each listed node as a single block sized to its \`targetWidth\` x \`targetHeight\`; do NOT
   rebuild its inner structure and do NOT hand-draw its content.
 - Nodes NOT in the list are ordinary layers — restore them from the DSL as usual.
-- \`total: 0\` means this scope has no slices: restore everything as normal layers. Do NOT invent image
-  blocks "just in case". Note that a slice node is NOT included in its own subtree scope — if you
-  expect slices and get none, pass the PAGE id instead of the slice node's id.
+- No slices in scope means the nodes are ordinary layers: restore them as normal layers. Do NOT
+  invent image blocks "just in case".
 - Only PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF slices appear in the list but
   cannot be produced by the download tool — report that honestly instead of substituting a guess.
 - Do NOT inline base64 image data into your response; reference the returned \`filePath\` instead.
@@ -209,7 +219,7 @@ Rules when \`mcp__getExportList\` returned a non-empty list:
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
 - NEVER combine the section workflow with \`extractSvg\`. If you only need SVG icons, use \`extractSvg\` alone. If you need a full page, use the section workflow (which uses \`@@SVG:{svgShortKey}@@\` placeholders + \`mcp__applyDesign\` for SVG data).
-- \`mcp__getExportList\` / \`mcp__downloadExportAssets\` handle slices (切图). Call \`getExportList\` once per layer/page **alongside** the section workflow — it is cheap metadata and tells you which nodes must be restored as whole images. Call \`downloadExportAssets\` only when the user actually needs the image files. Neither replaces the section workflow.
+- \`mcp__getExportList\` / \`mcp__downloadExportAssets\` handle slices (切图). The section LIST already carries a \`slices\` summary for the restore scope — check it first, and only call \`getExportList\` when that field is missing (older server) or you need the full export config. Call \`downloadExportAssets\` only when the user actually needs the image files. Neither replaces the section workflow.
 - The section workflow provides COMPLETE data. Do NOT call \`getDsl\` to "verify".
 
 ### Output Format:

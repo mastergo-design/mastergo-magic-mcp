@@ -33,10 +33,18 @@ WHAT YOU GET BACK
 
 SCOPE SEMANTICS (important)
 The scope is the subtree of the layerId you pass:
-- \`layerId = page_id\` (e.g. "M") → all slices in that page.
-- \`layerId = a container node\` → only slices INSIDE that node's subtree.
-  A node that is ITSELF a slice is NOT included in its own subtree scope — pass the page id
-  if you want to find that node. This is why asking with the slice node's own id can return 0.
+- \`layerId = the container/node you are restoring\` → the slices inside its subtree (preferred:
+  same scope you feed into the section workflow).
+- \`layerId = page_id\` (e.g. "M") → all slices in that page (use when restoring the whole page).
+  A nearly-empty page chunk does NOT prove the design has no slices: some documents return a
+  minimal page document while slice settings live in layer scope.
+  A node that is ITSELF a slice is NOT included in its own subtree scope — pass its parent
+  container's id (or the page id) to find that node. This is why asking with the slice node's own
+  id can return 0.
+
+NOTE: the section LIST response already carries a \`slices\` summary for the restore scope.
+Check that field first; call this tool when it is absent (older server) or you need the full
+export configuration (scale rule / quality / export id for downloading).
 
 SUPPORTED FORMATS
 PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF appear in the list but cannot be
