@@ -113,3 +113,31 @@ export const httpUtilInstance = {
     throw new Error("getPageData not expected in integration test");
   },
 };
+
+// ---- 纯函数导出（unknown-params.test.ts 引入 get-component-link 后需要）----
+// 与 src/utils/api.ts 语义一致的最小实现：仅用于模块加载期接线，测试断言不触达。
+
+export const getCommonHeader = (): Record<string, string> => ({
+  "Content-Type": "application/json",
+  Accept: "application/json",
+});
+
+export const getBaseUrl = (): string => {
+  const url = process.env.API_BASE_URL || "https://mastergo.com";
+  try {
+    const urlObj = new URL(url);
+    let baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
+    if (urlObj.port) baseUrl += `:${urlObj.port}`;
+    return baseUrl;
+  } catch {
+    throw new Error(`无效的URL格式: ${url}。请提供正确的URL格式，例如: https://mastergo.com`);
+  }
+};
+
+export const isSameHost = (a: string, b: string): boolean => {
+  try {
+    return new URL(a).host === new URL(b).host;
+  } catch {
+    return false;
+  }
+};

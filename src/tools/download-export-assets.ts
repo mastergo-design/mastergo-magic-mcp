@@ -111,20 +111,9 @@ export class DownloadExportAssetsTool extends BaseTool {
     exportIds,
     outDir,
     format,
-    ...rest
   }: z.infer<typeof this.schema>) {
     try {
-      // 阻断未知参数（与其他工具一致）：排除 _ 前缀元字段。
-      const unknownKeys = Object.keys(rest as Record<string, unknown>).filter(
-        (k) => !k.startsWith("_")
-      );
-      if (unknownKeys.length > 0) {
-        const errorText = `Unknown parameter(s): ${unknownKeys.join(", ")}. This tool only accepts: fileId, layerId, sourceLayerId, shortLink, exportIds, outDir, format. Remove the unknown parameter(s) and retry.`;
-        return {
-          isError: true,
-          content: [{ type: "text" as const, text: JSON.stringify({ error: errorText }) }],
-        };
-      }
+      // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），execute 无需再查 rest。
 
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(
