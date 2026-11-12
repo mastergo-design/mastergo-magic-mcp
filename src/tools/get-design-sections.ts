@@ -96,6 +96,22 @@ const DSL_RULES: string[] = [
     "CRITICAL — DO NOT SKIP SECTION DSL FETCH: the section LIST response is ONLY a directory (id/name/nodeCount/textPreview). It does NOT contain DSL nodes, rowTexts, or any rendering data. You CANNOT generate correct HTML from the list alone. You MUST call mcp__getDesignSections with sectionIndex=0, then 1, ... up to totalSections-1 to get each section's DSL. Generating HTML without fetching ALL section DSLs will produce missing content (menus, table data, icons) and incorrect SVGs — this is the #1 cause of broken output.",
   ];
 
+/**
+ * 从 section list 响应里提取切片（切图 / Export）提示语。
+ *
+ * 服务端（frontend-mcp-server !537 起）随 section list 下发 `slices` / `sliceTotal`，
+ * 客户端据此在 nextAction 里点名切图节点，避免 LLM 把切图当普通容器拆内部图层重建。
+ * 旧版服务端不下发这些字段时返回空串，行为与原先一致（LLM 仍可按需调 mcp__getExportList）。
+ */
+function buildSliceHint(result: any): string {
+  const sliceTotal = typeof result?.sliceTotal === "number" ? result.sliceTotal : 0;
+  if (sliceTotal <= 0 || !Array.isArray(result?.slices) || result.slices.length === 0) return "";
+  const ids = result.slices
+    .map((s: any) => `${s?.layerName || ""}(${s?.layerId || ""})`)
+    .join(", ");
+  return ` SLICES: ${sliceTotal} slice(s) configured in this scope (${ids}) — render each listed node as ONE whole image block at its targetWidth x targetHeight; do NOT decompose its inner structure or hand-draw its content. Nodes NOT listed are normal layers.`;
+}
+
 
 export class GetDesignSectionsTool extends BaseTool {
   get name() {
@@ -236,7 +252,17 @@ export class GetDesignSectionsTool extends BaseTool {
           const maxSibling = Math.max(...highSiblingSections.map((s: any) => s.structureSiblingCount));
           siblingWarning = ` WARNING: ${highSiblingSections.length} sections have structureSiblingCount up to ${maxSibling} — they look identical in the list (same nodeCount, empty name) but each has DIFFERENT text content and variant state. You MUST fetch ALL of them individually (do NOT skip any after fetching a few). Skipping sibling sections causes missing active-state styling and wrong menu item rendering.`;
         }
-        result.nextAction = applyToolPrefix(`STOP. This section LIST is only a directory — it has NO DSL nodes,  NO rowTexts. You CANNOT generate HTML from this list alone. Your NEXT ACTION: call mcp__getDesignSections with sectionIndex=0, then sectionIndex=1, ... up to sectionIndex=${n - 1} (total ${n} calls). Fetch ALL ${n} sections in batches of 3-5 before writing ANY HTML. Sections with nodeCount=3 and empty name are NOT empty — they contain real menu items and content (resolved from INSTANCE overrides during DSL transfer).${siblingWarning} Skipping section DSL fetch is the #1 cause of missing menus, broken icons, and wrong data.`);
+        // 切片提醒（服务端 !537 起在 section list 下发 slices/sliceTotal）。
+        // 服务端下发的 nextAction 已自带 SLICES 段时直接保留，避免客户端整体覆盖把它抹掉；
+        // 旧版服务端（无该段）则在此补一条，保证客户端版本兼容。
+        const sliceHint = buildSliceHint(result);
+        const baseNextAction = applyToolPrefix(`STOP. This section LIST is only a directory — it has NO DSL nodes,  NO rowTexts. You CANNOT generate HTML from this list alone. Your NEXT ACTION: call mcp__getDesignSections with sectionIndex=0, then sectionIndex=1, ... up to sectionIndex=${n - 1} (total ${n} calls). Fetch ALL ${n} sections in batches of 3-5 before writing ANY HTML. Sections with nodeCount=3 and empty name are NOT empty — they contain real menu items and content (resolved from INSTANCE overrides during DSL transfer).${siblingWarning}${sliceHint} Skipping section DSL fetch is the #1 cause of missing menus, broken icons, and wrong data.`);
+        // 服务端已下发的 nextAction 可能含 SLICES/LAYOUT 等分段：若它已经覆盖切片提醒就沿用，
+        // 否则用重建的（本函数随后还会追加 LAYOUT 段）。
+        const serverNextAction = typeof result.nextAction === "string" ? result.nextAction : "";
+        result.nextAction = serverNextAction.includes("SLICES:")
+          ? serverNextAction
+          : baseNextAction;
         // 检测多列布局：动态计算主内容区位置
         const scList = result.splitContainers;
         if (Array.isArray(scList) && scList.length > 0) {

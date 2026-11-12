@@ -37,8 +37,13 @@ The server caches rendered slice bytes in memory (TTL ~5 minutes). If you call t
 a previous render, the cache may have expired — this tool re-renders on demand instead of failing.
 
 SCOPE SEMANTICS
-Scope = the subtree of the \`layerId\` you pass. A node that is ITSELF a slice is NOT part of its own
-subtree, so if you expect slices and get none, pass the PAGE id (e.g. \`layerId: "M"\`).
+Scope = the subtree of the \`layerId\` you pass. Use the SAME layerId you are restoring: a container
+returns the slices inside its subtree, a page id returns every slice on that page. A node that is
+ITSELF a slice is NOT part of its own subtree, so passing that node's own id will not return it —
+pass its PARENT container's id (the scope you are restoring), or the page id when restoring the
+whole page.
+A nearly-empty result on a page id does NOT prove the design has no slices: some documents return a
+minimal page chunk while slice settings live in layer scope. Query the layer you are restoring.
 
 WHAT "NO SLICE" MEANS
 If the design genuinely has no Export settings in scope, this tool says so explicitly — in that case
@@ -221,7 +226,7 @@ export class DownloadExportAssetsTool extends BaseTool {
                   "No downloadable slice in this range. " +
                   (renderedTotal === 0
                     ? "The design has NO Export settings in this scope — restore these nodes as normal layers instead. " +
-                      "Pass the page id (e.g. layerId=M) if you expected to find slices here, since a slice node does not include itself in its own subtree scope."
+                      "If you expected slices here, query the container scope you are restoring (a slice node does not include itself in its own subtree scope), or the page id when restoring the whole page. A minimal page chunk does not prove the design has no slices."
                     : "Export settings exist but nothing could be rendered (see render output)."),
                 fileId: finalFileId,
                 layerId: effectiveLayerId,
