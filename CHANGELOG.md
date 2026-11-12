@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.17 (2026-11-12)
+
+## What's Changed
+* fix(slice): 消费 section list 下发的 slices，修正 scope 语义避免误导用 page id by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/138
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.16...v0.2.17
+
+
 ## v0.2.16 (2026-11-10)
 
 ## What's Changed
