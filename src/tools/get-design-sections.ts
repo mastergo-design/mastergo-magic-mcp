@@ -157,28 +157,24 @@ export class GetDesignSectionsTool extends BaseTool {
     format: formatField(),
   }).passthrough();
 
-  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format, ...rest }: z.infer<typeof this.schema>) {
+  /**
+   * 高频误用定制文案：LLM 常把 sectionIndex 传成复数 sectionIndices（数组），
+   * 静默忽略会让它以为参数生效。命中时由 BaseTool 的未知参数守卫优先返回本提示。
+   */
+  protected override unknownParamHint(unknownKeys: string[]): string | undefined {
+    if (unknownKeys.includes("sectionIndices")) {
+      return "Parameter 'sectionIndices' (plural) is NOT supported. Use 'sectionIndex' (SINGULAR — a single integer) instead. Make MULTIPLE separate calls, each with one sectionIndex (e.g. sectionIndex=15, then sectionIndex=16, ...). Passing an array will always return this error.";
+    }
+    return undefined;
+  }
+
+  async execute({ fileId, layerId, shortLink, sourceLayerId, sectionIndex, format }: z.infer<typeof this.schema>) {
     // 提升到 catch 可见的作用域：编排兜底（10017 跳层）需要在 catch 里识别图层。
     let finalFileId: string | undefined;
     let effectiveLayerId: string | undefined;
     try {
-      // 阻断所有未知参数：已知参数已解构，rest 即 LLM 传的 schema 未定义参数——静默忽略会让它
-      // 以为参数生效。高频误用是复数 sectionIndices，其它拼错参数同样报错。排除 _ 前缀元字段。
-      const unknownKeys = Object.keys(rest as Record<string, unknown>).filter((k) => !k.startsWith("_"));
-      if (unknownKeys.length > 0) {
-        const errorText = unknownKeys.includes("sectionIndices")
-          ? "Parameter 'sectionIndices' (plural) is NOT supported. Use 'sectionIndex' (SINGULAR — a single integer) instead. Make MULTIPLE separate calls, each with one sectionIndex (e.g. sectionIndex=15, then sectionIndex=16, ...). Passing an array will always return this error."
-          : `Unknown parameter(s): ${unknownKeys.join(", ")}. This tool only accepts: fileId, layerId, sourceLayerId, shortLink, sectionIndex, format. Remove the unknown parameter(s) and retry.`;
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: errorText }),
-            },
-          ],
-        };
-      }
+      // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），高频误用
+      // （复数 sectionIndices）的定制文案由 unknownParamHint 提供。
 
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error(

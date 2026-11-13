@@ -87,16 +87,9 @@ export class GetExportListTool extends BaseTool {
     })
     .passthrough();
 
-  async execute({ fileId, layerId, shortLink, sourceLayerId, format, ...rest }: z.infer<typeof this.schema>) {
+  async execute({ fileId, layerId, shortLink, sourceLayerId, format }: z.infer<typeof this.schema>) {
     try {
-      const unknownKeys = Object.keys(rest as Record<string, unknown>).filter((k) => !k.startsWith("_"));
-      if (unknownKeys.length > 0) {
-        const errorText = `Unknown parameter(s): ${unknownKeys.join(", ")}. This tool only accepts: fileId, layerId, sourceLayerId, shortLink, format. Remove the unknown parameter(s) and retry.`;
-        return {
-          isError: true,
-          content: [{ type: "text" as const, text: JSON.stringify({ error: errorText }) }],
-        };
-      }
+      // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），execute 无需再查 rest。
 
       if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
         throw new Error("Either provide fileId with layerId (or sourceLayerId), or provide a shortLink");
