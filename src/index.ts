@@ -210,6 +210,11 @@ Rules when the slice list is non-empty (either from the section list \`slices\` 
   invent image blocks "just in case".
 - Only PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF slices appear in the list but
   cannot be produced by the download tool — report that honestly instead of substituting a guess.
+- If \`mcp__downloadExportAssets\` fails with code \`10020\` (slice export not enabled for this
+  account), do NOT retry it and do NOT let it block the restoration — restore those slice nodes
+  from the DSL as normal layers (using \`@@SVG:{svgShortKey}@@\` placeholders for their inner
+  icons), and briefly note to the user that slice image export requires access permission
+  (contact Master Go customer service to join the slice whitelist).
 - Do NOT inline base64 image data into your response; reference the returned \`filePath\` instead.
 
 ### Tool Selection Rules:
