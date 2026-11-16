@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.18 (2026-11-16)
+
+## What's Changed
+* fix(tools): 未知参数校验失效——base-tool 只传 shape 被 SDK 剥离未知键 (issue #137) by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/139
+* docs(prompt): add 10020 fallback guidance — restore slice nodes as normal layers by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/140
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.17...v0.2.18
+
+
 ## v0.2.17 (2026-11-12)
 
 ## What's Changed
