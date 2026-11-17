@@ -36,14 +36,18 @@ large, ask the user to select a smaller nested container in the MasterGo canvas 
 
 You can provide either:
 1. fileId and layerId directly (layerId = the page's layerId, i.e. page_id), or
-2. a short link (like https://{domain}/goto/LhGgBAK)
+2. a short link (like https://{domain}/goto/LhGgBAK), or
+3. fileId ONLY (no layerId): the server returns the document's PAGE LIST instead of a
+   layer list (\`mode: "filePages"\`, with \`pages[]\` each carrying id/name/isDefault and
+   \`defaultPageId\`). Use it when the user only gave a bare file URL without page_id:
+   pick a page from pages[] (single-page file → take the default page directly; multi-page
+   → show the page names and ask the user which one), then call this tool again with
+   \`layerId=<that page id>\` to enumerate its layers. \`layerId=M\` always works for the
+   default page.
 
 The returned layer list is lightweight: each entry has id, name, type, depth, parentId,
 childrenCount, width, height. It does NOT contain DSL/styles/SVG paths — use the section
 or DSL tools to restore each layer.
-
-NOTE: This tool cannot enumerate a document's PAGE list from a fileId alone — you must
-already know a page_id / layerId to pass in.
 
 The URL marker \`page_id=M\` means the file's DEFAULT page and IS supported — do NOT ask the
 user for "a real layer_id URL" just because the page_id is \`M\`.
@@ -77,7 +81,7 @@ export class GetPageLayersTool extends BaseTool {
       .string()
       .optional()
       .describe(
-        "Page layer ID to enumerate. This is the page_id from the MasterGo URL (e.g. \"40:015\"). Required if shortLink is not provided."
+        "Page layer ID to enumerate. This is the page_id from the MasterGo URL (e.g. \"40:015\"). \"M\" = the file's default page. Omit it (with fileId) to get the document's page list instead (mode=filePages). Required if shortLink is not provided, unless you want the page list."
       ),
     sourceLayerId: z
       .string()
@@ -95,10 +99,12 @@ export class GetPageLayersTool extends BaseTool {
   async execute({ fileId, layerId, shortLink, sourceLayerId, format }: z.infer<typeof this.schema>) {
     try {
       // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），execute 无需再查 rest。
+      // layerId 可省略（fileId-only 模式）：服务端返回页面列表（mode=filePages）供先选页再枚举。
 
-      if (!shortLink && (!fileId || (!layerId && !sourceLayerId))) {
+      if (!shortLink && !fileId) {
         throw new Error(
-          "Either provide fileId with layerId (or sourceLayerId), or provide a shortLink"
+          "Either provide fileId (with optional layerId, or without it to list the document's pages), " +
+          "or provide a shortLink"
         );
       }
 
@@ -114,14 +120,32 @@ export class GetPageLayersTool extends BaseTool {
       }
 
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
-      if (!finalFileId || !effectiveLayerId) {
-        throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
+      if (!finalFileId) {
+        throw new Error("Could not determine fileId");
       }
 
       const result = await httpUtilInstance.getPageLayers(
         finalFileId,
-        effectiveLayerId
+        effectiveLayerId || undefined
       );
+
+      // fileId-only：服务端返回页面列表（mode=filePages），透传 nextAction 引导 LLM
+      // 选页后再以 layerId=<pageId> 重新调用。此时不应建立 pageRestore 还原计划。
+      if (result?.mode === "filePages") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatOutput(result, format),
+            },
+          ],
+        };
+      }
+
+      if (!effectiveLayerId) {
+        // 理论不可达：有 layerId 才可能拿到图层列表响应；防御性兜底。
+        throw new Error("Could not determine layerId");
+      }
 
       // 整页编排：枚举非空 → 建立还原计划（pageRestore），后续 getDesignSections /
       // applyDesign 响应会持续注入进度与下一步指令，LLM 无需自行记忆整页流程。

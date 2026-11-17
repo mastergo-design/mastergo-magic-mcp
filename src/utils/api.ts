@@ -71,11 +71,11 @@ export interface DesignSectionsResponse {
 /** getPageLayers 响应：某 page 下的全部图层级摘要列表 */
 export interface PageLayersResponse {
   fileId: string;
-  pageLayerId: string;
+  pageLayerId?: string;
   pageName?: string;
   pageType?: string;
-  totalLayers: number;
-  layers: Array<{
+  totalLayers?: number;
+  layers?: Array<{
     id: string;
     name: string;
     type: string;
@@ -85,6 +85,10 @@ export interface PageLayersResponse {
     width?: number;
     height?: number;
   }>;
+  /** fileId-only 模式：服务端返回 mode=filePages 时为 true，此时是页面列表而非图层列表 */
+  mode?: string;
+  pages?: Array<{ id: string; name?: string; index?: string; isDefault?: boolean }>;
+  defaultPageId?: string;
   /** 超过 MAX_LAYERS 上限时为 true，layers 被截断 */
   partial?: boolean;
   message?: string;
@@ -583,15 +587,18 @@ const createHttpUtil = () => {
      * 带 60s TTL 内存缓存：LLM 在「枚举→逐个还原」工作流中常多次调用同一 page，
      * 超大 page 重复拉取开销显著。枚举结果是只读快照，缓存安全；后续 getDesignSections
      * 逐个还原时自带 dslCache，不与此缓存冲突。失败结果不缓存（避免缓存错误态）。
+     *
+     * layerId 可省略（fileId-only 模式）：服务端返回 mode=filePages 的页面列表
+     * （pages[] + defaultPageId + nextAction 引导），供调用方先选页再枚举。
      */
-    async getPageLayers(fileId: string, layerId: string): Promise<PageLayersResponse> {
-      const cacheKey = `${fileId}:${layerId}`;
+    async getPageLayers(fileId: string, layerId?: string): Promise<PageLayersResponse> {
+      const cacheKey = `${fileId}:${layerId ?? ""}`;
       const cached = getCachedPageLayers(cacheKey);
       if (cached) return cached;
       try {
         const response = await axios.get(`${getBaseUrl()}/mcp/page-layers`, {
           timeout: 120000,
-          params: { fileId, layerId },
+          params: { fileId, ...(layerId ? { layerId } : {}) },
           headers: getCommonHeader(),
         });
         setCachedPageLayers(cacheKey, response.data);
