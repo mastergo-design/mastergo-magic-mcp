@@ -97,6 +97,9 @@ export class GetPageLayersTool extends BaseTool {
   }).passthrough();
 
   async execute({ fileId, layerId, shortLink, sourceLayerId, format }: z.infer<typeof this.schema>) {
+    // catch 块可见：标记本次请求是否为 fileId-only（未带 layerId），用于识别
+    // 旧 server（page-layers v2 之前）对 fileId-only 的 HTTP 400 / 10019 拒绝并追加降级引导。
+    let fileIdOnlyRequest = false;
     try {
       // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），execute 无需再查 rest。
       // layerId 可省略（fileId-only 模式）：服务端返回页面列表（mode=filePages）供先选页再枚举。
@@ -120,6 +123,7 @@ export class GetPageLayersTool extends BaseTool {
       }
 
       const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      fileIdOnlyRequest = !effectiveLayerId;
       if (!finalFileId) {
         throw new Error("Could not determine fileId");
       }
@@ -182,6 +186,32 @@ export class GetPageLayersTool extends BaseTool {
         ],
       };
     } catch (error: any) {
+      const formatted = formatToolError(error, "getPageLayers");
+
+      // 旧 server 兼容引导（fileId-only 仅在 page-layers v2 之后支持）：识别 HTTP 400 /
+      // code 10019 的参数拒绝响应，提示 LLM 该 server 版本不支持 fileId-only 页面列表，
+      // 回退为向用户索要带 page_id 的链接。仅对 fileId-only 请求生效，不影响其它路径。
+      if (
+        fileIdOnlyRequest &&
+        error?.response?.status === 400 &&
+        String(error?.response?.data?.code ?? "") === "10019"
+      ) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text:
+                formatted +
+                "\nNote: listing the document's pages with fileId alone is NOT supported by this " +
+                "frontend-mcp-server version (requires page-layers v2, MR !554). Ask the user for a " +
+                "MasterGo URL that contains page_id (e.g. https://mastergo.com/file/{fileId}?page_id={id}) " +
+                "and retry with layerId=<page_id>.",
+            },
+          ],
+        };
+      }
+
       // Preserve structured server errors (especially HTTP 413 / code 10017) instead of
       // reducing them to the generic "getPageLayers failed" envelope.
       return {
@@ -189,7 +219,7 @@ export class GetPageLayersTool extends BaseTool {
         content: [
           {
             type: "text" as const,
-            text: formatToolError(error, "getPageLayers"),
+            text: formatted,
           },
         ],
       };
