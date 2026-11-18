@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.20 (2026-11-18)
+
+## What's Changed
+* feat(tools): 新增 mcp__renderLayers 任意图层截图（oncall 13887） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/144
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.19...v0.2.20
+
+
 ## v0.2.19 (2026-11-18)
 
 ## What's Changed
