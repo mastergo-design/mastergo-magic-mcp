@@ -27,6 +27,8 @@ export interface IntegrationFixtures {
   exportRender?: any;
   /** downloadExportAsset 的返回；设置后 downloadExportAssets 可完整跑通落盘 */
   exportAssetDownload?: any;
+  /** renderLayers 的返回（POST /mcp/render-layers） */
+  renderLayers?: any;
 }
 
 export const integrationFixtures: IntegrationFixtures = {};
@@ -94,6 +96,15 @@ export const httpUtilInstance = {
   async downloadExportAsset(fileId: string, layerId: string, exportId: string) {
     integrationCalls.push({ method: "downloadExportAsset", fileId, layerId, exportId });
     return integrationFixtures.exportAssetDownload;
+  },
+
+  async renderLayers(
+    fileId: string,
+    layerId: string,
+    options?: { layerIds?: string[]; format?: number; scale?: number },
+  ) {
+    integrationCalls.push({ method: "renderLayers", fileId, layerId, options });
+    return integrationFixtures.renderLayers;
   },
 
   // 以下方法集成测试不应触达，触达即失败（尽早暴露误接线）。

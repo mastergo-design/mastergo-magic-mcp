@@ -15,6 +15,7 @@ import { GetPageLayersTool } from "./tools/get-page-layers";
 import { ExtractSvgTool } from "./tools/extract-svg";
 import { ApplyDesignTool } from "./tools/apply-design";
 import { DownloadExportAssetsTool } from "./tools/download-export-assets";
+import { RenderLayersTool } from "./tools/render-layers";
 import { GetExportListTool } from "./tools/get-export-list";
 import { parserArgs, getEffectiveHeaders, maskSensitiveHeaders } from "./utils/args";
 import { normalizeFormat } from "./utils/format";
@@ -408,6 +409,7 @@ function main() {
   new ExtractSvgTool().register(server);
   new ApplyDesignTool().register(server);
   new DownloadExportAssetsTool().register(server);
+  new RenderLayersTool().register(server);
   new GetExportListTool().register(server);
 
   server.connect(new StdioServerTransport());
