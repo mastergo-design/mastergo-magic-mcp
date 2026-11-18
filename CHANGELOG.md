@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.19 (2026-11-18)
+
+## What's Changed
+* feat(get-page-layers): support fileId-only mode to list document pages by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/142
+* fix(deps): bundle fast-uri 3.1.9 via yarn resolutions (Yarn v1 ignores npm overrides) by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/143
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.18...v0.2.19
+
+
 ## v0.2.18 (2026-11-16)
 
 ## What's Changed
