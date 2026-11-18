@@ -43,6 +43,7 @@ Use this workflow when the user wants to restore a WHOLE PAGE or a CONTAINER wit
 **When to use this vs. direct restoration:**
 - URL has \`page_id\` and no \`layer_id\` → ALWAYS use this workflow (a page contains many layers; restore them individually, each as its own file).
 - URL has a specific \`layer_id\` for a single component → use the normal workflow (Step 0+), no enumeration needed, one file.
+- URL is a bare file link (no page_id) → call \`mcp__getPageLayers\` with fileId only: the response (\`mode: "filePages"\`) lists the document's pages with \`nextAction\` guidance — pick a page (default page if single-page; ask the user which one if multi-page), then enumerate it with \`layerId=<pageId>\` and continue this workflow.
 - A page_id returns an EMPTY result → first check WHICH empty case it is (see EMPTY RESULT below), it is NOT automatically a dead end.
   \`page_id=M\` is the URL marker for the file's DEFAULT page and IS supported — do NOT tell the user to "use a real layer_id URL instead" just because the page_id is \`M\`.
 
@@ -219,7 +220,7 @@ Rules when the slice list is non-empty (either from the section list \`slices\` 
 
 ### Tool Selection Rules:
 - \`mcp__getDesignSections\` is the PRIMARY tool for full-page design-to-code generation. Always start here when you need to generate a complete HTML page from a design.
-- \`mcp__getPageLayers\` ENUMERATES layer_ids. Use it when you have a page_id (layerId) and need the list of all layers inside it BEFORE restoring each layer — it returns a lightweight {id, name, type, depth, parentId, childrenCount, width, height} list, then you feed each layer_id back into \`getDesignSections\` or \`getDsl\` to restore. It CANNOT list a document's pages from a fileId alone — you must already have a page_id / layerId.
+- \`mcp__getPageLayers\` ENUMERATES layer_ids. Use it when you have a page_id (layerId) and need the list of all layers inside it BEFORE restoring each layer — it returns a lightweight {id, name, type, depth, parentId, childrenCount, width, height} list, then you feed each layer_id back into \`getDesignSections\` or \`getDsl\` to restore. It can ALSO list a document's pages from a fileId alone (omit layerId → \`mode: "filePages"\` with \`pages[]\`): use this when the user only gave a bare file URL without page_id — pick a page (default page if single-page; ask the user if multi-page), then enumerate with \`layerId=<pageId>\`.
 - \`mcp__extractSvg\` is a STANDALONE tool. Use it DIRECTLY when you only need to extract SVG icons from a design — do NOT call \`getDesignSections\` before it.
 - \`mcp__getDsl\` is a FALLBACK — call it ONLY if \`getDesignSections\` returns an error (e.g. tool not available on older servers).
 - NEVER call both \`getDesignSections\` AND \`getDsl\` for the same design.
