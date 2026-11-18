@@ -49,7 +49,11 @@ const stubPlugin = {
 };
 
 // 多个集成测试入口一起打包（每个 test 文件独立 bundle）。
-const integrationEntries = ["page-restore-integration.test.ts", "export-asset-integration.test.ts"];
+const integrationEntries = [
+  "page-restore-integration.test.ts",
+  "export-asset-integration.test.ts",
+  "render-layers-integration.test.ts",
+];
 
 const result = await esbuild.build({
   entryPoints: integrationEntries.map((f) => path.join(here, f)),

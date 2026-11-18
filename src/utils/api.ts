@@ -153,6 +153,28 @@ export interface ExportListResponse {
   [k: string]: any;
 }
 
+/** POST /mcp/render-layers 的响应（形状与切图渲染一致，exportId === layerId）。 */
+export interface RenderLayersResponse {
+  fileId: string;
+  scope: string;
+  total: number;
+  dir?: string;
+  assets: ExportAssetListResponse["assets"];
+  skipped: Array<{ layerId: string; reason: string }>;
+  images?: { loaded: number; skipped: Array<{ ref: string; reason: string }> };
+  server?: {
+    successCount?: number;
+    itemCount?: number;
+    payloadBytes?: number;
+    imageLoaded?: number;
+    elapsedMs?: number;
+  };
+  note?: string;
+  truncated?: boolean;
+  guidance?: string;
+  [k: string]: any;
+}
+
 /** 渲染结果（POST /mcp/export-render） */
 export interface ExportRenderResponse {
   fileId: string;
@@ -647,6 +669,31 @@ const createHttpUtil = () => {
         { fileId, layerId, ...(exportIds && exportIds.length > 0 ? { exportIds } : {}) },
         { timeout: 300000, headers: getCommonHeader() }
       );
+      return response.data;
+    },
+
+    /**
+     * 触发任意图层截图（POST /mcp/render-layers）。
+     *
+     * 与 renderExportAssets 的区别：那个渲「设计师配好的切图」，本方法渲「你指定的任意图层」，
+     * 不看 Export 配置。返回的 assets[].exportId === layerId，所以下载仍走 downloadExportAsset，
+     * 不需要新接口。
+     *
+     * 超时给 300s：与切图渲染同档。截图是 CPU 光栅化 + 编码，大画板比切图更慢。
+     */
+    async renderLayers(
+      fileId: string,
+      layerId: string,
+      options?: { layerIds?: string[]; format?: number; scale?: number }
+    ): Promise<RenderLayersResponse> {
+      const body: Record<string, unknown> = { fileId, layerId };
+      if (options?.layerIds && options.layerIds.length > 0) body.layerIds = options.layerIds;
+      if (options?.format !== undefined) body.format = options.format;
+      if (options?.scale !== undefined) body.scale = options.scale;
+      const response = await axios.post(`${getBaseUrl()}/mcp/render-layers`, body, {
+        timeout: 300000,
+        headers: getCommonHeader(),
+      });
       return response.data;
     },
 
