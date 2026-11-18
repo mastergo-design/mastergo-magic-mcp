@@ -67,7 +67,14 @@
   "overrides": {
     "hono": "^4.12.27",
     "form-data": "^4.0.6",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.9",
+    "ip-address": "^10.2.0",
+    "qs": "^6.15.3"
+  },
+  "resolutions": {
+    "hono": "^4.12.27",
+    "form-data": "^4.0.6",
+    "fast-uri": "^3.1.9",
     "ip-address": "^10.2.0",
     "qs": "^6.15.3"
   },
