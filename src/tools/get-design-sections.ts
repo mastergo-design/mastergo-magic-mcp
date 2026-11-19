@@ -56,6 +56,53 @@ If this tool is unavailable on an old server (HTTP 404), fall back to mcp__getDs
 errors (e.g. HTTP 5xx or network timeout), retry once; if it still fails, fall back to mcp__getDsl
 or report the error to the user.
 
+PROTOTYPE INTERACTIONS (node.interactive) — read this when the design is a clickable prototype:
+
+⚠️ STEP 0 — CHECK SERVER CAPABILITY FIRST. This field exists on ALL servers, but its SHAPE differs:
+- **Rich shape (this server, v0.2.155+)** — actions carry a semantic \`type\` in
+  {navigation, swap, overlay, scrollTo, back, close, visibility, link, unknown}, plus optional
+  \`trigger\` / \`transition\` / \`visible\` / \`overlayPosition\` / \`delay\`.
+- **Legacy shape (older / private-deployment servers, e.g. monthly-release builds)** — EVERY action
+  has \`type === "navigation"\` ONLY (just \`targetLayerId\`), with NO \`trigger\`, NO \`transition\`,
+  and NO other type values.
+
+HOW TO TELL: if you inspect every \`interactive\` action in the response and ALL of them have
+\`type === "navigation"\` and NONE has \`trigger\`/\`transition\`, you are on a LEGACY server.
+
+IF LEGACY → the data is SEMANTICALLY WRONG, not merely incomplete: legacy mapping tags BOTH real page
+navigation AND component-variant switches (hover states etc.) as \`navigation\`. Therefore:
+1. Do NOT generate page routes from \`interactive\` on a legacy server — you would turn hover effects
+   into page jumps.
+2. Treat \`interactive\` as a weak hint only (the target layer id may still be worth noting).
+3. Tell the user plainly: "当前 MCP server 版本较旧，原型交互语义（触发方式/变体切换/动画）不可用；
+   私有化按月发版，需升级到包含该能力的版本." Do not silently guess.
+
+IF RICH SHAPE → proceed with the semantics below.
+
+Any node MAY carry an \`interactive\` array (zero or more actions). A node has NO such field when
+it has no interactions. Each action describes ONE interaction:
+- \`type\`: \`navigation\` (jump to another page/frame) | \`swap\` (switch a component variant/state —
+  NOT a page jump, typical for hover) | \`overlay\` (open as a floating layer) | \`scrollTo\` |
+  \`back\` | \`close\` (dismiss the current overlay) | \`visibility\` (show/hide a target) |
+  \`link\` (open an external URL) | \`unknown\` (unsupported action, raw \`actionType\` included).
+- \`trigger\`: \`click\` | \`hover\` | \`press\` | \`mouseEnter\` | \`mouseLeave\` | \`mouseDown\` |
+  \`mouseUp\` | \`afterDelay\` (with \`delay\` ms) | \`doubleClick\` | \`rightClick\`. ABSENT means click.
+- \`targetLayerId\` / \`url\`: the destination. \`transition\` carries the animation
+  (\`type\`/\`direction\`/\`duration\`/\`easing\`).
+CRITICAL: a node may have SEVERAL actions (e.g. click-jump AND hover-swap). Generate routing for
+\`navigation\`/\`overlay\`/\`link\` only — do NOT turn \`swap\` into a route (it is a visual state
+change, not a page change). \`close\`/\`back\` map to dismissing/navigating back, not to a new page.
+Actions are returned in a STABLE order (sorted by index then id), so repeated calls are reproducible.
+The section LIST (mode 1) also carries \`interactive\` on each section and splitContainer entry —
+use it to find which sections carry interactions WITHOUT fetching every section DSL.
+
+PROTOTYPE FLOWS (getMeta only): \`mcp__getMeta\` returns \`<flow title="..." frameId="..." description="..."/>\`
+entries. Each is one prototype flow of the page; \`frameId\` is the flow's starting frame. Use them to
+understand the intended page order before restoring pages.
+NOTE: flows are FILE-level data; the MCP data path fetches per-layer containers, so this output is
+populated only when the input covers the whole document. An empty <info></info> does NOT mean the
+design has no flows.
+
 You can provide either:
 1. fileId and layerId directly, or
 2. a short link (like https://{domain}/goto/LhGgBAK)
