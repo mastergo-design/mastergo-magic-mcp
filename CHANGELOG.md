@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.21 (2026-11-19)
+
+## What's Changed
+* docs(prompt): tool 描述补 interactive 语义与 flowItems 限制（LLM 实际读到的这份） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/145
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.20...v0.2.21
+
+
 ## v0.2.20 (2026-11-18)
 
 ## What's Changed
