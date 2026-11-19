@@ -57,6 +57,28 @@ errors (e.g. HTTP 5xx or network timeout), retry once; if it still fails, fall b
 or report the error to the user.
 
 PROTOTYPE INTERACTIONS (node.interactive) — read this when the design is a clickable prototype:
+
+⚠️ STEP 0 — CHECK SERVER CAPABILITY FIRST. This field exists on ALL servers, but its SHAPE differs:
+- **Rich shape (this server, v0.2.155+)** — actions carry a semantic \`type\` in
+  {navigation, swap, overlay, scrollTo, back, close, visibility, link, unknown}, plus optional
+  \`trigger\` / \`transition\` / \`visible\` / \`overlayPosition\` / \`delay\`.
+- **Legacy shape (older / private-deployment servers, e.g. monthly-release builds)** — EVERY action
+  has \`type === "navigation"\` ONLY (just \`targetLayerId\`), with NO \`trigger\`, NO \`transition\`,
+  and NO other type values.
+
+HOW TO TELL: if you inspect every \`interactive\` action in the response and ALL of them have
+\`type === "navigation"\` and NONE has \`trigger\`/\`transition\`, you are on a LEGACY server.
+
+IF LEGACY → the data is SEMANTICALLY WRONG, not merely incomplete: legacy mapping tags BOTH real page
+navigation AND component-variant switches (hover states etc.) as \`navigation\`. Therefore:
+1. Do NOT generate page routes from \`interactive\` on a legacy server — you would turn hover effects
+   into page jumps.
+2. Treat \`interactive\` as a weak hint only (the target layer id may still be worth noting).
+3. Tell the user plainly: "当前 MCP server 版本较旧，原型交互语义（触发方式/变体切换/动画）不可用；
+   私有化按月发版，需升级到包含该能力的版本." Do not silently guess.
+
+IF RICH SHAPE → proceed with the semantics below.
+
 Any node MAY carry an \`interactive\` array (zero or more actions). A node has NO such field when
 it has no interactions. Each action describes ONE interaction:
 - \`type\`: \`navigation\` (jump to another page/frame) | \`swap\` (switch a component variant/state —

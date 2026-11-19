@@ -108,6 +108,24 @@ This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
 
 PROTOTYPE INTERACTIONS (node.interactive) — read this when the design is a clickable prototype:
+
+⚠️ STEP 0 — CHECK SERVER CAPABILITY FIRST. This field exists on ALL servers, but its SHAPE differs:
+- **Rich shape (this server, v0.2.155+)** — semantic \`type\` in
+  {navigation, swap, overlay, scrollTo, back, close, visibility, link, unknown}, plus optional
+  \`trigger\` / \`transition\` / \`delay\` / \`visible\` / \`overlayPosition\`.
+- **Legacy shape (older / private-deployment servers)** — EVERY action has \`type === "navigation"\`
+  ONLY, with NO \`trigger\`/\`transition\` and NO other type values.
+
+HOW TO TELL: all actions \`type === "navigation"\` and none has \`trigger\`/\`transition\` ⇒ LEGACY.
+
+IF LEGACY → data is SEMANTICALLY WRONG (legacy tags variant switches as navigation too):
+1. Do NOT generate page routes from \`interactive\`.
+2. Treat it as a weak hint at most.
+3. Tell the user the server is outdated and interaction semantics need an upgrade
+   (private deployments ship monthly, so they lag the SaaS release).
+
+IF RICH SHAPE → proceed with the semantics below.
+
 Any node MAY carry an \`interactive\` array (zero or more actions). A node has NO such field when
 it has no interactions. Each action describes ONE interaction:
 - \`type\`: \`navigation\` (jump to another page/frame) | \`swap\` (switch a component variant/state —
