@@ -106,6 +106,25 @@ You can provide either:
 This tool returns the raw DSL data that you can then parse and analyze. Use the optional 'format' parameter (json/yaml/tree, defaults to json) to control the serialization.
 This tool also returns the rules you must follow when generating code.
 The DSL data can also be used to transform and generate code for different frameworks.
+
+PROTOTYPE INTERACTIONS (node.interactive) — read this when the design is a clickable prototype:
+Any node MAY carry an \`interactive\` array (zero or more actions). A node has NO such field when
+it has no interactions. Each action describes ONE interaction:
+- \`type\`: \`navigation\` (jump to another page/frame) | \`swap\` (switch a component variant/state —
+  NOT a page jump, typical for hover) | \`overlay\` (open as a floating layer) | \`scrollTo\` |
+  \`back\` | \`close\` (dismiss the current overlay) | \`visibility\` (show/hide a target) |
+  \`link\` (open an external URL) | \`unknown\` (unsupported action, raw \`actionType\` included).
+- \`trigger\`: \`click\` | \`hover\` | \`press\` | \`mouseEnter\` | \`mouseLeave\` | \`mouseDown\` |
+  \`mouseUp\` | \`afterDelay\` (with \`delay\` ms) | \`doubleClick\` | \`rightClick\`. ABSENT means click.
+- \`targetLayerId\` / \`url\`: the destination. \`transition\` carries the animation
+  (\`type\`/\`direction\`/\`duration\`/\`easing\`).
+CRITICAL: a node may have SEVERAL actions (e.g. click-jump AND hover-swap). Generate routing for
+\`navigation\`/\`overlay\`/\`link\` only — do NOT turn \`swap\` into a route (it is a visual state
+change, not a page change). \`close\`/\`back\` map to dismissing/navigating back, not to a new page.
+Actions are returned in a STABLE order (sorted by index then id), so repeated calls are reproducible.
+
+NOTE: This tool accepts a page_id as layerId, but a page-level id returns EMPTY. Use
+mcp__getPageLayers first to enumerate real layer_ids, then pass each to this tool.
 `;
 
 export class GetDslTool extends BaseTool {
