@@ -131,6 +131,36 @@ test("缓存为空时自动渲染，然后下载落盘（回归 404 未触发自
   );
 });
 
+test("切图不可用（10020）时主动降级为可继续信号，不报错也不提示客服加白", async () => {
+  resetAll();
+  integrationFixtures.exportAssetList = emptyList();
+  // 模拟服务端切图白名单未命中：REST 403 + 业务码 10020。
+  integrationFixtures.exportRenderError = {
+    response: {
+      status: 403,
+      data: { code: "10020", message: "切图不可用（该账号未开放图层导出）" },
+    },
+  };
+
+  const tool = new DownloadExportAssetsTool();
+  const res: any = await tool.execute({ fileId: FILE_ID, layerId: LAYER_ID } as any);
+
+  // 关键断言：10020 必须降级（非 isError），否则 LLM 会中断还原或反问用户要权限。
+  assert.equal(res.isError, undefined, "10020 不应再以错误返回");
+  const out = parseToolText(res);
+  assert.equal(out.degraded, true);
+  assert.equal(out.code, "10020");
+  assert.equal(out.fileId, FILE_ID);
+  assert.equal(out.layerId, LAYER_ID);
+  assert.deepEqual(out.assets, []);
+  assert.match(out.note, /SVG/, "降级指引必须指向按图层/SVG 还原");
+  assert.doesNotMatch(
+    out.note,
+    /客服|白名单|加白|whitelist|contact|customer service/i,
+    "不得再提示联系客服或申请切图白名单",
+  );
+});
+
 test("缓存已有时不重复渲染（避免每次都白渲染一次）", async () => {
   resetAll();
   integrationFixtures.exportAssetList = listAfterRender();

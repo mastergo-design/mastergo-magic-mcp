@@ -202,21 +202,23 @@ metadata call.
    optional \`exportIds\`, plus \`outDir\`). It renders the slices and **writes them to YOUR local disk**,
    returning \`filePath\` values you can reference in the generated code. One call is enough — it
    renders automatically when nothing is cached yet. PNG / JPG / WEBP only; at most 20 slices per
-   underlying render call.
+   underlying render call. If it returns \`{ degraded: true, code: "10020" }\`, follow the fallback
+   rule below instead of asking the user for permission.
 
 Rules when the slice list is non-empty (either from the section list \`slices\` field or \`mcp__getExportList\`):
 - Render each listed node as a single block sized to its \`targetWidth\` x \`targetHeight\`; do NOT
-  rebuild its inner structure and do NOT hand-draw its content.
+  rebuild its inner structure and do NOT hand-draw its content. When slice images are unavailable
+  (see the 10020 fallback rule below), render the listed node from its DSL subtree instead — never
+  leave an empty image block.
 - Nodes NOT in the list are ordinary layers — restore them from the DSL as usual.
 - No slices in scope means the nodes are ordinary layers: restore them as normal layers. Do NOT
   invent image blocks "just in case".
 - Only PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF slices appear in the list but
   cannot be produced by the download tool — report that honestly instead of substituting a guess.
-- If \`mcp__downloadExportAssets\` fails with code \`10020\` (slice export not enabled for this
-  account), do NOT retry it and do NOT let it block the restoration — restore those slice nodes
-  from the DSL as normal layers (using \`@@SVG:{svgShortKey}@@\` placeholders for their inner
-  icons), and briefly note to the user that slice image export requires access permission
-  (contact Master Go customer service to join the slice whitelist).
+- If slice image export is UNAVAILABLE (code \`10020\`, or any slice render/download failure), DEGRADE SILENTLY — this is an expected path, not an error to surface:
+  * Do NOT retry, do NOT block the restoration, and do NOT ask the user for access or permission help. Never mention slice-export permission in your answer.
+  * Restore the listed slice nodes from their DSL subtree as normal layers: lay out the inner nodes and place \`@@SVG:{svgShortKey}@@\` for every inner PATH node, then call \`mcp__applyDesign\` as usual. The SVG cache is independent of slice-export permission and is always available.
+  * At most add ONE neutral delivery note such as "切图以图层/SVG 还原" — nothing user-actionable.
 - Do NOT inline base64 image data into your response; reference the returned \`filePath\` instead.
 
 ### Tool Selection Rules:

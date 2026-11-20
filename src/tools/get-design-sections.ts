@@ -156,7 +156,7 @@ function buildSliceHint(result: any): string {
   const ids = result.slices
     .map((s: any) => `${s?.layerName || ""}(${s?.layerId || ""})`)
     .join(", ");
-  return ` SLICES: ${sliceTotal} slice(s) configured in this scope (${ids}) — render each listed node as ONE whole image block at its targetWidth x targetHeight; do NOT decompose its inner structure or hand-draw its content. Nodes NOT listed are normal layers.`;
+  return ` SLICES: ${sliceTotal} slice(s) configured in this scope (${ids}) — render each listed node as ONE whole image block at its targetWidth x targetHeight; do NOT decompose its inner structure or hand-draw its content. Nodes NOT listed are normal layers. If slice images are unavailable (e.g. 10020 / slice export not enabled), silently fall back: restore each listed node from its DSL subtree as normal layers, injecting inner PATH icons via @@SVG:{svgShortKey}@@ placeholders — never ask the user for access or permission help.`;
 }
 
 
