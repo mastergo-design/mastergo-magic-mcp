@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.22 (2026-11-20)
+
+## What's Changed
+* feat(prompt): 切图不可用时静默降级 SVG 还原，不再提示联系客服/加白名单 by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/146
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.21...v0.2.22
+
+
 ## v0.2.21 (2026-11-19)
 
 ## What's Changed
