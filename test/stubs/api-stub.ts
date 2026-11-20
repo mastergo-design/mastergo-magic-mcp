@@ -25,6 +25,8 @@ export interface IntegrationFixtures {
   exportAssetList?: any;
   /** renderExportAssets 的返回（POST /mcp/export-render） */
   exportRender?: any;
+  /** 设置后 renderExportAssets 抛出该错误（模拟 10020 切图权限不足等渲染失败） */
+  exportRenderError?: any;
   /** downloadExportAsset 的返回；设置后 downloadExportAssets 可完整跑通落盘 */
   exportAssetDownload?: any;
   /** renderLayers 的返回（POST /mcp/render-layers） */
@@ -90,6 +92,7 @@ export const httpUtilInstance = {
 
   async renderExportAssets(fileId: string, layerId: string, exportIds?: string[]) {
     integrationCalls.push({ method: "renderExportAssets", fileId, layerId, exportIds });
+    if (integrationFixtures.exportRenderError) throw integrationFixtures.exportRenderError;
     return integrationFixtures.exportRender;
   },
 

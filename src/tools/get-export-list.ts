@@ -49,6 +49,12 @@ export configuration (scale rule / quality / export id for downloading).
 SUPPORTED FORMATS
 PNG / JPG / WEBP can be rendered server-side. SVG / PDF / AVIF appear in the list but cannot be
 rendered by the downstream export endpoint — report that honestly instead of pretending.
+
+IF SLICE EXPORT IS UNAVAILABLE (code 10020)
+Do NOT ask the user for access or permission help. Fall back to restoring the
+listed nodes from the layer DSL: render each slice node's subtree as normal layers and inject inner
+PATH icons via \`@@SVG:{svgShortKey}@@\` + \`mcp__applyDesign\`. The SVG cache never depends on
+slice-export permission.
 `;
 
 export class GetExportListTool extends BaseTool {

@@ -53,7 +53,50 @@ LIMITATIONS
 - Only PNG / JPG / WEBP are produced server-side (SVG / PDF / AVIF are not).
 - Slices attached to layers INSIDE a component instance are skipped by the renderer.
 - At most 20 slices per underlying render call.
+
+IF SLICE EXPORT IS UNAVAILABLE (code 10020)
+Slice rendering is not enabled for this account. This tool then returns
+\`{ degraded: true, code: "10020", assets: [] }\` instead of an error — this is EXPECTED behaviour,
+not a failure. Do NOT retry, and do NOT ask the user for access or permission help. Continue restoring this scope from the layer DSL: render each slice node's subtree as
+normal layers and inject inner PATH icons via \`@@SVG:{svgShortKey}@@\` + \`mcp__applyDesign\`.
+The SVG cache never depends on slice-export permission, so the fallback is lossless for vector
+content.
 `;
+
+/** 切图渲染权限不足（10020）的业务码：命中时把「不可用」降级成可继续信号而不是报错。 */
+const EXPORT_FORBIDDEN_CODE = "10020";
+
+/** 从 axios 错误里取业务码：REST 错误体形如 { code, message }，也可能直接在 error.code。 */
+function extractErrorCode(error: any): string | undefined {
+  const body = error?.response?.data;
+  const code = (body && typeof body === "object" ? body.code : undefined) ?? error?.code;
+  return code === undefined || code === null ? undefined : String(code);
+}
+
+/**
+ * 切图不可用时的降级结果（非错误）：提示 LLM 直接用图层 DSL/SVG 还原，
+ * 不把权限问题抛给用户，也不提示联系客服 / 申请白名单。
+ * 语义与 server 侧 mcp__getExportAssets 的 degraded 响应对齐。
+ */
+function buildDegradedResult(fileId?: string, layerId?: string) {
+  return {
+    degraded: true as const,
+    reason: "slice-export-unavailable",
+    code: EXPORT_FORBIDDEN_CODE,
+    fileId,
+    layerId,
+    totalInScope: 0,
+    downloadedCount: 0,
+    assets: [] as Array<Record<string, unknown>>,
+    skipped: [] as Array<Record<string, unknown>>,
+    note:
+      "Slice export is unavailable for this account (code 10020). This is an expected degraded path: " +
+      "do NOT retry and do NOT surface a permission request to the user. " +
+      "Continue restoring this scope from the layer DSL — render each slice node's subtree as normal " +
+      "layers and inject inner PATH icons via @@SVG:{svgShortKey}@@ + mcp__applyDesign. " +
+      "切图不可用，已降级为按图层/SVG 还原。",
+  };
+}
 
 export class DownloadExportAssetsTool extends BaseTool {
   name = EXPORT_ASSET_TOOL_NAME;
@@ -112,6 +155,9 @@ export class DownloadExportAssetsTool extends BaseTool {
     outDir,
     format,
   }: z.infer<typeof this.schema>) {
+    // 提升到 catch 可见：10020 降级结果要回填实际 fileId / layerId（shortLink 场景也能带上）。
+    let finalFileId: string | undefined;
+    let effectiveLayerId: string | undefined;
     try {
       // 未知参数阻断已统一在 BaseTool.register 层（guardUnknownParams），execute 无需再查 rest。
 
@@ -121,7 +167,7 @@ export class DownloadExportAssetsTool extends BaseTool {
         );
       }
 
-      let finalFileId = this.normalizeFileId(fileId);
+      finalFileId = this.normalizeFileId(fileId);
       let finalLayerId = layerId;
       let finalSourceLayerId = sourceLayerId;
 
@@ -132,7 +178,7 @@ export class DownloadExportAssetsTool extends BaseTool {
         finalSourceLayerId = ids.sourceLayerId ?? sourceLayerId;
       }
 
-      const effectiveLayerId = finalSourceLayerId || finalLayerId;
+      effectiveLayerId = finalSourceLayerId || finalLayerId;
       if (!finalFileId || !effectiveLayerId) {
         throw new Error("Could not determine fileId or layerId (need layerId or sourceLayerId)");
       }
@@ -254,6 +300,19 @@ export class DownloadExportAssetsTool extends BaseTool {
         ],
       };
     } catch (error: any) {
+      // 10020 = 切图渲染未对该账号开放。按需求「主动降级使用 SVG」，这里不返回错误：
+      // 返回 degraded=true 的可继续信号，让还原流程直接用图层 DSL/SVG 继续，
+      // 不把权限问题抛给用户，也不提示联系客服 / 申请白名单。
+      if (extractErrorCode(error) === EXPORT_FORBIDDEN_CODE) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: formatOutput(buildDegradedResult(finalFileId, effectiveLayerId), format),
+            },
+          ],
+        };
+      }
       return {
         isError: true,
         content: [
