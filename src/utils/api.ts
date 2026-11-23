@@ -468,12 +468,26 @@ export function invalidateDslResponseCache(fileId?: string, layerId?: string): v
   }
 }
 
-const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
+/**
+ * 从 DSL 中提取组件文档链接，返回去重后的数组（顶层 componentDocumentLinks 字段）。
+ *
+ * 两级都收集（需求 13982）：
+ * - componentSetDocumentLink：组件集（variant 父级）级链接
+ * - documentLink：单组件级链接 —— 文档只配在组件上时，旧实现只收组件集级，
+ *   顶层聚合为空，LLM 被引导只看顶层会漏抓。且 documentationLinks 本是数组，
+ *   旧实现只取 [0] 丢其余条目。与 frontend-mcp-server utils/component-links.ts 对齐。
+ * 纯函数（无副作用），供 getDsl 与单元测试共用。
+ */
+export const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
 
   const traverse = (node: any) => {
-    if (node?.componentInfo?.componentSetDocumentLink?.[0]) {
-      documentLinks.add(node.componentInfo.componentSetDocumentLink[0]);
+    const ci = node?.componentInfo;
+    for (const link of ci?.componentSetDocumentLink ?? []) {
+      if (link) documentLinks.add(link);
+    }
+    for (const link of ci?.documentLink ?? []) {
+      if (link) documentLinks.add(link);
     }
     node.children?.forEach?.(traverse);
   };
