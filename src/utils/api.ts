@@ -496,6 +496,38 @@ export const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   return Array.from(documentLinks);
 };
 
+/**
+ * 旧服务端兼容：把服务端下发的 componentDocumentLinks 与本地从 dsl 重算的结果取并集。
+ *
+ * 为什么需要：`getDesignSections` 的 section DSL 响应里，顶层 componentDocumentLinks 由
+ * **服务端**注入。私有化部署按月发版，旧版本仍只聚合 componentSetDocumentLink[0]，
+ * 单组件级 documentLink 会缺失。而 section DSL 响应本身带完整 dsl.nodes，
+ * 客户端可以本地重算得到正确集合 —— 因此无需版本检测，直接并集兜底：
+ * - 新服务端：两者一致，并集 = 原值（幂等，无副作用）
+ * - 旧服务端：并集补回缺失的单组件级 / 多条目链接
+ *
+ * 保持服务端原有顺序在前（LLM 看到的顺序对已工作的场景不变），本地新增项追加在后。
+ * 纯函数（不修改入参），供 getDesignSections 与单元测试共用。
+ */
+export const mergeWithLocalComponentLinks = (
+  serverLinks: unknown,
+  dsl: DslResponse | undefined,
+): string[] => {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  const push = (link: unknown) => {
+    if (typeof link !== "string" || !link) return;
+    if (seen.has(link)) return;
+    seen.add(link);
+    merged.push(link);
+  };
+  if (Array.isArray(serverLinks)) serverLinks.forEach(push);
+  if (dsl && typeof dsl === "object") {
+    extractComponentDocumentLinks(dsl).forEach(push);
+  }
+  return merged;
+};
+
 const buildDslRules = (): string[] => {
   const rules = [
     "CRITICAL — Page positioning: the section LIST response contains splitContainers with page-absolute coordinates for each page region. Use splitContainers to construct the page skeleton (position:absolute with exact coordinates). Do NOT guess or stack with flex.",

@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractComponentDocumentLinks } from "../src/utils/api";
+import {
+  extractComponentDocumentLinks,
+  mergeWithLocalComponentLinks,
+} from "../src/utils/api";
 
 // ---- extractComponentDocumentLinks（需求 13982）----
 //
@@ -132,4 +135,110 @@ test("skips empty / falsy links and missing componentInfo", () => {
 test("handles missing nodes / empty dsl", () => {
   assert.deepEqual(extractComponentDocumentLinks({}), []);
   assert.deepEqual(extractComponentDocumentLinks({ nodes: [] }), []);
+});
+
+// ---- mergeWithLocalComponentLinks（旧服务端兼容）----
+//
+// getDesignSections 的 section DSL 响应里，顶层 componentDocumentLinks 由【服务端】注入。
+// 私有化部署按月发版，旧服务端仍只聚合 componentSetDocumentLink[0]。而响应自带完整
+// dsl.nodes，客户端本地重算后与服务端结果取并集即可兜底 —— 无需版本检测，且对新服务端幂等。
+
+test("merge: new server (same result) is idempotent", () => {
+  const dsl = {
+    nodes: [
+      {
+        componentInfo: {
+          componentSetDocumentLink: ["https://a.example/set"],
+          documentLink: ["https://a.example/comp"],
+        },
+      },
+    ],
+  };
+  const server = extractComponentDocumentLinks(dsl); // 新服务端 == 本地结果
+  assert.deepEqual(mergeWithLocalComponentLinks(server, dsl), server);
+});
+
+test("merge: old server (set-only, first entry) gets complemented", () => {
+  const dsl = {
+    nodes: [
+      {
+        componentInfo: {
+          componentSetDocumentLink: [
+            "https://a.example/set-1",
+            "https://a.example/set-2",
+          ],
+          documentLink: ["https://a.example/comp"],
+        },
+      },
+    ],
+  };
+  // 旧服务端只会聚合出 componentSetDocumentLink[0]
+  const merged = mergeWithLocalComponentLinks(["https://a.example/set-1"], dsl);
+  assert.deepEqual(merged, [
+    "https://a.example/set-1", // 服务端原有顺序保持在前
+    "https://a.example/set-2", // 本地补回数组后续条目
+    "https://a.example/comp", // 本地补回单组件级
+  ]);
+});
+
+test("merge: server links absent/undefined → falls back to purely local result", () => {
+  const dsl = {
+    nodes: [{ componentInfo: { documentLink: ["https://a.example/comp"] } }],
+  };
+  assert.deepEqual(mergeWithLocalComponentLinks(undefined, dsl), [
+    "https://a.example/comp",
+  ]);
+  assert.deepEqual(mergeWithLocalComponentLinks(null, dsl), [
+    "https://a.example/comp",
+  ]);
+  assert.deepEqual(mergeWithLocalComponentLinks("not-an-array", dsl), [
+    "https://a.example/comp",
+  ]);
+});
+
+test("merge: preserves server order and dedupes overlap", () => {
+  const dsl = {
+    nodes: [
+      {
+        componentInfo: {
+          componentSetDocumentLink: ["https://b.example/set"],
+          documentLink: ["https://a.example/comp"],
+        },
+      },
+    ],
+  };
+  const merged = mergeWithLocalComponentLinks(
+    ["https://b.example/set", "https://z.example/only-server"],
+    dsl,
+  );
+  assert.deepEqual(merged, [
+    "https://b.example/set",
+    "https://z.example/only-server", // 服务端独有（本地 dsl 无该节点）也保留
+    "https://a.example/comp",
+  ]);
+});
+
+test("merge: does not mutate inputs", () => {
+  const server = ["https://a.example/set"];
+  const dsl = {
+    nodes: [{ componentInfo: { documentLink: ["https://a.example/comp"] } }],
+  };
+  const serverCopy = [...server];
+  const dslCopy = JSON.stringify(dsl);
+  mergeWithLocalComponentLinks(server, dsl);
+  assert.deepEqual(server, serverCopy); // 服务端数组未被追加
+  assert.equal(JSON.stringify(dsl), dslCopy);
+});
+
+test("merge: no dsl and no server links → empty array", () => {
+  assert.deepEqual(mergeWithLocalComponentLinks(undefined, undefined), []);
+  assert.deepEqual(mergeWithLocalComponentLinks([], {}), []);
+});
+
+test("merge: filters non-string / empty entries from server links", () => {
+  const merged = mergeWithLocalComponentLinks(
+    ["https://a.example/set", "", null, undefined, 42],
+    undefined,
+  );
+  assert.deepEqual(merged, ["https://a.example/set"]);
 });
