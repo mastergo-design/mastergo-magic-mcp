@@ -55,15 +55,64 @@ export function formatOutput(
  * Serialize a tool failure without dropping a structured server error response.
  * In particular, preserve `code` and `message` from HTTP 413 responses such as
  * TURTLE_TOO_LARGE so callers can distinguish capacity limits from transform failures.
+ *
+ * 429 限流特判：服务端（frontend-mcp-server !608+）在响应体/Retry-After header 里给出
+ * 建议等待秒数。这里提取并追加速度限制行动指引——LLM 是主要调用方，显式指令比裸数字
+ * 更容易被遵守（线上实测：无指引时单用户 1 小时连撞 429 355 次零退避）。
  */
 export function formatToolError(error: unknown, toolName: string): string {
   const value = error as {
-    response?: { status?: unknown; data?: unknown };
+    response?: { status?: unknown; data?: unknown; headers?: unknown };
     message?: unknown;
   } | null;
   const response = value && typeof value === "object" ? value.response : undefined;
   const status = typeof response?.status === "number" ? response.status : undefined;
   const responseData = response?.data;
+
+  // 429 限流：从响应体 retryAfter 或 Retry-After header 提取建议等待秒数
+  const extractRetryAfter = (): number | undefined => {
+    if (responseData && typeof responseData === "object" && "retryAfter" in responseData) {
+      const v = (responseData as Record<string, unknown>).retryAfter;
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+    }
+    const headers = response?.headers as Record<string, unknown> | undefined;
+    if (headers) {
+      const raw = headers["retry-after"] ?? headers["Retry-After"];
+      const n = typeof raw === "string" ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return undefined;
+  };
+
+  const buildRateLimitEnvelope = (base: Record<string, unknown>): string => {
+    const retry = extractRetryAfter();
+    const retryText = retry !== undefined ? `${retry} seconds` : "a few seconds";
+    return JSON.stringify({
+      ...base,
+      rateLimited: true,
+      ...(retry !== undefined ? { retryAfter: retry } : {}),
+      guidance:
+        `Rate limit exceeded by the server. ` +
+        `Do NOT retry immediately. Wait ${retryText}, then retry the same call once. ` +
+        `If it fails again, wait longer (double the wait) or ask the user to reduce scope.`,
+    });
+  };
+
+  if (status === 429) {
+    if (responseData !== undefined && responseData !== null) {
+      if (typeof responseData === "string") {
+        try {
+          const parsed: unknown = JSON.parse(responseData);
+          if (isPlainObject(parsed)) return buildRateLimitEnvelope(parsed);
+        } catch {
+          // non-JSON 429 body falls through to the generic envelope below
+        }
+        return buildRateLimitEnvelope({ error: `${toolName} failed`, status, message: responseData });
+      }
+      if (isPlainObject(responseData)) return buildRateLimitEnvelope(responseData);
+    }
+    return buildRateLimitEnvelope({ error: `${toolName} failed`, status });
+  }
 
   if (responseData !== undefined && responseData !== null) {
     if (typeof responseData === "string") {

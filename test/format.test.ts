@@ -268,3 +268,67 @@ test("yaml fallback: serialization failure returns pure JSON (no '#' prefix) and
 test("FORMAT_VALUES is exactly json/yaml/tree", () => {
   assert.deepEqual([...FORMAT_VALUES], ["json", "yaml", "tree"]);
 });
+
+// ---- 429 rate limit: guidance envelope ----
+
+test("formatToolError: 429 with body retryAfter → rateLimited envelope with guidance", () => {
+  const out = formatToolError(
+    { response: { status: 429, data: { code: "10001", message: "🕒 请求超限，请稍候后重试", retryAfter: 53 } } },
+    "getPageLayers",
+  );
+  const parsed = JSON.parse(out) as Record<string, unknown>;
+  assert.equal(parsed.rateLimited, true);
+  assert.equal(parsed.retryAfter, 53);
+  assert.match(String(parsed.guidance), /Do NOT retry immediately/);
+  assert.match(String(parsed.guidance), /53 seconds/);
+  // 服务端原始字段保留
+  assert.equal(parsed.code, "10001");
+});
+
+test("formatToolError: 429 falls back to Retry-After header when body lacks it", () => {
+  const out = formatToolError(
+    {
+      response: {
+        status: 429,
+        headers: { "retry-after": "25" },
+        data: { code: "10001", message: "🕒 请求超限" },
+      },
+    },
+    "getDsl",
+  );
+  const parsed = JSON.parse(out) as Record<string, unknown>;
+  assert.equal(parsed.retryAfter, 25);
+  assert.match(String(parsed.guidance), /25 seconds/);
+});
+
+test("formatToolError: 429 with no retry info anywhere → generic wait guidance", () => {
+  const out = formatToolError(
+    { response: { status: 429, data: { code: "10001", message: "🕒 请求超限" } } },
+    "getDesignSections",
+  );
+  const parsed = JSON.parse(out) as Record<string, unknown>;
+  assert.equal(parsed.rateLimited, true);
+  assert.equal(parsed.retryAfter, undefined);
+  assert.match(String(parsed.guidance), /a few seconds/);
+});
+
+test("formatToolError: 429 with non-JSON body (gateway page) → envelope with status", () => {
+  const out = formatToolError(
+    { response: { status: 429, data: "<html>rate limited</html>" } },
+    "extractSvg",
+  );
+  const parsed = JSON.parse(out) as Record<string, unknown>;
+  assert.equal(parsed.rateLimited, true);
+  assert.equal(parsed.status, 429);
+  assert.equal(parsed.message, "<html>rate limited</html>");
+});
+
+test("formatToolError: non-429 errors keep original behavior (no rateLimited flag)", () => {
+  const out = formatToolError(
+    { response: { status: 413, data: { code: "10017", message: "TURTLE_TOO_LARGE" } } },
+    "getPageLayers",
+  );
+  const parsed = JSON.parse(out) as Record<string, unknown>;
+  assert.equal(parsed.rateLimited, undefined);
+  assert.equal(parsed.code, "10017");
+});
