@@ -5,7 +5,7 @@ import { getBaseUrl, getCommonHeader, isSameHost } from "../utils/api";
 import { isAllowedHttpUrl } from "../utils/security";
 import { toolName } from "../utils/tool-prefix";
 
-const COMPONENT_LINK_TOOL_DESCRIPTION = `When the data returned by mcp__getDsl contains a non-empty componentDocumentLinks array, this tool is used to sequentially retrieve URLs from the componentDocumentLinks array and then obtain component documentation data. The returned document data is used for you to generate frontend code based on components.`;
+const COMPONENT_LINK_TOOL_DESCRIPTION = `When the data returned by mcp__getDsl contains a non-empty componentDocumentLinks array, this tool is used to sequentially retrieve URLs from the componentDocumentLinks array and then obtain component documentation data. Note: if componentDocumentLinks is empty but a node's componentInfo carries documentLink or componentSetDocumentLink, use those URLs here as well. The returned document data is used for you to generate frontend code based on components.`;
 
 export class GetComponentLinkTool extends BaseTool {
   get name() {

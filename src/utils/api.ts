@@ -468,18 +468,64 @@ export function invalidateDslResponseCache(fileId?: string, layerId?: string): v
   }
 }
 
-const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
+/**
+ * 从 DSL 中提取组件文档链接，返回去重后的数组（顶层 componentDocumentLinks 字段）。
+ *
+ * 两级都收集（需求 13982）：
+ * - componentSetDocumentLink：组件集（variant 父级）级链接
+ * - documentLink：单组件级链接 —— 文档只配在组件上时，旧实现只收组件集级，
+ *   顶层聚合为空，LLM 被引导只看顶层会漏抓。且 documentationLinks 本是数组，
+ *   旧实现只取 [0] 丢其余条目。与 frontend-mcp-server utils/component-links.ts 对齐。
+ * 纯函数（无副作用），供 getDsl 与单元测试共用。
+ */
+export const extractComponentDocumentLinks = (dsl: DslResponse): string[] => {
   const documentLinks = new Set<string>();
 
   const traverse = (node: any) => {
-    if (node?.componentInfo?.componentSetDocumentLink?.[0]) {
-      documentLinks.add(node.componentInfo.componentSetDocumentLink[0]);
+    const ci = node?.componentInfo;
+    for (const link of ci?.componentSetDocumentLink ?? []) {
+      if (link) documentLinks.add(link);
+    }
+    for (const link of ci?.documentLink ?? []) {
+      if (link) documentLinks.add(link);
     }
     node.children?.forEach?.(traverse);
   };
 
   dsl.nodes?.forEach(traverse);
   return Array.from(documentLinks);
+};
+
+/**
+ * 旧服务端兼容：把服务端下发的 componentDocumentLinks 与本地从 dsl 重算的结果取并集。
+ *
+ * 为什么需要：`getDesignSections` 的 section DSL 响应里，顶层 componentDocumentLinks 由
+ * **服务端**注入。私有化部署按月发版，旧版本仍只聚合 componentSetDocumentLink[0]，
+ * 单组件级 documentLink 会缺失。而 section DSL 响应本身带完整 dsl.nodes，
+ * 客户端可以本地重算得到正确集合 —— 因此无需版本检测，直接并集兜底：
+ * - 新服务端：两者一致，并集 = 原值（幂等，无副作用）
+ * - 旧服务端：并集补回缺失的单组件级 / 多条目链接
+ *
+ * 保持服务端原有顺序在前（LLM 看到的顺序对已工作的场景不变），本地新增项追加在后。
+ * 纯函数（不修改入参），供 getDesignSections 与单元测试共用。
+ */
+export const mergeWithLocalComponentLinks = (
+  serverLinks: unknown,
+  dsl: DslResponse | undefined,
+): string[] => {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  const push = (link: unknown) => {
+    if (typeof link !== "string" || !link) return;
+    if (seen.has(link)) return;
+    seen.add(link);
+    merged.push(link);
+  };
+  if (Array.isArray(serverLinks)) serverLinks.forEach(push);
+  if (dsl && typeof dsl === "object") {
+    extractComponentDocumentLinks(dsl).forEach(push);
+  }
+  return merged;
 };
 
 const buildDslRules = (): string[] => {

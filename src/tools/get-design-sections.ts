@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BaseTool } from "./base-tool";
-import { httpUtilInstance } from "../utils/api";
+import { httpUtilInstance, mergeWithLocalComponentLinks } from "../utils/api";
 import { formatField, formatOutput, formatToolError } from "../utils/format";
 import { toolName, applyToolPrefix } from "../utils/tool-prefix";
 import { markSectionWorkflowActive, setTotalSections, trackSectionFetched } from "./get-dsl";
@@ -257,7 +257,7 @@ export class GetDesignSectionsTool extends BaseTool {
         markLayerInProgress(finalFileId, effectiveLayerId);
       }
 
-      const result = await httpUtilInstance.getDesignSections(
+      let result = await httpUtilInstance.getDesignSections(
         finalFileId,
         effectiveLayerId,
         sectionIndex,
@@ -330,6 +330,28 @@ export class GetDesignSectionsTool extends BaseTool {
         // 记录总数，供后续 section DSL 响应计算 fetchProgress
         if (result && typeof result === "object" && typeof result.totalSections === "number") {
           setTotalSections(finalFileId, effectiveLayerId, result.totalSections);
+        }
+      }
+
+      // 旧服务端兼容（需求 13982）：section DSL 响应里的顶层 componentDocumentLinks 由服务端注入，
+      // 私有化旧版本只聚合 componentSetDocumentLink[0]，会漏掉单组件级 documentLink 与数组后续条目。
+      // section DSL 响应自带完整 dsl.nodes，客户端本地重算后与服务端结果取并集即可兜底：
+      // 新服务端幂等不变；旧服务端自动补齐。仅处理带 dsl 的响应，避免给无关响应无端新增空数组
+      // （section list 模式没有 dsl 节点，无可重算）。
+      // 注意：result 是 dslCache 的共享引用，直接改写会污染缓存（下次命中拿到被改过的对象）；
+      // 故先浅拷贝顶层再赋值。
+      if (
+        sectionIndex !== undefined &&
+        result &&
+        typeof result === "object" &&
+        (result as any).dsl
+      ) {
+        const merged = mergeWithLocalComponentLinks(
+          (result as any).componentDocumentLinks,
+          (result as any).dsl,
+        );
+        if (merged.length > 0) {
+          result = { ...(result as any), componentDocumentLinks: merged } as any;
         }
       }
 

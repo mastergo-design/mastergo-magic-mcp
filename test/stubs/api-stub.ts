@@ -155,3 +155,46 @@ export const isSameHost = (a: string, b: string): boolean => {
     return false;
   }
 };
+
+/**
+ * 与 src/utils/api.ts 同语义的组件文档链接聚合（需求 13982）。
+ *
+ * get-design-sections.ts 会 import 本函数做「旧服务端兼容」兜底，集成测试构建时必须存在，
+ * 否则 esbuild 报 "No matching export" 直接失败（2026-11-23 CI 实测踩坑：本地因软链
+ * 主仓 node_modules 复用了旧 .test 缓存而漏检）。
+ * 这里按源码逻辑等价实现，保证集成测试走到的兜底路径与真实行为一致。
+ */
+export const extractComponentDocumentLinks = (dsl: any): string[] => {
+  const documentLinks = new Set<string>();
+  const traverse = (node: any) => {
+    const ci = node?.componentInfo;
+    for (const link of ci?.componentSetDocumentLink ?? []) {
+      if (link) documentLinks.add(link);
+    }
+    for (const link of ci?.documentLink ?? []) {
+      if (link) documentLinks.add(link);
+    }
+    node?.children?.forEach?.(traverse);
+  };
+  dsl?.nodes?.forEach?.(traverse);
+  return Array.from(documentLinks);
+};
+
+export const mergeWithLocalComponentLinks = (
+  serverLinks: unknown,
+  dsl: any,
+): string[] => {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  const push = (link: unknown) => {
+    if (typeof link !== "string" || !link) return;
+    if (seen.has(link)) return;
+    seen.add(link);
+    merged.push(link);
+  };
+  if (Array.isArray(serverLinks)) serverLinks.forEach(push);
+  if (dsl && typeof dsl === "object") {
+    extractComponentDocumentLinks(dsl).forEach(push);
+  }
+  return merged;
+};
