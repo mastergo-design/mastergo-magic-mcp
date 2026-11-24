@@ -2,6 +2,16 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.23 (2026-11-24)
+
+## What's Changed
+* fix(api): collect single-component documentLink into top-level aggregation (req 13982) by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/147
+* feat(rate-limit): 429 错误转译为带退避指引的 rateLimited envelope by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/148
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.22...v0.2.23
+
+
 ## v0.2.22 (2026-11-20)
 
 ## What's Changed
