@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mastergo-design-mastergo-magic-mcp-badge.png)](https://mseep.ai/app/mastergo-design-mastergo-magic-mcp)
+
 # MasterGo Magic MCP
 
 [![MCP Toplist](https://mcptoplist.com/badge/glama%2Fmastergo-design%2Fmastergo-magic-mcp.svg)](https://mcptoplist.com/server/glama%2Fmastergo-design%2Fmastergo-magic-mcp)
