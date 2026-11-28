@@ -2,6 +2,15 @@
 
 > 本文件由 GitHub Releases 自动生成，请勿手动编辑；发版后由 CI（.github/workflows/publish.yml）自动更新。
 
+## v0.2.24 (2026-11-28)
+
+## What's Changed
+* feat(identity): 请求头自报客户端身份（User-Agent + X-MG-Client） by @muzi131313 in https://github.com/mastergo-design/mastergo-magic-mcp/pull/149
+
+
+**Full Changelog**: https://github.com/mastergo-design/mastergo-magic-mcp/compare/v0.2.23...v0.2.24
+
+
 ## v0.2.23 (2026-11-24)
 
 ## What's Changed
