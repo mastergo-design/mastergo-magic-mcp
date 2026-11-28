@@ -247,12 +247,33 @@ export interface CodeResponse {
 // and this is called on every HTTP request. Callers spread the result into a new object,
 // so returning the shared cached reference is safe from mutation.
 let _commonHeaderCache: Record<string, string> | null = null;
+
+/**
+ * 客户端自报身份：User-Agent 与 X-MG-Client，供服务端做来源统计。
+ *
+ * 背景：服务端（frontend-mcp-server）此前不读 UA、CLI 也不自报，导致
+ * "用户从哪个客户端来"无法归因——见《MagicMCP用户来源分析构建方案-20261126.md》。
+ * 本 CLI 是唯一有升级通道的形态，自报版本号后服务端可按真实版本占比
+ * 数据驱动地推进 PAT 退役（P3 五步渐退）。
+ *
+ * 安全约束：自报头可被任何调用方伪造，仅用于服务端日志分析与统计，
+ * 不构成鉴权或限流豁免依据（与 E8-S1「IP 类元数据不可信」同源原则）。
+ */
+// 与 src/index.ts 的 McpServer version 同源（esbuild resolveJsonModule 打包）。
+import packageJson from "../../package.json";
+const CLIENT_SELF_ID = {
+  name: "magic-mcp-cli",
+  version: packageJson.version ?? "unknown",
+} as const;
+
 // 导出：getComponentLink 等工具需要按「仅同域携带凭据」策略自行组头（SSRF 防护配套）。
 export const getCommonHeader = (): Record<string, string> => {
   if (_commonHeaderCache) return _commonHeaderCache;
   _commonHeaderCache = {
     "Content-Type": "application/json",
     Accept: "application/json",
+    "User-Agent": `${CLIENT_SELF_ID.name}/${CLIENT_SELF_ID.version} node/${process.version}`,
+    "X-MG-Client": `${CLIENT_SELF_ID.name}/${CLIENT_SELF_ID.version}`,
     "X-MG-UserAccessToken":
       process.env.MG_MCP_TOKEN || process.env.MASTERGO_API_TOKEN || parseToken(),
     ...getEffectiveHeaders(),
